@@ -12,10 +12,10 @@ def init_parser(subparsers):
         help="Manage volumes"
     )
 
-    volume_subparsers =  volume_parser.add_subparsers(
+    volume_subparsers = volume_parser.add_subparsers(
         dest="volume_cmd",
         metavar="<command>",
-        required=True
+        required=False
     )
 
     volume_parser.add_argument(
