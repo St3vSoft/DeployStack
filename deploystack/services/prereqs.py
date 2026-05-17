@@ -76,6 +76,8 @@ UBUNTU_CLOUD_ARCHIVE = {
     ("jammy",   "caracal"),
     ("noble",   "dalmatian"),
     ("noble",   "epoxy"),
+    ("noble",   "flamingo"),
+    ("noble",   "gazpacho")
 }
 
 UBUNTU_NATIVE_OPENSTACK = {
