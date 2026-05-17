@@ -40,7 +40,7 @@ def volume(parser, args) -> None:
         from .remove.main import remove
         remove(parser, args)
     elif args.volume_cmd == "reset":
-        from .reset.main import reset_volume as reset
+        from .reset.main import reset
         reset(parser, args)
 
 

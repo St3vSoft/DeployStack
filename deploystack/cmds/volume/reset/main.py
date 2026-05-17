@@ -8,7 +8,7 @@ def init_parser(subparsers):
 
     parser = subparsers.add_parser(
         "reset",
-        help="reset a existing volume state from Cinder"
+        help="Reset a existing volume state from Cinder"
     )
 
     parser.add_argument(
@@ -17,7 +17,7 @@ def init_parser(subparsers):
         help="Volume Name or ID"
     )
 
-def remove(parser, args) -> None:
+def reset(parser, args) -> None:
 
     if args.command is None:
         parser.print_help()
