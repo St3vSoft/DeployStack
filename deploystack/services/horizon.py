@@ -6,7 +6,7 @@ import re
 from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install, apt_update
 from ..utils.config.parser import get
-from ..utils.core.system_utils import nc_wait
+from ..utils.core.system_utils import nc_wait, is_debian
 from ..utils.core import colors
 
 settings_file = "/etc/openstack-dashboard/local_settings.py"
@@ -38,8 +38,13 @@ def set_memcached(settings_file="/etc/openstack-dashboard/local_settings.py", ho
 def install_pkgs():
 
     if not apt_update() : return False
+
+    horizon_packages = ["openstack-dashboard"]
+
+    if is_debian():
+        horizon_packages.append("libapache2-mod-wsgi-py3")
     
-    if not apt_install(["openstack-dashboard"], ux_text=f"Installing Horizon package...") : return False
+    if not apt_install(horizon_packages, ux_text=f"Installing Horizon package...") : return False
 
     return True
 

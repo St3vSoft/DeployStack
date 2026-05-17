@@ -9,6 +9,14 @@ from ...utils.core import colors
 import subprocess
 import sys
 
+def is_debian():
+    try:
+        with open("/etc/os-release") as f:
+            data = f.read()
+        return "debian" in data.lower()
+    except FileNotFoundError:
+        return False
+
 def iface_exists(iface: str) -> bool:
     result = subprocess.run(["ip", "link", "show", iface],
                             stdout=subprocess.DEVNULL,
