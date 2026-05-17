@@ -76,6 +76,8 @@ def check_deployment(include_endpoints: bool = True):
 
     if service_exists("neutron-server.service"):
         services_list.append("neutron-server")
+    elif service_exists("neutron-api.service"):
+        services_list.append("neutron-api")
     else:
         services_list.append("neutron-periodic-workers")
 
