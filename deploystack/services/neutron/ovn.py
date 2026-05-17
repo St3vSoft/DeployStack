@@ -284,6 +284,8 @@ def finalize(config):
             "Restarting Neutron and Nova services...", False, None, 3, 5
         ):
             return False
+    elif service_exists("neutron-api.service"):
+        if not run_command(["systemctl", "restart", "neutron-api", "neutron-rpc-server",  "nova-compute"], "Restarting Neutron services...", False, None, 3, 5): return False
     else:
         if not run_command(
             ["systemctl", "restart",
