@@ -1,3 +1,5 @@
+import sys
+
 from .create.main import init_parser as create_init_parser
 from .attach.main import init_parser as attach_init_parser
 from .detach.main import init_parser as detach_init_parser
@@ -32,7 +34,9 @@ def init_parser(subparsers):
 def volume(parser, args) -> None:
     
     if args.reset_status:
+       print(f"Resetting volume '{volume}' status ...\n")
        reset_volume_state(args.reset_status)
+       sys.exit(0)
 
     if args.volume_cmd == "create":
         from .create.main import create
