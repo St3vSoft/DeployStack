@@ -14,6 +14,7 @@ def init_parser(subparsers):
     parser.add_argument(
         "--volume",
         dest="volume",
+        required=True,
         help="Volume Name or ID"
     )
 
