@@ -2,7 +2,7 @@ import subprocess
 import sys
 
 from ..detach.runner import reset_volume_state
-from ..detach.runner import is_uuid, get_volume_id_from_name
+from ..detach.runner import is_uuid, get_volume_id_from_name, check_volume_attached
 
 from ....utils.core import colors
 
@@ -20,7 +20,7 @@ def is_volume_available(volume: str) -> bool:
 
         if volume_status == "available":
              return True
-        elif volume_status == "attached":
+        elif volume_status == "in-use":
              return False
         else:
             logger.warning(f"{colors.YELLOW}Volume {volume} has unexpected status '{volume_status}'{colors.RESET}")
@@ -39,6 +39,8 @@ def reset(
        if is_volume_available(volume_id):
             print(f"{colors.YELLOW}The '{volume}' volume is already in an available state, no action needed!{colors.RESET}")
             sys.exit(1)
+
+       check_volume_attached(volume_id)
        
        print(f"Resetting volume '{volume_id}' status ...\n")
        reset_volume_state(volume_id)
