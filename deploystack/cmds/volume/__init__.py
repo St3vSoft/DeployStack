@@ -18,7 +18,7 @@ def init_parser(subparsers):
         required=True
     )
 
-    volume_subparsers.add_argument(
+    volume_parser.add_argument(
         "--reset-status",
         dest="reset_status",
         help="Volume Name or ID"
