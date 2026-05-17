@@ -4,8 +4,7 @@ from .create.main import init_parser as create_init_parser
 from .attach.main import init_parser as attach_init_parser
 from .detach.main import init_parser as detach_init_parser
 from .remove.main import init_parser as remove_init_parser
-
-from .reset_status.runner import reset as reset_state
+from .reset.main import init_parser as reset_init_parser
 
 def init_parser(subparsers):
 
@@ -30,12 +29,10 @@ def init_parser(subparsers):
     attach_init_parser(volume_subparsers)
     detach_init_parser(volume_subparsers)
     remove_init_parser(volume_subparsers)
+    reset_init_parser(volume_subparsers)
 
 def volume(parser, args) -> None:
     
-    if args.reset_status:
-        reset_state(args.reset_status)
-
     if args.volume_cmd == "create":
         from .create.main import create
         create(parser, args)
@@ -48,9 +45,8 @@ def volume(parser, args) -> None:
     elif args.volume_cmd == "remove":
         from .remove.main import remove
         remove(parser, args)
-    else:
-        parser.print_help()
-        parser.exit(1)
-
+    elif args.volume_cmd == "reset":
+        from .reset.main import reset_volume as reset
+        reset(parser, args)
 
 
