@@ -48,6 +48,9 @@ def volume(parser, args) -> None:
     elif args.volume_cmd == "remove":
         from .remove.main import remove
         remove(parser, args)
+    else:
+        parser.print_help()
+        parser.exit(1)
 
 
 
