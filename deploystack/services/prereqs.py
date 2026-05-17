@@ -17,6 +17,7 @@ UBUNTU_CLOUD_ARCHIVE = {
     ("jammy",   "caracal"):   "jammy-updates/caracal",
     ("noble",   "dalmatian"): "noble-updates/dalmatian",
     ("noble",   "epoxy"):     "noble-updates/epoxy",
+    ("noble",   "flamingo"):  "noble-updates/flamingo"
 }
 
 UBUNTU_NATIVE_OPENSTACK = {
