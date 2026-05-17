@@ -16,13 +16,7 @@ def init_parser(subparsers):
     volume_subparsers = volume_parser.add_subparsers(
         dest="volume_cmd",
         metavar="<command>",
-        required=False
-    )
-
-    volume_parser.add_argument(
-        "--reset-status",
-        dest="reset_status",
-        help="Volume Name or ID"
+        required=True
     )
 
     create_init_parser(volume_subparsers)
