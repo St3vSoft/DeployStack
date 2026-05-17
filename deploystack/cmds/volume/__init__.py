@@ -30,6 +30,9 @@ def init_parser(subparsers):
     remove_init_parser(volume_subparsers)
 
 def volume(parser, args) -> None:
+    
+    if args.reset_status:
+       reset_volume_state(args.reset_status)
 
     if args.volume_cmd == "create":
         from .create.main import create
@@ -44,7 +47,5 @@ def volume(parser, args) -> None:
         from .remove.main import remove
         remove(parser, args)
 
-    if args.reset_status:
-       not reset_volume_state(args.reset_status)
 
 
