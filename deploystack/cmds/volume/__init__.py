@@ -3,6 +3,8 @@ from .attach.main import init_parser as attach_init_parser
 from .detach.main import init_parser as detach_init_parser
 from .remove.main import init_parser as remove_init_parser
 
+from .detach.runner import reset_volume_state
+
 def init_parser(subparsers):
 
     volume_parser = subparsers.add_parser(
@@ -14,6 +16,12 @@ def init_parser(subparsers):
         dest="volume_cmd",
         metavar="<command>",
         required=True
+    )
+
+    volume_subparsers.add_argument(
+        "--reset-status",
+        dest="reset_status",
+        help="Volume Name or ID"
     )
 
     create_init_parser(volume_subparsers)
@@ -35,3 +43,8 @@ def volume(parser, args) -> None:
     elif args.volume_cmd == "remove":
         from .remove.main import remove
         remove(parser, args)
+
+    if args.reset_status:
+       not reset_volume_state(args.reset_status)
+
+
