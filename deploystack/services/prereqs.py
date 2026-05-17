@@ -18,7 +18,7 @@ UBUNTU_CLOUD_ARCHIVE = {
     ("noble",   "dalmatian"): "noble-updates/dalmatian",
     ("noble",   "epoxy"):     "noble-updates/epoxy",
     ("noble",   "flamingo"):  "noble-updates/flamingo",
-    ("noble",   "gazpacho"):  "noble-updates/flamingo"
+    ("noble",   "gazpacho"):  "noble-updates/gazpacho"
 }
 
 UBUNTU_NATIVE_OPENSTACK = {
