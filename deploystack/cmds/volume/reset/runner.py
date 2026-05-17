@@ -2,7 +2,8 @@ import subprocess
 import sys
 
 from ..detach.runner import reset_volume_state
-from ..detach.runner import is_uuid, get_volume_id_from_name, check_volume_attached
+from ..detach.runner import is_uuid, get_volume_id_from_name
+from ..remove.runner import check_volume_attached
 
 from ....utils.core import colors
 
