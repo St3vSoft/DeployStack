@@ -160,11 +160,8 @@ Alias /dashboard/static /var/lib/openstack-dashboard/static/
 
     os.makedirs(key_dir, exist_ok=True)
 
-    for f in os.listdir(key_dir):
-        file_path = os.path.join(key_dir, f)
-        if os.path.isfile(file_path):
-            os.chmod(file_path, stat.S_IRUSR | stat.S_IWUSR)
-            os.chown(file_path, horizon_uid, horizon_gid)
+    os.chown(key_dir, horizon_uid, horizon_gid)
+    os.chmod(key_dir, 0o700)
 
 def finalize(config):
 
