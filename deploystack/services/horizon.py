@@ -117,6 +117,8 @@ def conf_horizon(config):
 
     if not os.path.exists("/usr/share/openstack-dashboard/openstack_dashboard/wsgi.py"):
         wsgi_path = get_wsgi_path()
+    else:
+        wsgi_path = "/usr/share/openstack-dashboard/openstack_dashboard/wsgi.py"
 
     with open(settings_file, "w") as f:
         for line in lines:
