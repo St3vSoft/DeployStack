@@ -7,9 +7,8 @@ import sys
 
 import pwd
 import grp
-import stat
 
-from ..utils.core.commands import run_command, run_command_sync
+from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install, apt_update
 from ..utils.config.parser import get
 from ..utils.core.system_utils import nc_wait, is_debian
@@ -114,7 +113,10 @@ def conf_horizon(config):
         lines = []
 
     existing_keys = {l.split("=")[0].strip() for l in lines if "=" in l}
-    wsgi_path = get_wsgi_path()
+    wsgi_path: str
+
+    if not os.path.exists("/usr/share/openstack-dashboard/openstack_dashboard/wsgi.py"):
+        wsgi_path = get_wsgi_path()
 
     with open(settings_file, "w") as f:
         for line in lines:
