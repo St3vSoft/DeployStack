@@ -128,10 +128,9 @@ Alias /dashboard/static /var/lib/openstack-dashboard/static/
 </Directory>
 """
 
-    if not is_debian():
-        if not os.path.exists(apache_conf) or apache_block not in open(apache_conf).read():
-            with open(apache_conf, "a") as f:
-                f.write(apache_block)
+    if not os.path.exists(apache_conf) or apache_block not in open(apache_conf).read():
+        with open(apache_conf, "a") as f:
+            f.write(apache_block)
 
 
 def finalize(config):
