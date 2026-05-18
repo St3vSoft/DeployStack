@@ -180,7 +180,7 @@ def finalize(config):
 
 def run_setup_horizon(config):
 
-    write_resolv_conf()
+    write_resolv_conf(config)
 
     if not install_pkgs(): return False
     conf_horizon(config)
