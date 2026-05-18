@@ -62,16 +62,16 @@ def set_memcached(settings_file="/etc/openstack-dashboard/local_settings.py", ho
     with open(settings_file, "w") as f:
         f.write(content)
 
-def write_resolv_conf(config, settings_file):
+def write_resolv_conf(config):
     public_subnet_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
     try:
-        with open(settings_file, "r") as f:
+        with open(resolv_conf, "r") as f:
             existing = f.read()
     except FileNotFoundError:
         existing = ""
 
-    with open(settings_file, "a") as f:
+    with open(resolv_conf, "a") as f:
         for dns in public_subnet_dns_servers:
             line = f"nameserver {dns}\n"
             if line not in existing:

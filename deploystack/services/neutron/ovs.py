@@ -349,9 +349,10 @@ def create_ovs_networks(config):
     rules = json.loads(rules_json)
 
     ssh_rule_exists = any(
-        rule.get("protocol") == "tcp" and 
-        (rule.get("port_range") == "22" or
-        (rule.get("port_range_min") == 22 and rule.get("port_range_max") == 22))
+        rule.get("IP Protocol") == "tcp" and
+        rule.get("Port Range") == "22:22" and
+        rule.get("IP Range") == public_subnet_cidr and
+        rule.get("Direction") == "ingress"
         for rule in rules
     )
 

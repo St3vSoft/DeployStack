@@ -474,11 +474,13 @@ def create_ovn_networks(config):
     rules = json.loads(rules_json)
 
     ssh_rule_exists = any(
-        rule.get("protocol") == "tcp" and
-        (rule.get("port_range") == "22" or
-         (rule.get("port_range_min") == 22 and rule.get("port_range_max") == 22))
+        rule.get("IP Protocol") == "tcp" and
+        rule.get("Port Range") == "22:22" and
+        rule.get("IP Range") == public_subnet_cidr and
+        rule.get("Direction") == "ingress"
         for rule in rules
     )
+
     if not ssh_rule_exists:
         if not run_command(
             ["openstack", "security", "group", "rule", "create",
@@ -488,7 +490,7 @@ def create_ovn_networks(config):
     else:
         print(f"{colors.YELLOW}SSH rule already exists, skipping{colors.RESET}")
 
-    icmp_rule_exists = any(rule.get("protocol") == "icmp" for rule in rules)
+    icmp_rule_exists = any(rule.get("IP Protocol") == "icmp" for rule in rules)
     if not icmp_rule_exists:
         if not run_command(
             ["openstack", "security", "group", "rule", "create",
