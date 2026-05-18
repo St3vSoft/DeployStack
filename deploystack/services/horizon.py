@@ -2,6 +2,8 @@
 
 import os
 import re
+import subprocess
+import sys
 
 from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install, apt_update
@@ -11,6 +13,23 @@ from ..utils.core import colors
 
 settings_file = "/etc/openstack-dashboard/local_settings.py"
 apache_conf = "/etc/apache2/conf-enabled/openstack-dashboard.conf"
+
+def get_wsgi_path() -> str:
+    try:
+        result = subprocess.run(["dpkg", "-L", "openstack-dashboard"], capture_output=True, text=True, check=True)
+        files = result.stdout.splitlines()
+
+        wsgi_files = [f for f in files if f.endswith("wsgi.py")]
+
+        if wsgi_files:
+            return wsgi_files[0] 
+        else:
+            print(f"\n{colors.RED}Unable to find path to wsgi.py for Horizon{colors.RESET}")
+            sys.exit(1)
+
+    except subprocess.CalledProcessError as e:
+        print(f"\n{colors.RED}ERROR: {e}{colors.RESET}")
+        sys.exit(1)
 
 def set_memcached(settings_file="/etc/openstack-dashboard/local_settings.py", host="127.0.0.1", port=11211):
     if os.path.exists(settings_file):
@@ -59,7 +78,10 @@ def conf_horizon(config):
         "ALLOWED_HOSTS": "['*']",
         "WEBROOT": "'/dashboard/'",
         "DEFAULT_THEME": "'default'",
-        "COMPRESS_OFFLINE": "False"
+        "COMPRESS_OFFLINE": "False",
+        "LOGIN_URL" : "'/dashboard/auth/login/'",
+        "LOGOUT_URL" : "'/dashboard/auth/logout/'",
+        "LOGIN_REDIRECT_URL" : "'/dashboard/'"
     }
 
     if os.path.exists(settings_file):
@@ -69,6 +91,7 @@ def conf_horizon(config):
         lines = []
 
     existing_keys = {l.split("=")[0].strip() for l in lines if "=" in l}
+    wsgi_path = get_wsgi_path()
 
     with open(settings_file, "w") as f:
         for line in lines:
@@ -90,11 +113,11 @@ def conf_horizon(config):
     if os.path.exists(apache_conf):
         os.remove(apache_conf)
 
-    apache_block = """
-WSGIScriptAlias /dashboard /usr/share/openstack-dashboard/openstack_dashboard/wsgi.py process-group=horizon
-WSGIDaemonProcess horizon user=horizon group=horizon processes=3 threads=10 display-name=%{GROUP}
+    apache_block = f"""
+WSGIScriptAlias /dashboard {wsgi_path} process-group=horizon
+WSGIDaemonProcess horizon user=horizon group=horizon processes=3 threads=10 display-name=%{{GROUP}}
 WSGIProcessGroup horizon
-WSGIApplicationGroup %{GLOBAL}
+WSGIApplicationGroup %{{GLOBAL}}
 Alias /static /var/lib/openstack-dashboard/static/
 Alias /dashboard/static /var/lib/openstack-dashboard/static/
 <Directory /usr/share/openstack-dashboard/openstack_dashboard>
@@ -104,9 +127,11 @@ Alias /dashboard/static /var/lib/openstack-dashboard/static/
   Require all granted
 </Directory>
 """
-    if not os.path.exists(apache_conf) or apache_block not in open(apache_conf).read():
-        with open(apache_conf, "a") as f:
-            f.write(apache_block)
+
+    if not is_debian():
+        if not os.path.exists(apache_conf) or apache_block not in open(apache_conf).read():
+            with open(apache_conf, "a") as f:
+                f.write(apache_block)
 
 
 def finalize(config):
