@@ -5,7 +5,11 @@ import re
 import subprocess
 import sys
 
-from ..utils.core.commands import run_command
+import pwd
+import grp
+import stat
+
+from ..utils.core.commands import run_command, run_command_sync
 from ..utils.apt.apt import apt_install, apt_update
 from ..utils.config.parser import get
 from ..utils.core.system_utils import nc_wait, is_debian
@@ -15,6 +19,8 @@ settings_file = "/etc/openstack-dashboard/local_settings.py"
 apache_conf = "/etc/apache2/conf-enabled/openstack-dashboard.conf"
 
 resolv_conf = "/etc/resolv.conf"
+
+key_dir = "/var/lib/openstack-dashboard/secret-key"
 
 def get_wsgi_path() -> str:
     try:
@@ -149,6 +155,16 @@ Alias /dashboard/static /var/lib/openstack-dashboard/static/
         with open(apache_conf, "a") as f:
             f.write(apache_block)
 
+    horizon_uid = pwd.getpwnam("horizon").pw_uid
+    horizon_gid = grp.getgrnam("horizon").gr_gid
+
+    os.makedirs(key_dir, exist_ok=True)
+
+    for f in os.listdir(key_dir):
+        file_path = os.path.join(key_dir, f)
+        if os.path.isfile(file_path):
+            os.chmod(file_path, stat.S_IRUSR | stat.S_IWUSR)
+            os.chown(file_path, horizon_uid, horizon_gid)
 
 def finalize(config):
 
