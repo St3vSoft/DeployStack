@@ -57,7 +57,7 @@ def conf_lvm(config):
 
     lvm_physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME")
     lvm_image_file_path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
-    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_NAME")
+    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
     lvm_image_size_in_gb = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB")
 
     VG_NAME = "cinder-volumes"
@@ -156,7 +156,7 @@ def setup_loopback_service(config):
     SERVICE_PATH = "/etc/systemd/system/cinder-loopback.service"
 
     lvm_image_file_path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
-    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_NAME")
+    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
     VG_NAME = "cinder-volumes"
 
     try:

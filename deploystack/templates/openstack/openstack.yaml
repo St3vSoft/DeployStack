@@ -65,7 +65,7 @@ cinder:
 
       # Loopback file (used only if physical_volume is not specified)
 
-      CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_NAME: "/dev/loop0"
+      CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH: "/dev/loop0"
 
       CINDER_VOLUME_LVM_IMAGE_FILE_PATH: "/var/lib/cinder/cinder-volumes.img"
 
