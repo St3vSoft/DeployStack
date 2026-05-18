@@ -46,7 +46,7 @@ def conf_openvswitch_bridges(config):
     public_bridge = get(config, "neutron.ovs.PUBLIC_BRIDGE")
     internal_bridge = get(config, "neutron.ovs.INTERNAL_BRIDGE")
 
-    ip_address =  get(config, "network.HOST_IP")
+    ip_address = get(config, "network.HOST_IP")
     ip_address_netmask = get(config, "network.HOST_IP_NETMASK")
 
     subnet_address_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")

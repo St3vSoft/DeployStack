@@ -14,6 +14,8 @@ from ..utils.core import colors
 settings_file = "/etc/openstack-dashboard/local_settings.py"
 apache_conf = "/etc/apache2/conf-enabled/openstack-dashboard.conf"
 
+resolv_conf = "/etc/resolv.conf"
+
 def get_wsgi_path() -> str:
     try:
         result = subprocess.run(["dpkg", "-L", "openstack-dashboard"], capture_output=True, text=True, check=True)
@@ -53,6 +55,21 @@ def set_memcached(settings_file="/etc/openstack-dashboard/local_settings.py", ho
 
     with open(settings_file, "w") as f:
         f.write(content)
+
+def write_resolv_conf(config, settings_file):
+    public_subnet_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
+
+    try:
+        with open(settings_file, "r") as f:
+            existing = f.read()
+    except FileNotFoundError:
+        existing = ""
+
+    with open(settings_file, "a") as f:
+        for dns in public_subnet_dns_servers:
+            line = f"nameserver {dns}\n"
+            if line not in existing:
+                f.write(line)
 
 def install_pkgs():
 
@@ -146,6 +163,8 @@ def finalize(config):
     return True
 
 def run_setup_horizon(config):
+
+    write_resolv_conf()
 
     if not install_pkgs(): return False
     conf_horizon(config)
