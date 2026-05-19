@@ -8,10 +8,11 @@ from ..utils.core.system_utils import service_exists
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
-from ..utils.core.system_utils import nc_wait
+from ..utils.core.system_utils import nc_wait, is_debian
 from ..utils.core import colors
 
 nova_conf = "/etc/nova/nova.conf"
+nova_novncproxy_service = "/lib/systemd/system/nova-novncproxy.service"
 
 def install_pkgs():
 
@@ -130,10 +131,21 @@ def conf_nova(config):
 def finalize(config):
 
     ip_address = get(config, "network.HOST_IP")
-     
-    print()
 
     services_to_restart = ["nova-scheduler", "nova-conductor", "nova-novncproxy"]
+
+    if is_debian() and service_exists("nova-serialproxy.service") and service_exists("nova-spicehtml5proxy.service"):
+             
+        print()
+
+        set_conf_option(nova_novncproxy_service, "service", "ExecStart", "/usr/bin/nova-novncproxy --config-file=/etc/nova/nova.conf")
+
+        run_command(["systemctl", "disable", "nova-spicehtml5proxy", "nova-serialproxy"])
+        run_command(["systemctl", "enable", "nova-novncproxy"])
+
+        if not run_command(["systemctl", "daemon-reload"], "Reloading systemd daemon..."): return False
+    else:
+        print()
 
     if service_exists("nova-api.service"):
         services_to_restart.insert(0, "nova-api")

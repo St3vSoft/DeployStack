@@ -27,10 +27,13 @@ def conf_placement(config):
 
     ip_address = get(config, "network.HOST_IP")
 
+    os_region_name = get(config, "openstack.REGION_NAME")
+
     set_conf_option(placement_conf, "placement_database", "connection", f"mysql+pymysql://placement:{db_password}@{ip_address}/placement")
       
     set_conf_option(placement_conf, "keystone_authtoken", "www_authenticate_uri", f"http://{ip_address}:5000/")
     set_conf_option(placement_conf, "keystone_authtoken", "auth_url", f"http://{ip_address}:5000/")
+    set_conf_option(placement_conf, "keystone_authtoken", "region_name", os_region_name)
     set_conf_option(placement_conf, "keystone_authtoken", "memcached_servers", "127.0.0.1:11211")
     set_conf_option(placement_conf, "keystone_authtoken", "auth_type", "password")
     set_conf_option(placement_conf, "keystone_authtoken", "project_domain_name", "Default")
