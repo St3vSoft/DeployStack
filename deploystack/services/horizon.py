@@ -117,9 +117,6 @@ def conf_horizon(config):
 
     set_memcached(host="127.0.0.1", port=11211)
 
-    if os.path.exists(apache_conf):
-        os.remove(apache_conf)
-
     debian_apache_block= """
 SGIDaemonProcess horizon user=www-data group=www-data threads=5
 
@@ -160,6 +157,9 @@ Alias /dashboard/static /var/lib/openstack-dashboard/static/
     else:
         apache_conf = ubuntu_apache_conf
         apache_block = ubuntu_apache_block
+
+    if os.path.exists(apache_conf):
+        os.remove(apache_conf)
 
     if not os.path.exists(apache_conf) or apache_block not in open(apache_conf).read():
         with open(apache_conf, "a") as f:
