@@ -140,10 +140,12 @@ def finalize(config):
 
         set_service_option(nova_novncproxy_service, "Service", "ExecStart", "/usr/bin/nova-novncproxy --config-file=/etc/nova/nova.conf")
 
-        run_command(["systemctl", "disable", "nova-spicehtml5proxy", "nova-serialproxy"])
-        run_command(["systemctl", "enable", "nova-novncproxy"])
+        run_command_sync(["systemctl", "disable", "nova-spicehtml5proxy", "nova-serialproxy"])
+        run_command_sync(["systemctl", "enable", "nova-novncproxy"])
 
         if not run_command(["systemctl", "daemon-reload"], "Reloading systemd daemon..."): return False
+
+        print()
     else:
         print()
 
