@@ -253,7 +253,7 @@ def finalize(config):
     print()
 
     cinder_services = [
-        "cinder-scheduler" 
+        "cinder-scheduler",
         "cinder-volume", 
         "apache2", 
         "tgt"
