@@ -7,7 +7,7 @@ from ..utils.core.commands import run_command, run_command_sync
 from ..utils.core.system_utils import service_exists
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
-from ..utils.config.setter import set_conf_option
+from ..utils.config.setter import set_conf_option, set_service_option
 from ..utils.core.system_utils import nc_wait, is_debian
 from ..utils.core import colors
 
@@ -138,7 +138,7 @@ def finalize(config):
              
         print()
 
-        set_conf_option(nova_novncproxy_service, "service", "ExecStart", "/usr/bin/nova-novncproxy --config-file=/etc/nova/nova.conf")
+        set_service_option(nova_novncproxy_service, "Service", "ExecStart", "/usr/bin/nova-novncproxy --config-file=/etc/nova/nova.conf")
 
         run_command(["systemctl", "disable", "nova-spicehtml5proxy", "nova-serialproxy"])
         run_command(["systemctl", "enable", "nova-novncproxy"])
