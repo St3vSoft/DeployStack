@@ -12,6 +12,7 @@ from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
 from ..utils.core.system_utils import nc_wait
 from ..utils.core import colors
+from ..utils.core.system_utils import service_exists
 from ..templates import CINDER_LOOPBACK_SERVICE, CINDER_LOOPBACK_START_SCRIPT, CINDER_LOOPBACK_STOP_SCRIPT, CINDER_LVM_ENV_CONF
 
 cinder_conf = "/etc/cinder/cinder.conf"
@@ -251,7 +252,20 @@ def finalize(config):
 
     print()
 
-    if not run_command(["systemctl", "restart", "cinder-scheduler", "cinder-volume", "apache2", "tgt"], "Restarting Cinder services...", False, None, 3, 5): return False
+    cinder_services = [
+        "cinder-scheduler" 
+        "cinder-volume", 
+        "apache2", 
+        "tgt"
+    ]
+
+    if service_exists("cinder-api.service"):
+        cinder_services.append("cinder-api")
+    else:
+        cinder_services.append("apache2")
+
+
+    if not run_command(["systemctl", "restart"] + cinder_services, "Restarting Cinder services...", False, None, 3, 5): return False
     
     if not nc_wait(ip_address, 8776) : return False
 

@@ -8,7 +8,7 @@ import sys
 import pwd
 import grp
 
-from ..utils.core.commands import run_command, run_command_sync
+from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install, apt_update
 from ..utils.config.parser import get
 from ..utils.core.system_utils import nc_wait, is_debian
