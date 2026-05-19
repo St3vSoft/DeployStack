@@ -118,7 +118,7 @@ def conf_horizon(config):
     set_memcached(host="127.0.0.1", port=11211)
 
     debian_apache_block= """
-SGIDaemonProcess horizon user=www-data group=www-data threads=5
+WSGIDaemonProcess horizon user=www-data group=www-data threads=5
 
 WSGIScriptAlias /horizon /usr/share/openstack-dashboard/wsgi.py process-group=horizon application-group=%{GLOBAL}
 
