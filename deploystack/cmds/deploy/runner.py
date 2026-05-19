@@ -5,6 +5,7 @@ from ...utils.core import colors
 from ...utils.core.system_utils import has_hw_virtualization, check_ifupdown
 from ...utils.network.net_utils import get_active_interface
 from ...utils.tasks.check_deployment import mark_deployment_complete, MARKER_FILE
+from ...utils.core.system_utils import is_debian
 
 from ...utils.config.validator import validate_all
 
@@ -116,7 +117,11 @@ def deploy(config_file):
 
     print(f"\n{colors.BRIGHT_BLUE}Access your OpenStack services:{colors.RESET}")
 
-    print(f" - Horizon Dashboard: http://{ip_address}/dashboard")
+    if is_debian():
+        print(f" - Horizon Dashboard: http://{ip_address}/horizon")
+    else:
+        print(f" - Horizon Dashboard: http://{ip_address}/dashboard")
+
     print(f" - Keystone API:      http://{ip_address}:5000/\n")
 
     print(f"{colors.YELLOW}Tip:{colors.RESET} Use the ADMIN credentials you configured in your config file to log in.")

@@ -3,6 +3,7 @@
 import os
 
 from ..utils.core.commands import run_command
+from ..utils.core.system_utils import service_exists
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
@@ -85,10 +86,10 @@ def finalize(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    message = f"Restarting Apache2..."
-    restart_cmd = ["systemctl", "restart", "apache2"]
+    if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2...") : return False
 
-    if not run_command(restart_cmd, message) : return False
+    if service_exists("keystone.service"):
+        if not run_command(["systemctl", "restart", "keystone"], "Restarting Keystone") : return False
      
     if not nc_wait(ip_address, 5000) : return False
 
