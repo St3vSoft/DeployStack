@@ -6,6 +6,7 @@ from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
 from ..utils.core.system_utils import nc_wait
 from ..utils.core import colors
+from ..utils.core.system_utils import service_exists
 
 placement_conf = "/etc/placement/placement.conf"
 
@@ -53,7 +54,14 @@ def finalize(config):
      
     print()
 
-    if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2..."): return False
+    placement_service = []
+
+    if service_exists("placement-api.service"):
+        placement_service.append("placement-api")
+    else:
+        placement_service.append("apache2")
+
+    if not run_command(["systemctl", "restart"] + placement_service, "Restarting Apache2..."): return False
     
     if not nc_wait(ip_address, 8778) : return False
 

@@ -264,7 +264,6 @@ def finalize(config):
     else:
         cinder_services.append("apache2")
 
-
     if not run_command(["systemctl", "restart"] + cinder_services, "Restarting Cinder services...", False, None, 3, 5): return False
     
     if not nc_wait(ip_address, 8776) : return False
