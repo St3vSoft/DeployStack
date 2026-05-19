@@ -84,12 +84,14 @@ def conf_keystone(config):
     
 def finalize(config):
 
+    print()
+
     ip_address = get(config, "network.HOST_IP")
 
     if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2...") : return False
 
     if service_exists("keystone.service"):
-        if not run_command(["systemctl", "restart", "keystone"], "Restarting Keystone") : return False
+        if not run_command(["systemctl", "restart", "keystone"], "Restarting Keystone...") : return False
      
     if not nc_wait(ip_address, 5000) : return False
 

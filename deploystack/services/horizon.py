@@ -167,12 +167,18 @@ Alias /dashboard/static /var/lib/openstack-dashboard/static/
 
 def finalize(config):
 
-    print()
-
     ip_address = get(config, "network.HOST_IP")
 
     if is_debian():
-        run_command_sync(["sudo", "a2enmod", "ssl"])
+        print()
+
+        if not run_command(["sudo", "a2enmod", "ssl"], "Enabling SSL Module...") : return False
+
+        if not run_command(["make-ssl-cert", "generate-default-snakeoil", "--force-overwrite"], "Regenerating SSL Certificates..."): return False
+
+        print()
+    else:
+        print()
 
     if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2..."): return False
     
