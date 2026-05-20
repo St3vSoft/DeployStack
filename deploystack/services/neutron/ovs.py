@@ -49,8 +49,8 @@ def conf_openvswitch_bridges(config):
     ip_address = get(config, "network.HOST_IP")
     ip_address_netmask = get(config, "network.HOST_IP_NETMASK")
 
-    subnet_address_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
-    subnet_address_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
+    subnet_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
+    subnet_dns = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
     for iface in [public_iface, public_bridge, internal_bridge]:
         if iface_exists(iface):
@@ -58,49 +58,33 @@ def conf_openvswitch_bridges(config):
                 run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
-    if iface_exists(public_bridge):
-        run_command(["ovs-vsctl", "--if-exists", "del-port", public_bridge, public_iface],
-                    f"Deleting port {public_iface} from bridge {public_bridge}", ignore_errors=True)
-        run_command(["ovs-vsctl", "--if-exists", "del-br", public_bridge],
-                    f"Deleting bridge {public_bridge}", ignore_errors=True)
+    for bridge, port in [(public_bridge, public_iface), (internal_bridge, None)]:
+        if iface_exists(bridge):
+            if port:
+                run_command(["ovs-vsctl", "--if-exists", "del-port", bridge, port], f"Deleting port {port} from {bridge}", ignore_errors=True)
+            run_command(["ovs-vsctl", "--if-exists", "del-br", bridge], f"Deleting bridge {bridge}", ignore_errors=True)
 
-    if iface_exists(internal_bridge):
-        run_command(["ovs-vsctl", "--if-exists", "del-br", internal_bridge],
-                    f"Deleting bridge {internal_bridge}", ignore_errors=True)
-        
     print()
-
-    run_command(
-        ["ovs-vsctl", "--if-exists", "del-br", public_bridge],
-        f"Deleting bridge {public_bridge} if exists",
-        ignore_errors=True
-    )
-
-    run_command(
-        ["ovs-vsctl", "--if-exists", "del-br", internal_bridge],
-        f"Deleting bridge {internal_bridge} if exists",
-        ignore_errors=True
-    )
 
     with open(OVS_BRIDGES_INTERFACES, "r") as f:
         template = f.read()
 
-    if isinstance(subnet_address_dns_servers, list):
-        subnet_address_dns_servers = " ".join(subnet_address_dns_servers)
+    if isinstance(subnet_dns, list):
+        subnet_dns = " ".join(subnet_dns)
 
     bridges_interfaces_content = template.format(
         public_iface=public_iface,
         public_bridge=public_bridge,
         ip_address=ip_address,
         ip_address_netmask=ip_address_netmask,
-        subnet_address_gateway=subnet_address_gateway,
-        subnet_address_dns_servers=subnet_address_dns_servers,
+        subnet_address_gateway=subnet_gateway,
+        subnet_address_dns_servers=subnet_dns,
         internal_bridge=internal_bridge
     )
 
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)
-        
+
     interfaces_dir = "/etc/network/interfaces.d/"
     backup_dir = "/root/net-backup"
     os.makedirs(backup_dir, exist_ok=True)
@@ -110,39 +94,34 @@ def conf_openvswitch_bridges(config):
         backup_path = os.path.join(backup_dir, f)
 
         if full_path != INTERFACES_FILE and os.path.isfile(full_path):
-
             if os.path.exists(backup_path):
                 os.remove(backup_path)
-
             shutil.move(full_path, backup_path)
 
     print()
 
-    run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge], f"Adding bridge {public_bridge}")
-    run_command(["ovs-vsctl", "--may-exist", "add-port", public_bridge, public_iface], f"Adding port {public_iface} to {public_bridge}")
+    for bridge, port in [(public_bridge, public_iface), (internal_bridge, None)]:
+        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {bridge}"):
+            return False
+        if port:
+            if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {bridge}"):
+                return False
+            if not run_command(["ip", "link", "set", port, "up"], f"Bringing interface {port} up"):
+                return False
+        if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing bridge {bridge} up"):
+            return False
 
     print()
 
-    run_command(["ip", "link", "set", public_iface, "up"], f"Bringing interface {public_iface} up")
-    run_command(["ip", "link", "set", public_bridge, "up"], f"Bringing bridge {public_bridge} up")
-
-    run_command(["ovs-vsctl", "--may-exist", "add-br", internal_bridge], f"Adding bridge {internal_bridge}")
-    run_command(["ip", "link", "set", internal_bridge, "up"], f"Bringing bridge {internal_bridge} up")
-
-    print()
-
-    networking_restart_cmds = [
+    networking_cmds = [
         "systemctl disable systemd-networkd",
         "systemctl stop systemd-networkd",
         "systemctl enable networking",
         "systemctl restart networking",
     ]
-
-    full_networking_restart_cmds = " ; ".join(networking_restart_cmds)
-
-    full_networking_restart_cmds_result = run_command(["bash", "-c", full_networking_restart_cmds], "Restarting Networking service...")
-
-    if not full_networking_restart_cmds_result: return False
+    full_cmd = " ; ".join(networking_cmds)
+    if not run_command(["bash", "-c", full_cmd], "Restarting Networking service..."):
+        return False
 
     return True
 

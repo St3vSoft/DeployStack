@@ -90,7 +90,6 @@ def check_image_running_instances(identifier: str) -> bool:
         logger.error(f"{colors.RED}Error while trying to listing images: {e}{colors.RESET}\n")
         sys.exit(1)
 
-
 def remove_volume(identifier: str, timeout: int = 30) -> bool:
     remove_volume_cmd = ["openstack", "volume", "delete", identifier]
 

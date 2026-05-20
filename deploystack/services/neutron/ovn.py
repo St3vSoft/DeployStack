@@ -98,14 +98,14 @@ def conf_ovn_bridges(config):
 
     # Create OVS bridges
     # NOTE: br-int is created and managed automatically by ovn-controller — do NOT create it manually
-    run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge], f"Adding bridge {public_bridge}")
-    run_command(["ovs-vsctl", "--may-exist", "add-port", public_bridge, public_iface],
-                f"Adding port {public_iface} to {public_bridge}")
+    if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge], f"Adding bridge {public_bridge}") : return False
+    if not run_command(["ovs-vsctl", "--may-exist", "add-port", public_bridge, public_iface],
+                f"Adding port {public_iface} to {public_bridge}") : return False
     
     print()
 
-    run_command(["ip", "link", "set", public_iface, "up"], f"Bringing {public_iface} up")
-    run_command(["ip", "link", "set", public_bridge, "up"], f"Bringing {public_bridge} up")
+    if not run_command(["ip", "link", "set", public_iface, "up"], f"Bringing {public_iface} up") : return False
+    if not run_command(["ip", "link", "set", public_bridge, "up"], f"Bringing {public_bridge} up") : return False
 
     print()
 
