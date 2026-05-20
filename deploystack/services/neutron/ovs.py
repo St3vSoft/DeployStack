@@ -98,8 +98,6 @@ def conf_openvswitch_bridges(config):
                 os.remove(backup_path)
             shutil.move(full_path, backup_path)
 
-    print()
-
     for bridge, port in [(public_bridge, public_iface), (internal_bridge, None)]:
         if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {bridge}"):
             return False
