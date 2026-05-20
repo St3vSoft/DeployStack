@@ -92,6 +92,15 @@ def conf_horizon(config):
         "COMPRESS_OFFLINE": "False",
     }
 
+    if is_debian():
+        settings_to_set.update({
+            "WEBROOT": "'/horizon/'"
+        })
+    else:
+        settings_to_set.update({
+            "WEBROOT": "'/dashboard/'"
+        })
+
     if os.path.exists(settings_file):
         with open(settings_file, "r") as f:
             lines = f.readlines()
@@ -161,9 +170,8 @@ Alias /dashboard/static /var/lib/openstack-dashboard/static/
     if os.path.exists(apache_conf):
         os.remove(apache_conf)
 
-    if not os.path.exists(apache_conf) or apache_block not in open(apache_conf).read():
-        with open(apache_conf, "a") as f:
-            f.write(apache_block)
+    with open(apache_conf, "w") as f:
+        f.write(apache_block)
 
 def finalize(config):
 
