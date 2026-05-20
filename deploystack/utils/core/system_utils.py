@@ -12,8 +12,14 @@ import sys
 def is_debian():
     try:
         with open("/etc/os-release") as f:
-            data = f.read()
-        return "debian" in data.lower()
+            data = f.read().lower()
+
+        for line in data.splitlines():
+            if line.startswith("id="):
+
+                id_value = line.split("=")[1].strip().strip('"')
+                return id_value == "debian"
+        return False
     except FileNotFoundError:
         return False
 
