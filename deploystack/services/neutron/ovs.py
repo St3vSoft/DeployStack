@@ -106,6 +106,9 @@ def conf_openvswitch_bridges(config):
                 return False
             if not run_command(["ip", "link", "set", port, "up"], f"Bringing interface {port} up"):
                 return False
+            
+            print()
+
         if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing bridge {bridge} up"):
             return False
 
