@@ -152,7 +152,12 @@ def conf_neutron_ovs(config):
     create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes" 
 
     set_conf_option(conf_ml2, "ml2", "type_drivers", "flat,vlan,local")
-    set_conf_option(conf_ml2, "ml2", "tenant_network_types", tenant_network_type)
+    
+    if create_ovs_bridges:
+        set_conf_option(conf_ml2, "ml2", "tenant_network_types", tenant_network_type)
+    else:
+        set_conf_option(conf_ml2, "ml2", "tenant_network_types", "local")
+
     set_conf_option(conf_ml2, "ml2", "extension_drivers", "port_security")
 
     if create_ovs_bridges:
