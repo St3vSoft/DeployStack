@@ -523,14 +523,6 @@ def create_ovn_networks(config):
             "ovn-controller",
             "nova-compute"]
 
-    if not run_command([
-    "neutron-ovn-db-sync-util",
-    "--config-file", "/etc/neutron/neutron.conf",
-    "--config-file", "/etc/neutron/plugins/ml2/ml2_conf.ini",
-    "--ovn-neutron_sync_mode", "repair"
-],
-    "Resynchronizing the OVN Northd database..."): return False
-
     if service_exists("neutron-api.service") and not service_exists("neutron-server.service"):
         ovs_services.append("neutron-api")
     else:
