@@ -270,7 +270,7 @@ def create_ovs_networks(config):
         create_public_network_cmd = create_flat_public_network_cmd
         create_internal_network_cmd = create_flat_internal_network_cmd
     else:
-        create_public_network_cmd = ["openstack", "network", "create", "--share", "public"]
+        create_public_network_cmd = ["openstack", "network", "create", "--share", "public"] 
         create_internal_network_cmd = ["openstack", "network", "create", "internal"]
 
     public_network_exists = any(net.get("Name") == "public" for net in networks_list)
