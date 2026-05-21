@@ -726,6 +726,8 @@ def create_ovn_networks(config):
     else:
         print(f"{colors.YELLOW}SSH rule already exists, skipping{colors.RESET}")
 
+    print()
+
     icmp_rule_exists = any(rule.get("IP Protocol") == "icmp" for rule in rules)
     if create_ovn_bridges and not icmp_rule_exists:
         if not run_command(
@@ -747,6 +749,13 @@ def create_ovn_networks(config):
 
     print()
 
+    ovs_services =  ["systemctl", "restart",
+            "ovn-ovsdb-server-nb",
+            "ovn-ovsdb-server-sb",
+            "ovn-northd",
+            "ovn-controller",
+            "nova-compute"]
+
     if not run_command([
     "neutron-ovn-db-sync-util",
     "--config-file", "/etc/neutron/neutron.conf",
@@ -755,14 +764,13 @@ def create_ovn_networks(config):
 ],
     "Resynchronizing the OVN Northd database..."): return False
 
+    if service_exists("neutron-api.service") and not service_exists("neutron-server.service"):
+        ovs_services.append("neutron-api")
+    else:
+        ovs_services.append("neutron-server")
+        
     if not run_command(
-        ["systemctl", "restart",
-         "ovn-ovsdb-server-nb",
-         "ovn-ovsdb-server-sb",
-         "ovn-northd",
-         "ovn-controller",
-         "neutron-server",
-         "nova-compute"],
+        ovs_services,
         "Restarting OVN services...", False, None, 3, 5
     ):  return False
 

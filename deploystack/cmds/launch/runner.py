@@ -473,7 +473,7 @@ def launch(
             logger.warning(
             f"{colors.YELLOW}The internal router does not have a gateway connected to the external network. "
             f"Floating IP creation will be skipped, and the '{network}' network will be directly associated "
-            f"with the instance '{server_id}'.{colors.RESET}"
+            f"with the instance '{server_id}'.{colors.RESET}\n"
         )
     else:
         instance_ip_address = get_instance_ip(name, network)
