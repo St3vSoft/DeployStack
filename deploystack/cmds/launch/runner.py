@@ -92,6 +92,13 @@ def delete_instance(instance_id: str):
     except subprocess.CalledProcessError as e:
             print(f"Error when deleting instance {instance_id}: {e}")
 
+def internal_router_has_gateway() -> bool:
+    result = _run(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "external_gateways"])
+    external_gateways = json.loads(result.stdout)
+
+    gateways = external_gateways.get("external_gateways", [])
+    return bool(gateways)
+
 
 def get_instance_ip(instance_name: str, network_name: str) -> str:
     result = _run(["openstack", "server list", "-f", "json"])
@@ -455,9 +462,19 @@ def launch(
     wait_for_active(server_id, timeout)
 
     if network != EXTERNAL_NET:
-        fip = allocate_floating_ip(external_net)
 
-        attach_floating_ip(server_id, fip)
+        if internal_router_has_gateway():
+            fip = allocate_floating_ip(external_net)
+
+            attach_floating_ip(server_id, fip)
+        else:
+            instance_ip_address = get_instance_ip(name, network)
+
+            logger.warning(
+            f"{colors.YELLOW}The internal router does not have a gateway connected to the external network. "
+            f"Floating IP creation will be skipped, and the '{network}' network will be directly associated "
+            f"with the instance '{server_id}'.{colors.RESET}"
+        )
     else:
         instance_ip_address = get_instance_ip(name, network)
     

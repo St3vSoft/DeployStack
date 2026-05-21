@@ -505,8 +505,6 @@ def create_ovn_networks(config):
         gw_ip = router_gw_ip["external_gateway_info"]["external_fixed_ips"][0]["ip_address"]
         run_command_sync(["ip", "route", "replace", "10.0.0.0/24", "via", gw_ip, "dev", ovn_public_bridge])
 
-    print()
-
     if not run_command([
         "neutron-ovn-db-sync-util",
         "--config-file", "/etc/neutron/neutron.conf",
