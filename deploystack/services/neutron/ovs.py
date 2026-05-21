@@ -149,15 +149,18 @@ def conf_neutron_ovs(config):
 
     vlan_networks_str = ",".join(vlan_networks)
 
+    create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes" 
+
     set_conf_option(conf_ml2, "ml2", "type_drivers", "flat,vlan,local")
     set_conf_option(conf_ml2, "ml2", "tenant_network_types", tenant_network_type)
     set_conf_option(conf_ml2, "ml2", "extension_drivers", "port_security")
 
-    if flat_networks_str:
-        set_conf_option(conf_ml2, "ml2_type_flat", "flat_networks", flat_networks_str)
+    if create_ovs_bridges:
+        if flat_networks_str:
+            set_conf_option(conf_ml2, "ml2_type_flat", "flat_networks", flat_networks_str)
 
-    if vlan_networks_str:
-        set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_networks_str)
+        if vlan_networks_str:
+            set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_networks_str)
 
     set_conf_option(conf_ml2, "securitygroup", "enable_ipset", "true")
     set_conf_option(conf_ml2, "ml2", "mechanism_drivers", "openvswitch")
