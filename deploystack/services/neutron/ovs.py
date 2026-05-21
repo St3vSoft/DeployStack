@@ -104,10 +104,11 @@ def conf_openvswitch_bridges(config):
         if port:
             if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {bridge}"):
                 return False
-            if not run_command(["ip", "link", "set", port, "up"], f"Bringing interface {port} up"):
-                return False
             
             print()
+
+            if not run_command(["ip", "link", "set", port, "up"], f"Bringing interface {port} up"):
+                return False
 
         if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing bridge {bridge} up"):
             return False
@@ -215,7 +216,12 @@ def create_ovs_networks(config):
      
     public_subnet_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
-    public_subnet_cidr = get(config, "public_network.PUBLIC_SUBNET_CIDR")    
+    public_subnet_cidr = get(config, "public_network.PUBLIC_SUBNET_CIDR")   
+
+    provider_networks = get(config, "neutron.provider_networks", [])
+    public_network = next((n for n in provider_networks if n["name"] == "public"), None)
+
+    create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes" 
 
     dns_args = []
     for dns in public_subnet_dns_servers:
@@ -237,18 +243,36 @@ def create_ovs_networks(config):
     subnets_list = json.loads(subnets_list_json)
     routers_list = json.loads(routers_list_json)
 
+    create_flat_public_network_cmd = [
+        "openstack", "network", "create",
+                "--share", "--external",
+                "--provider-physical-network", public_network["name"],
+                "--provider-network-type", "flat",
+                "public"
+    ]
+
+    create_flat_internal_network_cmd = ["openstack", "network", "create", "--share",
+                "--provider-physical-network", "internal",
+                "--provider-network-type", "flat", "internal"]
+
+    create_public_network_cmd = []
+    create_internal_network_cmd = []
+
+    if create_ovs_bridges:
+        create_public_network_cmd = create_flat_public_network_cmd
+        create_internal_network_cmd = create_flat_internal_network_cmd
+    else:
+        create_public_network_cmd = ["openstack", "network", "create", "--share", "public"]
+        create_internal_network_cmd = ["openstack", "network", "create", "internal"]
+
     public_network_exists = any(net.get("Name") == "public" for net in networks_list)
     if not public_network_exists:
-        if not run_command(
-            ["openstack", "network", "create",
-            "--share", "--external",
-            "--provider-physical-network", "public",
-            "--provider-network-type", "flat",
-            "public"],
-            "Creating public network..."
-        ) : return False
+            if not run_command(
+                create_public_network_cmd,
+                "Creating public network..."
+            ) : return False
     else:
-        print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
+            print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
 
     public_subnet_exists = any(sub.get("Name") == "public_subnet" for sub in subnets_list)
     if not public_subnet_exists:
@@ -270,9 +294,7 @@ def create_ovs_networks(config):
 
     if not internal_network_exists:
         if not run_command(
-            ["openstack", "network", "create", "--share",
-                "--provider-physical-network", "internal",
-                "--provider-network-type", "flat", "internal"],
+            create_internal_network_cmd,
             "Creating internal network...",
             ) : return False
     else:
@@ -299,19 +321,20 @@ def create_ovs_networks(config):
         if not run_command(
             ["openstack", "router", "create", "internal_router"],
             "Creating internal router...",
-            ) : return False
-            
-        if not run_command(
-            ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
-            "Setting external gateway for internal router...",
-            ) : return False
-        
+        ): return False
+
+        if create_ovs_bridges:
+            if not run_command(
+                ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
+                "Setting external gateway for internal router...",
+            ): return False
+
         print()
 
         if not run_command(
             ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
             "Adding internal subnet to router...",
-        ) : return False
+        ): return False
     else:
         print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
     
@@ -336,16 +359,17 @@ def create_ovs_networks(config):
         for rule in rules
     )
 
-    if not ssh_rule_exists:
+    if create_ovs_bridges and not ssh_rule_exists:
         if not run_command(
             ["openstack", "security", "group", "rule", "create",
             "--proto", "tcp",
             "--dst-port", "22",
             "--remote-ip", public_subnet_cidr,
             sg_id],
-            "Allowing SSH access...") : return False
+            "Allowing SSH access..."): 
+            return False
     else:
-        print(f"{colors.YELLOW}The SSH rule already exists, skipping this step{colors.RESET}")
+        print(f"{colors.YELLOW}SSH rule skipped (no OVS bridge or already exists).{colors.RESET}")
 
     return True
 
@@ -357,11 +381,11 @@ def run_setup_ovs_neutron(config):
               f"Overriding with 'flat'.{colors.RESET}")
         config["neutron"]["tenant_network"]["TYPE"] = "flat"
      
-    config_openvswitch_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes"
+    create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes"
 
     if not install_pkgs(): return False
     
-    if config_openvswitch_bridges:
+    if create_ovs_bridges:
         if not conf_openvswitch_bridges(config) : return False
     
     if not conf_neutron_ovs(config) : return False

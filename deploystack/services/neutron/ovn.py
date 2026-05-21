@@ -320,6 +320,211 @@ def finalize(config):
 def create_ovn_networks(config):
     print()
 
+    # Config
+    ip_address = get(config, "network.HOST_IP")
+    admin_password = get(config, "passwords.ADMIN_PASSWORD")
+
+    public_subnet_range_start = get(config, "public_network.PUBLIC_SUBNET_RANGE_START")
+    public_subnet_range_end = get(config, "public_network.PUBLIC_SUBNET_RANGE_END")
+    public_subnet_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
+    public_subnet_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
+    public_subnet_cidr = get(config, "public_network.PUBLIC_SUBNET_CIDR")
+
+    ovn_public_bridge = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")
+    ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE").lower()
+
+    provider_networks = get(config, "neutron.provider_networks", [])
+    public_network = next((n for n in provider_networks if n["name"] == "public"), None)
+
+    create_ovn_bridges = get(config, "neutron.ovn.CREATE_BRIDGES", "no") == "yes"
+
+    # DNS args
+    dns_args = []
+    for dns in public_subnet_dns_servers:
+        dns_args.extend(["--dns-nameserver", dns])
+
+    os.environ.update({
+        "OS_USERNAME": "admin",
+        "OS_PASSWORD": admin_password,
+        "OS_PROJECT_NAME": "admin",
+        "OS_USER_DOMAIN_NAME": "Default",
+        "OS_PROJECT_DOMAIN_NAME": "Default",
+        "OS_AUTH_URL": f"http://{ip_address}:5000/v3",
+        "OS_IDENTITY_API_VERSION": "3"
+    })
+
+    networks_list = json.loads(run_command_output(["openstack", "network", "list", "-f", "json"]))
+    subnets_list = json.loads(run_command_output(["openstack", "subnet", "list", "-f", "json"]))
+    routers_list = json.loads(run_command_output(["openstack", "router", "list", "-f", "json"]))
+
+    public_network_exists = any(net.get("Name") == "public" for net in networks_list)
+    if not public_network_exists:
+        net_type = public_network.get("type", "flat") if public_network else "flat"
+
+        if create_ovn_bridges:
+            if net_type == "flat":
+                create_public_network_cmd = [
+                    "openstack", "network", "create",
+                    "--share", "--external",
+                    "--provider-physical-network", public_network["name"],
+                    "--provider-network-type", "flat",
+                    "public"
+                ]
+            elif net_type == "vlan" and public_network.get("vlan_range"):
+                start, _ = map(int, public_network["vlan_range"].split(":"))
+                vlan_id = start
+                create_public_network_cmd = [
+                    "openstack", "network", "create",
+                    "--share", "--external",
+                    "--provider-physical-network", public_network["name"],
+                    "--provider-network-type", "vlan",
+                    "--provider-segment", str(vlan_id),
+                    "public"
+                ]
+            else:
+                create_public_network_cmd = ["openstack", "network", "create", "--share", "--external", "public"]
+        else:
+            create_public_network_cmd = ["openstack", "network", "create", "--share", "public"]
+
+        if not run_command(create_public_network_cmd, "Creating public network..."):
+            return False
+
+        public_subnet_exists = any(sub.get("Name") == "public_subnet" for sub in subnets_list)
+        if not public_subnet_exists:
+            subnet_cmd = [
+                "openstack", "subnet", "create",
+                "--network", "public",
+                "--allocation-pool", f"start={public_subnet_range_start},end={public_subnet_range_end}",
+                "--gateway", public_subnet_gateway,
+                "--subnet-range", public_subnet_cidr
+            ] + dns_args + ["public_subnet"]
+
+            if not run_command(subnet_cmd, "Creating public subnet..."):
+                return False
+    else:
+        print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
+
+    print()
+
+    internal_network_exists = any(net.get("Name") == "internal" for net in networks_list)
+    create_internal_network_cmd = [
+        "openstack", "network", "create",
+        "--share",
+        "--provider-network-type", ovn_encap_type,
+        "internal"
+    ] if create_ovn_bridges else ["openstack", "network", "create", "internal"]
+
+    if not internal_network_exists:
+        if not run_command(create_internal_network_cmd, f"Creating internal ({ovn_encap_type}) network..."):
+            return False
+    else:
+        print(f"{colors.YELLOW}Internal network already exists, skipping creation.{colors.RESET}")
+
+    internal_subnet_exists = any(sub.get("Name") == "internal_subnet" for sub in subnets_list)
+    if not internal_subnet_exists:
+        internal_subnet_cmd = [
+            "openstack", "subnet", "create",
+            "--network", "internal",
+            "--subnet-range", "10.0.0.0/24",
+            "--gateway", "10.0.0.1",
+            "--allocation-pool", "start=10.0.0.10,end=10.0.0.200",
+            "--dns-nameserver", "8.8.8.8",
+            "internal_subnet"
+        ]
+        if not run_command(internal_subnet_cmd, "Creating internal subnet..."):
+            return False
+    else:
+        print(f"{colors.YELLOW}Internal subnet already exists, skipping creation.{colors.RESET}")
+
+    print()
+
+    router_exists = any(r.get("Name") == "internal_router" for r in routers_list)
+    if not router_exists:
+        if not run_command(["openstack", "router", "create", "internal_router"], "Creating internal router..."):
+            return False
+
+        if create_ovn_bridges:
+            if not run_command(
+                ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
+                "Setting external gateway for internal router..."
+            ):
+                return False
+
+        if not run_command(
+            ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
+            "Adding internal subnet to router..."
+        ):
+            return False
+    else:
+        print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
+
+    print()
+
+    sg_list = json.loads(run_command_output(["openstack", "security", "group", "list", "-f", "json"]))
+    default_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
+    if not default_sg:
+        raise RuntimeError("No security group named 'default' found")
+    sg_id = default_sg["ID"]
+
+    rules = json.loads(run_command_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"]))
+
+    ssh_rule_exists = any(
+        rule.get("IP Protocol") == "tcp" and
+        rule.get("Port Range") == "22:22" and
+        rule.get("Direction") == "ingress"
+        for rule in rules
+    )
+    if create_ovn_bridges and not ssh_rule_exists:
+        if not run_command(
+            ["openstack", "security", "group", "rule", "create",
+             "--proto", "tcp", "--dst-port", "22", "--remote-ip", "0.0.0.0/0", sg_id],
+            "Allowing SSH access..."
+        ):
+            return False
+    else:
+        print(f"{colors.YELLOW}SSH rule already exists or skipped.{colors.RESET}")
+
+    icmp_rule_exists = any(rule.get("IP Protocol") == "icmp" for rule in rules)
+    if create_ovn_bridges and not icmp_rule_exists:
+        if not run_command(
+            ["openstack", "security", "group", "rule", "create",
+             "--proto", "icmp", sg_id],
+            "Allowing ICMP (ping)..."
+        ):
+            return False
+    else:
+        print(f"{colors.YELLOW}ICMP rule already exists or skipped.{colors.RESET}")
+
+    print()
+
+    if create_ovn_bridges:
+        router_gw_ip = json.loads(run_command_output(["openstack", "router", "show", "internal_router", "-f", "json"]))
+        gw_ip = router_gw_ip["external_gateway_info"]["external_fixed_ips"][0]["ip_address"]
+        run_command_sync(["ip", "route", "replace", "10.0.0.0/24", "via", gw_ip, "dev", ovn_public_bridge])
+
+    print()
+
+    if not run_command([
+        "neutron-ovn-db-sync-util",
+        "--config-file", "/etc/neutron/neutron.conf",
+        "--config-file", "/etc/neutron/plugins/ml2/ml2_conf.ini",
+        "--ovn-neutron_sync_mode", "repair"
+    ], "Resynchronizing the OVN Northd database..."): return False
+
+    if not run_command(
+        ["systemctl", "restart",
+         "ovn-ovsdb-server-nb",
+         "ovn-ovsdb-server-sb",
+         "ovn-northd",
+         "ovn-controller",
+         "neutron-server",
+         "nova-compute"],
+        "Restarting OVN services...", False, None, 3, 5
+    ): return False
+
+    return True
+    print()
+
     ip_address = get(config, "network.HOST_IP")
     admin_password = get(config, "passwords.ADMIN_PASSWORD")
 
@@ -339,6 +544,8 @@ def create_ovn_networks(config):
     for dns in public_subnet_dns_servers:
         dns_args.extend(["--dns-nameserver", dns])
 
+    create_ovn_bridges = get(config, "neutron.ovn.CREATE_BRIDGES", "no") == "yes"
+
     os.environ["OS_USERNAME"] = "admin"
     os.environ["OS_PASSWORD"] = admin_password
     os.environ["OS_PROJECT_NAME"] = "admin"
@@ -355,17 +562,37 @@ def create_ovn_networks(config):
     subnets_list = json.loads(subnets_list_json)
     routers_list = json.loads(routers_list_json)
 
+    create_flat_public_network_cmd = [
+        "openstack", "network", "create",
+                "--share", "--external",
+                "--provider-physical-network", public_network["name"],
+                "--provider-network-type", "flat",
+                "public"
+    ]
+
+
+    create_provider_internal_network_cmd = ["openstack", "network", "create",
+            "--share",
+            "--provider-network-type", ovn_encap_type,
+            "internal"]
+    
+    create_public_network_cmd = []
+    create_internal_network_cmd = []
+
+    if create_ovn_bridges:
+        create_public_network_cmd = create_flat_public_network_cmd
+        create_internal_network_cmd = create_provider_internal_network_cmd
+    else:
+        create_public_network_cmd = ["openstack", "network", "create", "--share", "public"]
+        create_internal_network_cmd = ["openstack", "network", "create", "internal"]
+
     public_network_exists = any(net.get("Name") == "public" for net in networks_list)
     if not public_network_exists:
 
         net_type = public_network.get("type", "flat")
         if net_type == "flat":
             if not run_command(
-                ["openstack", "network", "create",
-                "--share", "--external",
-                "--provider-physical-network", public_network["name"],
-                "--provider-network-type", "flat",
-                "public"],
+                create_public_network_cmd,
                 "Creating public network..."
             ) : return False
             
@@ -386,17 +613,26 @@ def create_ovn_networks(config):
         elif net_type == "vlan":
             vlan_range = public_network.get("vlan_range")
 
-            if vlan_range:
+            create_vlan_public_network_cmd = ["openstack", "network", "create",
+                "--share", "--external",
+                "--provider-physical-network", public_network["name"],
+                "--provider-network-type", "vlan",
+                "--provider-segment", str(vlan_id),
+                "public"]
+            
+            create_public_network_cmd = []
+
+            if create_ovn_bridges:
+                create_public_network_cmd = create_vlan_public_network_cmd
+            else:
+                create_public_network_cmd = ["openstack", "network", "create", "--share", "public"]
+
+            if create_ovn_bridges and vlan_range:
                 start, _ = map(int, vlan_range.split(":")) 
                 vlan_id = start
 
                 if not run_command(
-                    ["openstack", "network", "create",
-                    "--share", "--external",
-                    "--provider-physical-network", public_network["name"],
-                    "--provider-network-type", "vlan",
-                    "--provider-segment", str(vlan_id),
-                    "public"],
+                    create_public_network_cmd,
                     "Creating public network..."
                 ) : return False
 
@@ -418,10 +654,7 @@ def create_ovn_networks(config):
     internal_network_exists = any(net.get("Name") == "internal" for net in networks_list)
     if not internal_network_exists:
         if not run_command(
-            ["openstack", "network", "create",
-            "--share",
-            "--provider-network-type", ovn_encap_type,
-            "internal"],
+            create_internal_network_cmd,
             f"Creating internal ({ovn_encap_type}) network...") : return False
     else:
         print(f"{colors.YELLOW}Internal network already exists, skipping creation.{colors.RESET}")
@@ -448,10 +681,12 @@ def create_ovn_networks(config):
             ["openstack", "router", "create", "internal_router"],
             "Creating internal router...") : return False
 
-        if not run_command(
-            ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
-            "Setting external gateway for internal router...") : return False
-        
+        if create_ovn_bridges:
+            if not run_command(
+                ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
+                "Setting external gateway for internal router...",
+            ): return False
+
         print()
 
         if not run_command(
@@ -481,7 +716,7 @@ def create_ovn_networks(config):
         for rule in rules
     )
 
-    if not ssh_rule_exists:
+    if create_ovn_bridges and not ssh_rule_exists:
         if not run_command(
             ["openstack", "security", "group", "rule", "create",
              "--proto", "tcp", "--dst-port", "22",
@@ -491,7 +726,7 @@ def create_ovn_networks(config):
         print(f"{colors.YELLOW}SSH rule already exists, skipping{colors.RESET}")
 
     icmp_rule_exists = any(rule.get("IP Protocol") == "icmp" for rule in rules)
-    if not icmp_rule_exists:
+    if create_ovn_bridges and not icmp_rule_exists:
         if not run_command(
             ["openstack", "security", "group", "rule", "create",
              "--proto", "icmp", sg_id],
