@@ -167,11 +167,13 @@ def conf_neutron_ovs(config):
         if vlan_networks_str:
             set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_networks_str)
 
+        set_conf_option(conf_openvswitch, "ovs", "bridge_mappings", bridge_mappings)
+
     set_conf_option(conf_ml2, "securitygroup", "enable_ipset", "true")
     set_conf_option(conf_ml2, "ml2", "mechanism_drivers", "openvswitch")
 
     set_conf_option(conf_openvswitch, "ovs", "integration_bridge", "br-int")
-    set_conf_option(conf_openvswitch, "ovs", "bridge_mappings", bridge_mappings)
+
     set_conf_option(conf_openvswitch, "securitygroup", "enable_security_group", "true")
     set_conf_option(conf_openvswitch, "securitygroup", "firewall_driver", "openvswitch")
 
