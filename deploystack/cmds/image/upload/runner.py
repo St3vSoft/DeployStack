@@ -4,6 +4,7 @@ import tempfile
 import subprocess
 import time
 import sys
+import itertools
 
 from tqdm import tqdm
 
@@ -38,20 +39,24 @@ def download_image(url: str, output_path: str):
     chunk_size = 1024 * 1024  # 1 MB
     downloaded = 0
 
+    spinner = itertools.cycle(["|", "/", "-", "\\"])
+
     with open(output_path, "wb") as f:
         for chunk in response.iter_content(chunk_size=chunk_size):
             if chunk:
                 f.write(chunk)
                 downloaded += len(chunk)
                 percent = int(downloaded / total_size * 100)
+                spin_char = next(spinner)
 
                 sys.stdout.write(
-                    f"\rDownloading {os_module.path.basename(output_path)}: {percent}% "
+                    f"\rDownloading {os_module.path.basename(output_path)}: {percent}% {spin_char}"
                 )
                 sys.stdout.flush()
+                time.sleep(0.05)
 
     sys.stdout.write(
-        f"\rDownloading {os_module.path.basename(output_path)}: 100%\n"
+        f"\rDownloading {os_module.path.basename(output_path)}: 100% \n"
     )
     sys.stdout.flush()
 
