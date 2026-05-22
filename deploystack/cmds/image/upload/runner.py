@@ -55,9 +55,9 @@ def download_image(url: str, output_path: str):
                 sys.stdout.flush()
                 time.sleep(0.1)
 
-    sys.stdout.write(
-        f"\rDownloading {os_module.path.basename(output_path)}: 100% \n"
-    )
+    line = f"Downloading {os_module.path.basename(output_path)}: 100%"
+
+    sys.stdout.write("\r" + line + " " * 10 + "\n")
     sys.stdout.flush()
 
 def image_already_exists(image_name) -> bool:
