@@ -12,7 +12,7 @@ The instructions below describe a **temporary installation** method for developm
 
 ## 1. System Preparation
 
-> ⚠️ **Compatibility note**: DeployStack officially runs stable only on Ubuntu 22.04/24.04. Running on other distributions or versions may not work yet.
+> ⚠️ **Compatibility note**: DeployStack only runs stably on **Ubuntu 22.04/24.04 LTS**. On other distributions or versions, some features may not work as expected.
 
 Ensure you have the necessary tools for Python 3:
 
