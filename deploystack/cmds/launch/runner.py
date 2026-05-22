@@ -11,6 +11,8 @@ from passlib.hash import sha512_crypt
 from ...utils.core import colors
 from ...templates import CLOUD_CONFIG_LINUX, CLOUD_CONFIG_LINUX_NO_ROOT
 
+from ...utils.core.system_utils import is_debian
+
 from ..shell import _run, _os, _os_value, logger
 
 SSH_KEY_PATH = os.path.expanduser("~/.ssh/")
@@ -93,10 +95,18 @@ def delete_instance(instance_id: str):
             print(f"Error when deleting instance {instance_id}: {e}")
 
 def internal_router_has_gateway() -> bool:
-    result = _run(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "external_gateways"])
+
+    field_name: str
+
+    if is_debian():
+        field_name = "external_gateways"
+    else:
+        field_name = "external_gateway_info"
+
+    result = _run(["openstack", "router", "show", "internal_router", "-f", "json", "-c", field_name])
     external_gateways = json.loads(result.stdout)
 
-    gateways = external_gateways.get("external_gateways", [])
+    gateways = external_gateways.get(field_name, [])
     return bool(gateways)
 
 
