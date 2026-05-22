@@ -53,7 +53,7 @@ def download_image(url: str, output_path: str):
                     f"\rDownloading {os_module.path.basename(output_path)}: {percent}% {spin_char}"
                 )
                 sys.stdout.flush()
-                time.sleep(0.5)
+                time.sleep(0.1)
 
     sys.stdout.write(
         f"\rDownloading {os_module.path.basename(output_path)}: 100% \n"
