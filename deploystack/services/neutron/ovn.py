@@ -51,7 +51,7 @@ def conf_ovn_bridges(config):
     subnet_address_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
     subnet_address_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
-    management_iface, _ = get_active_interface()
+    management_iface = get(config, "network.HOST_MGMT_INTERFACE")
 
     is_dual_nic = (public_iface != management_iface)
 

@@ -10,6 +10,8 @@ network:
   HOST_IP_NETMASK: ""
   HOST_IP_CIDR: ""
 
+  HOST_MGMT_INTERFACE: ""
+
 public_network:
   PUBLIC_SUBNET_CIDR: ""
   PUBLIC_SUBNET_RANGE_START: ""

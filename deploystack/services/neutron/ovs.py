@@ -53,7 +53,9 @@ def conf_openvswitch_bridges(config):
     subnet_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
     subnet_dns = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
-    is_dual_nic = management_iface, _ = get_active_interface()
+    management_iface = get(config, "network.HOST_MGMT_INTERFACE")
+
+    is_dual_nic = (public_iface != management_iface)
 
     for iface in [public_iface, public_bridge, internal_bridge]:
         if iface_exists(iface):
