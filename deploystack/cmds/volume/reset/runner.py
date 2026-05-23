@@ -39,11 +39,11 @@ def reset(
        volume_id = volume if is_uuid(volume) else get_volume_id_from_name(volume)
 
        if not force:
-        if is_volume_available(volume_id):
-                print(f"{colors.YELLOW}The '{volume}' volume is already in an available state, no action needed!{colors.RESET}")
-                sys.exit(1)
-
-       check_volume_attached(volume_id)
+            if is_volume_available(volume_id):
+                    print(f"{colors.YELLOW}The '{volume}' volume is already in an available state, no action needed!{colors.RESET}")
+                    sys.exit(1)
+                    
+            check_volume_attached(volume_id)
        
        print(f"Resetting volume '{volume_id}' status ...\n")
        reset_volume_state(volume_id)
