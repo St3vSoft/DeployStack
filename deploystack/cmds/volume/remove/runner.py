@@ -60,7 +60,7 @@ def check_volume_attached(volume: str):
 
         if attachments:
             attached_to = ", ".join(a['server_id'] for a in attachments)
-            logger.warning(f"{colors.YELLOW}Volume '{volume}' is attached to instance(s): {attached_to}{colors.RESET}")
+            logger.warning(f"{colors.YELLOW}Volume '{volume}' is attached to instance(s): {attached_to}{colors.RESET}\n")
             sys.exit(1)
         else:
             return
