@@ -214,6 +214,9 @@ def conf_cinder(config):
     set_conf_option(cinder_conf, "DEFAULT", "glance_api_servers", f"http://{ip_address}:9292")
     set_conf_option(cinder_conf, "DEFAULT", "enabled_backends", "lvm")
 
+    set_conf_option(cinder_conf, "DEFAULT", "my_ip", ip_address)
+    set_conf_option(cinder_conf, "DEFAULT", "target_ip_address", ip_address)
+
     set_conf_option(cinder_conf, "keystone_authtoken", "www_authenticate_uri", f"http://{ip_address}:5000/")
     set_conf_option(cinder_conf, "keystone_authtoken", "auth_url", f"http://{ip_address}:5000/")
     set_conf_option(cinder_conf, "keystone_authtoken", "memcached_servers", "127.0.0.1:11211")
