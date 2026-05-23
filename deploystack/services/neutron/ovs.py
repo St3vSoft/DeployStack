@@ -11,7 +11,8 @@ from ...utils.config.setter import set_conf_option
 from ...utils.core.system_utils import nc_wait, iface_exists
 from ...utils.core import colors
 from ...utils.core.system_utils import service_exists
-from ...templates import OVS_BRIDGES_INTERFACES
+from ...templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES
+from ...utils.network.net_utils import get_active_interface
 
 neutron_conf="/etc/neutron/neutron.conf"
 conf_ml2="/etc/neutron/plugins/ml2/ml2_conf.ini"
@@ -52,6 +53,8 @@ def conf_openvswitch_bridges(config):
     subnet_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
     subnet_dns = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
+    is_dual_nic = management_iface, _ = get_active_interface()
+
     for iface in [public_iface, public_bridge, internal_bridge]:
         if iface_exists(iface):
             if iface != internal_bridge:
@@ -72,15 +75,36 @@ def conf_openvswitch_bridges(config):
     if isinstance(subnet_dns, list):
         subnet_dns = " ".join(subnet_dns)
 
-    bridges_interfaces_content = template.format(
-        public_iface=public_iface,
-        public_bridge=public_bridge,
-        ip_address=ip_address,
-        ip_address_netmask=ip_address_netmask,
-        subnet_address_gateway=subnet_gateway,
-        subnet_address_dns_servers=subnet_dns,
-        internal_bridge=internal_bridge
-    )
+    if is_dual_nic:
+
+        with open(OVS_DUAL_NIC_BRIDGES_INTERFACES, "r") as f:
+            template = f.read()
+
+        bridges_interfaces_content = template.format(
+            management_iface=management_iface,
+            ip_address=ip_address,
+            netmask=ip_address_netmask,
+            gateway=subnet_gateway,
+            subnet_address_dns_servers=subnet_dns,
+
+            public_iface=public_iface,
+            public_bridge=public_bridge,
+            internal_bridge=internal_bridge
+        )
+    else:
+        with open(OVS_BRIDGES_INTERFACES, "r") as f:
+            template = f.read()
+
+        bridges_interfaces_content = template.format(
+            ip_address=ip_address,
+            ip_address_netmask=ip_address_netmask,
+            subnet_address_gateway=subnet_gateway,
+            subnet_address_dns_servers=subnet_dns,
+
+            public_iface=public_iface,
+            public_bridge=public_bridge,
+            internal_bridge=internal_bridge
+        )
 
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)

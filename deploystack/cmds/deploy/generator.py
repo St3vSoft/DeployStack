@@ -75,6 +75,7 @@ def config_openstack(
     config_dict["network"]["HOST_IP"] = ip
     config_dict["network"]["HOST_IP_NETMASK"] = netmask
     config_dict["network"]["HOST_IP_CIDR"] = ip_cidr
+    #config_dict["network"]["MANAGEMENT_INTERFACE"] = iface
 
     # Public network
     config_dict.setdefault("public_network", {})
