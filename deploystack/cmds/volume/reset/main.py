@@ -21,7 +21,7 @@ def init_parser(subparsers):
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Force the volume status reset"
+        help="Skip safety checks and force the volume status reset"
     )
 
 def reset(parser, args) -> None:
