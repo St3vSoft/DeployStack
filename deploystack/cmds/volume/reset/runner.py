@@ -33,13 +33,15 @@ def is_volume_available(volume: str) -> bool:
 
 
 def reset(
-    volume: str 
+    volume: str,
+    force: bool
 ):
        volume_id = volume if is_uuid(volume) else get_volume_id_from_name(volume)
 
-       if is_volume_available(volume_id):
-            print(f"{colors.YELLOW}The '{volume}' volume is already in an available state, no action needed!{colors.RESET}")
-            sys.exit(1)
+       if not force:
+        if is_volume_available(volume_id):
+                print(f"{colors.YELLOW}The '{volume}' volume is already in an available state, no action needed!{colors.RESET}")
+                sys.exit(1)
 
        check_volume_attached(volume_id)
        

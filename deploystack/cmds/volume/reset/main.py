@@ -18,6 +18,12 @@ def init_parser(subparsers):
         help="Volume Name or ID"
     )
 
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force the volume status reset"
+    )
+
 def reset(parser, args) -> None:
 
     if args.command is None:
@@ -30,6 +36,6 @@ def reset(parser, args) -> None:
     if not is_cinder_installed():
         sys.exit(1)
 
-    reset_volume(args.volume)
+    reset_volume(args.volume, args.force)
 
 
