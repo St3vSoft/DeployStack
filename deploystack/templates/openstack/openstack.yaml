@@ -9,6 +9,7 @@ network:
   HOST_IP: ""
   HOST_IP_NETMASK: ""
   HOST_IP_CIDR: ""
+  HOST_IP_GATEWAY: ""
 
   HOST_MGMT_INTERFACE: ""
 

@@ -48,6 +48,8 @@ def conf_ovn_bridges(config):
 
     ip_address = get(config, "network.HOST_IP")
     ip_address_netmask = get(config, "network.HOST_IP_NETMASK")
+    ip_address_gateway = get(config, "network.HOST_IP_GATEWAY")
+
     subnet_address_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
     subnet_address_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
@@ -81,7 +83,7 @@ def conf_ovn_bridges(config):
             management_iface=management_iface,
             ip_address=ip_address,
             netmask=ip_address_netmask,
-            gateway=subnet_address_gateway,
+            gateway=ip_address_gateway,
             subnet_address_dns_servers=subnet_address_dns_servers,
 
             public_iface=public_iface,
