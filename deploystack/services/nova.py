@@ -3,7 +3,7 @@
 import os
 import stat
 
-from ..utils.core.commands import run_command, run_command_sync
+from ..utils.core.commands import run_command, run_command_sync, os_run
 from ..utils.core.system_utils import service_exists
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
@@ -104,27 +104,19 @@ def conf_nova(config):
     "nova-manage", "db", "sync"
 ]
      
-    api_db_migration_cmd_result = run_command(api_db_migration_cmd, "Running Nova API DB Migrations...")
-
-    print()
-
-    if not api_db_migration_cmd_result: return False
-    
-    register_cell0_migration_cmd_result = run_command(register_cell0_migration_cmd, "Registering Nova cell0 in the database...")
-
-    if not register_cell0_migration_cmd_result: return False
+    if not run_command(api_db_migration_cmd, "Running Nova API DB Migrations...") : return False
 
     print()
     
-    create_cell1_migration_cmd_result = run_command(create_cell1_migration_cmd, "Creating initial Nova cell1 for VM scheduling...", ignore_exit_codes=[2])
+    if not run_command(register_cell0_migration_cmd, "Registering Nova cell0 in the database...") : return False
 
-    if not create_cell1_migration_cmd_result: return False
+    print()
+    
+    if not run_command(create_cell1_migration_cmd, "Creating initial Nova cell1 for VM scheduling...", ignore_exit_codes=[2]) : return False
     
     print()
     
-    db_migration_cmd_result = run_command(db_migration_cmd, "Running Nova DB Migrations...")
-
-    if not db_migration_cmd_result: return False
+    if not run_command(db_migration_cmd, "Running Nova DB Migrations...") : return False
     
     return True
 
@@ -160,17 +152,6 @@ def finalize(config):
 
 def add_default_keypair(config):
     print()
-    
-    ip_address = get(config, "network.HOST_IP")
-    admin_password = get(config, "passwords.ADMIN_PASSWORD")
-     
-    os.environ["OS_USERNAME"] = "admin"
-    os.environ["OS_PASSWORD"] = admin_password
-    os.environ["OS_PROJECT_NAME"] = "admin"
-    os.environ["OS_USER_DOMAIN_NAME"] = "Default"
-    os.environ["OS_PROJECT_DOMAIN_NAME"] = "Default"
-    os.environ["OS_AUTH_URL"] = f"http://{ip_address}:5000/v3"
-    os.environ["OS_IDENTITY_API_VERSION"] = "3"
 
     key_name = get(config, "DEFAULT_KEYPAIR_NAME", "default")
     key_file = f"/root/{key_name}.pem"
@@ -183,9 +164,7 @@ def add_default_keypair(config):
         return True
 
     create_cmd = ["openstack", "keypair", "create", key_name, "--private-key", key_file]
-    success = run_command(create_cmd, "Creating default keypair...")
-
-    if not success: return False
+    if not os_run(create_cmd, "Creating default keypair...") : return False
 
     os.chmod(key_file, stat.S_IRUSR | stat.S_IWUSR)
     os.chown(key_file, os.getuid(), os.getgid())

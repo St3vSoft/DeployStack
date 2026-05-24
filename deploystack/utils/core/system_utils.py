@@ -8,6 +8,7 @@ from ...utils.core import colors
 
 import subprocess
 import sys
+import os
 
 def is_debian():
     try:
@@ -84,3 +85,18 @@ def get_free_loop():
 def generate_password(length=12):
     chars = string.ascii_letters + string.digits
     return ''.join(random.choice(chars) for _ in range(length))
+
+def build_openstack_env(ip, username, password, project="admin"):
+    env = os.environ.copy()
+
+    env.update({
+        "OS_USERNAME": username,
+        "OS_PASSWORD": password,
+        "OS_PROJECT_NAME": project,
+        "OS_USER_DOMAIN_NAME": "Default",
+        "OS_PROJECT_DOMAIN_NAME": "Default",
+        "OS_AUTH_URL": f"http://{ip}:5000/v3",
+        "OS_IDENTITY_API_VERSION": "3",
+    })
+
+    return env

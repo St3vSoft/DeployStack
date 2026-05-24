@@ -12,7 +12,7 @@ from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
 from ..utils.core.system_utils import nc_wait
 from ..utils.core import colors
-from ..utils.core.system_utils import service_exists
+from ..utils.core.system_utils import service_exists, is_debian
 from ..templates import CINDER_LOOPBACK_SERVICE, CINDER_LOOPBACK_START_SCRIPT, CINDER_LOOPBACK_STOP_SCRIPT, CINDER_LVM_ENV_CONF
 
 cinder_conf = "/etc/cinder/cinder.conf"
@@ -243,9 +243,7 @@ def conf_cinder(config):
     "sudo", "-u", "cinder",
     "cinder-manage", "db", "sync"
 ]
-    migration_result = run_command(db_migration_cmd, "Running Cinder DB Migrations...")
-
-    if not migration_result: return False
+    if not run_command(db_migration_cmd, "Running Cinder DB Migrations...") : return False
     
     return True
 
@@ -262,7 +260,7 @@ def finalize(config):
         "tgt"
     ]
 
-    if service_exists("cinder-api.service"):
+    if service_exists("cinder-api.service") and is_debian():
         cinder_services.append("cinder-api")
     else:
         cinder_services.append("apache2")

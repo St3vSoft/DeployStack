@@ -303,7 +303,7 @@ def create_server_with_password(
 
         server_id = result.stdout.strip()
         if not server_id:
-            logger.error("Server creation failed:\n" + result.stderr)
+            logger.error(f"{colors.RED}Server creation failed:\n{result.stderr}{colors.RESET}")
             sys.exit(1)
         return server_id
     
@@ -328,19 +328,16 @@ def allocate_floating_ip(external_net: str = EXTERNAL_NET) -> str:
     print("Allocating floating IP ...")
     fip = _os_value("floating", "ip", "create", "-c", "floating_ip_address", external_net)
     if not fip:
-        logger.error("Unable to allocate floating IP")
+        logger.error(f"{colors.RED}Unable to allocate floating IP{colors.RESET}")
         sys.exit(1)
     return fip
 
 
 def attach_floating_ip(server_id: str, fip: str) -> None:
-    """Attach floating IP to server using server ID (not name)."""
     print(f"Attaching floating IP {fip} to instance {server_id} ...\n")
     _os("server", "add", "floating", "ip", server_id, fip)
 
-
 def wait_for_active(server_id: str, timeout: int = 1000) -> None:
-    """Poll server status by ID until ACTIVE or ERROR."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         status = _os_value("server", "show", server_id, "-c", "status")

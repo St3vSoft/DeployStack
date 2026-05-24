@@ -1,3 +1,6 @@
+import os
+import sys
+
 from ...utils.apt.apt import apt_update, apt_install
 from ...utils.config.parser import parse_config, get, to_bool
 from ...utils.config.parser import parse_config, get, resolve_vars
@@ -6,6 +9,7 @@ from ...utils.core.system_utils import has_hw_virtualization, check_ifupdown
 from ...utils.network.net_utils import get_active_interface
 from ...utils.tasks.check_deployment import mark_deployment_complete, MARKER_FILE
 from ...utils.core.system_utils import is_debian
+from ...utils.core.commands import build_openstack_env
 
 from ...utils.config.validator import validate_all
 
@@ -20,15 +24,14 @@ from ...services.nova_compute import run_setup_nova_compute
 from ...services.neutron import run_setup_neutron
 from ...services.horizon import run_setup_horizon
 
-import os
-import sys
-
 def deploy(config_file):
 
     config = parse_config(config_file)
     config = resolve_vars(config)
   
     public_iface = get_active_interface()
+
+    env = build_openstack_env(config)
 
     create_ovs_bridges = get(config, "ovs.CREATE_BRIDGES")
     create_ovn_bridges = get(config, "ovn.CREATE_BRIDGES")
@@ -72,44 +75,44 @@ def deploy(config_file):
         return False
 
     print("Setting up Keystone\n")
-    if not run_setup_keystone(config):
+    if not run_setup_keystone(config, env):
         sys.exit(1)
         return False
 
     print("Setting up Glance\n")
-    if not run_setup_glance(config):
+    if not run_setup_glance(config, env):
         sys.exit(1)
         return False
     
     if install_cinder:
         print("Setting up Cinder\n")
-        if not run_setup_cinder(config):
+        if not run_setup_cinder(config, env):
             sys.exit(1)
             return False
         
     print("Setting up Placement\n")
-    if not run_setup_placement(config):
+    if not run_setup_placement(config, env):
         sys.exit(1)
         return False
     
     print("Setting up Nova\n")
-    if not run_setup_nova(config):
+    if not run_setup_nova(config, env):
         sys.exit(1)
         return False
     
     print("Setting up a Compute Node\n")
-    if not run_setup_nova_compute(config): 
+    if not run_setup_nova_compute(config, env): 
         sys.exit(1)
         return False
 
     print("Setting up Neutron\n")
-    if not run_setup_neutron(config): 
+    if not run_setup_neutron(config, env): 
         sys.exit(1)
         return False
     
     if install_horizon:
         print("Setting up Horizon\n")
-        if not run_setup_horizon(config): 
+        if not run_setup_horizon(config, env): 
             sys.exit(1) 
             return False
     

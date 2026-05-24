@@ -2,8 +2,8 @@
 
 import os
 
-from ..utils.core.commands import run_command
-from ..utils.core.system_utils import service_exists
+from ..utils.core.commands import run_command, os_run, os_run_output
+from ..utils.core.system_utils import service_exists, build_openstack_env
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
@@ -48,12 +48,9 @@ def conf_keystone(config):
         "keystone-manage", "db_sync"
     ]
 
-    migration_result = run_command(db_migration_cmd, "Running Keystone DB Migrations...")
+    if not run_command(db_migration_cmd, "Running Keystone DB Migrations...") : return False
 
     print()
-
-    if not migration_result:
-        return False
 
     fernet_credentials_setup_cmds = [
         (["sudo", "-u", "keystone", "keystone-manage", "fernet_setup", "--keystone-user", "keystone", "--keystone-group", "keystone"],
@@ -97,150 +94,117 @@ def finalize(config):
 
     return True
     
-def create_projects_and_demo_user(config):
+def create_projects_and_demo_user(config, venv):
 
     print()
 
-    ip_address = get(config, "network.HOST_IP")
-
-    admin_password = get(config, "passwords.ADMIN_PASSWORD")
     demo_password = get(config, "passwords.DEMO_PASSWORD")
-
-    os.environ["OS_USERNAME"] = "admin"
-    os.environ["OS_PASSWORD"] = admin_password
-    os.environ["OS_PROJECT_NAME"] = "admin"
-    os.environ["OS_USER_DOMAIN_NAME"] = "Default"
-    os.environ["OS_PROJECT_DOMAIN_NAME"] = "Default"
-    os.environ["OS_AUTH_URL"] = f"http://{ip_address}:5000/v3"
-    os.environ["OS_IDENTITY_API_VERSION"] = "3"
 
     create_service_project_cmd = ["openstack", "project", "create", "--domain", "default", "--description", "Service Project", "service", "--or-show"]
 
-    create_service_project_cmd_result = run_command(create_service_project_cmd, "Creating service project...")
-
-    if not create_service_project_cmd_result: return False
-    
-    create_demo_user_cmds = [
+    create_demo_user_cmds =  " && ".join([
         'openstack project create --domain default --description "Demo Project" demo --or-show',
-        f"openstack user create --domain default --password {demo_password} demo --or-show",
-        "openstack role create user --or-show",
-        "openstack role add --project demo --user demo user"    
-    ]
+        f'openstack user create --domain default --password {demo_password} demo --or-show',
+        'openstack role create user --or-show',
+        'openstack role add --project demo --user demo user'
+    ])
 
-    full_create_demo_user_cmds = " ; ".join(create_demo_user_cmds)
+    if not os_run(create_service_project_cmd, "Creating service project...") : return False
     
-    full_create_demo_user_cmds_result = run_command(["bash", "-c", full_create_demo_user_cmds], "Creating demo user...")
+    if not run_command(["bash", "-c", create_demo_user_cmds], "Creating demo user...", False, None, None, None, venv): return False    
 
-    if not full_create_demo_user_cmds_result: return False
-    
     return True
 
-def create_services_users(config):
+def create_services_users(config, env):
 
     print()
 
     service_password = get(config, "passwords.SERVICE_PASSWORD")
     install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
 
-    services_user_create_cmds = [
+    services_user_create_cmds = " && ".join([
         f"openstack user create --domain default --password {service_password} glance --or-show",
         f"openstack user create --domain default --password {service_password} placement --or-show",
         f"openstack user create --domain default --password {service_password} nova --or-show",
         f"openstack user create --domain default --password {service_password} neutron --or-show",
-    ]
+    ])
 
-    services_create_cmds = [
+    services_create_cmds = " && ".join([
         'openstack service show glance || openstack service create --name glance --description "OpenStack Image" image',
         'openstack service show placement || openstack service create --name placement --description "Placement API" placement',
         'openstack service show nova || openstack service create --name nova --description "OpenStack Compute" compute',
         'openstack service show neutron || openstack service create --name neutron --description "OpenStack Networking" network',
-    ]
+    ])
 
-    services_role_add_cmds = [
+    services_role_add_cmds = " && ".join([
          "openstack role add --project service --user glance admin || true",
          "openstack role add --project service --user placement admin || true",
          "openstack role add --project service --user nova admin || true",
          "openstack role add --project service --user neutron admin || true",
-    ]
+    ])
 
     if install_cinder:
         services_user_create_cmds.append(f"openstack user create --domain default --password {service_password} cinder --or-show")
         services_create_cmds.append('openstack service show cinderv3 || openstack service create --name cinderv3 --description "OpenStack Block Storage" volumev3')
         services_role_add_cmds.append("openstack role add --project service --user cinder admin || true")
 
-    full_services_user_create_cmds = " ; ".join(services_user_create_cmds)
-    full_services_create_cmds = " ; ".join(services_create_cmds)
-    full_services_role_add_cmds = " ; ".join(services_role_add_cmds)
-
-    full_services_user_create_cmds_result = run_command(["bash", "-c", full_services_user_create_cmds], "Creating services users...")
-
-    if not full_services_user_create_cmds_result: return False
+    if not run_command(["bash", "-c", services_user_create_cmds], "Creating services users...", False, None, None, None, env) : return False
     
-    full_services_create_cmds_result = run_command(["bash", "-c", full_services_create_cmds], "Creating services...")
+    if not run_command(["bash", "-c", services_create_cmds], "Creating services...", False, None, None, None, env) : return False
 
-    if not full_services_create_cmds_result: return False
-
-    full_services_role_add_cmds_result = run_command(["bash", "-c", full_services_role_add_cmds], "Assigning services user roles...")
-    
-    if not full_services_role_add_cmds_result: return False
+    if not run_command(["bash", "-c", services_role_add_cmds], "Assigning services user roles...", False, None, None, None, env) : return False
 
     return True
 
-def create_services_endpoints(config):
-
-    print()
+def create_services_endpoints(config, env):
 
     ip_address = get(config, "network.HOST_IP")
     install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
-
     os_region_name = get(config, "openstack.REGION_NAME")
 
     def ep(service, interface, url):
-        check = (
-            f"openstack endpoint list --service {service} --interface {interface} "
-            f"-f value -c ID | grep -q ."
-        )
-        create = (
+        return (
             f"openstack endpoint create --region {os_region_name} "
             f"{service} {interface} '{url}'"
         )
-        return f"{check} || {create}"
 
-    services_endpoints_create_cmds = [
-        # Glance
-        ep("image", "public",    f"http://{ip_address}:9292"),
-        ep("image", "internal",  f"http://{ip_address}:9292"),
-        ep("image", "admin",     f"http://{ip_address}:9292"),
+    commands = [
+        ep("image", "public",   f"http://{ip_address}:9292"),
+        ep("image", "internal", f"http://{ip_address}:9292"),
+        ep("image", "admin",    f"http://{ip_address}:9292"),
 
-        # Placement
-        ep("placement", "public",    f"http://{ip_address}:8778"),
-        ep("placement", "internal",  f"http://{ip_address}:8778"),
-        ep("placement", "admin",     f"http://{ip_address}:8778"),
+        ep("placement", "public",   f"http://{ip_address}:8778"),
+        ep("placement", "internal", f"http://{ip_address}:8778"),
+        ep("placement", "admin",    f"http://{ip_address}:8778"),
 
-        # Nova
-        ep("compute", "public",    f"http://{ip_address}:8774/v2.1"),
-        ep("compute", "internal",  f"http://{ip_address}:8774/v2.1"),
-        ep("compute", "admin",     f"http://{ip_address}:8774/v2.1"),
+        ep("compute", "public",   f"http://{ip_address}:8774/v2.1"),
+        ep("compute", "internal", f"http://{ip_address}:8774/v2.1"),
+        ep("compute", "admin",    f"http://{ip_address}:8774/v2.1"),
 
-        # Neutron
-        ep("network", "public",    f"http://{ip_address}:9696"),
-        ep("network", "internal",  f"http://{ip_address}:9696"),
-        ep("network", "admin",     f"http://{ip_address}:9696"),
+        ep("network", "public",   f"http://{ip_address}:9696"),
+        ep("network", "internal", f"http://{ip_address}:9696"),
+        ep("network", "admin",    f"http://{ip_address}:9696"),
     ]
 
     if install_cinder:
         cinder_url = f"http://{ip_address}:8776/v3/%(project_id)s"
-        services_endpoints_create_cmds += [
+        commands += [
             ep("volumev3", "public",   cinder_url),
             ep("volumev3", "internal", cinder_url),
             ep("volumev3", "admin",    cinder_url),
         ]
 
-    full_cmd = " ; ".join(services_endpoints_create_cmds)
+    full_cmd = " && ".join(commands)
 
-    if not run_command(["bash", "-c", full_cmd], "Creating services endpoints...") : return False
-
-    return True
+    return run_command(
+        ["bash", "-c", full_cmd],
+        "Creating services endpoints...",
+        False,
+        None,
+        None,
+        None,
+        env
+    )
 
 def generate_environment_cli_scripts(config):
      
@@ -283,14 +247,14 @@ export OS_IMAGE_API_VERSION=2
 
     return True
 
-def run_setup_keystone(config):
+def run_setup_keystone(config, env):
 
     if not install_pkgs(): return False  
     if not conf_keystone(config): return False
     if not finalize(config): return False 
-    if not create_projects_and_demo_user(config): return False 
-    if not create_services_users(config): return False  
-    if not create_services_endpoints(config): return False  
+    if not create_projects_and_demo_user(config, env): return False 
+    if not create_services_users(config, env): return False  
+    if not create_services_endpoints(config, env): return False  
     if not generate_environment_cli_scripts(config): return False
     
     print(f"\n{colors.GREEN}Keystone configured successfully!{colors.RESET}\n")

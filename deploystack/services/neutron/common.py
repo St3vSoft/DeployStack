@@ -6,7 +6,7 @@ from ...utils.core.commands import run_command
 from ...utils.apt.apt import apt_install, apt_update
 from ...utils.config.parser import get
 from ...utils.config.setter import set_conf_option
-from ...utils.core.system_utils import service_exists
+from ...utils.core.system_utils import service_exists, is_debian
 from ...utils.core import colors
 
 neutron_conf = "/etc/neutron/neutron.conf"
@@ -114,7 +114,7 @@ def finalize():
 
     if service_exists("neutron-server.service"):
         if not run_command(["systemctl", "restart", "neutron-server", "nova-compute"], "Restarting Neutron services...", False, None, 3, 5): return False
-    elif service_exists("neutron-api.service"):
+    elif service_exists("neutron-api.service") and is_debian():
         if not run_command(["systemctl", "restart", "neutron-api", "neutron-rpc-server",  "nova-compute"], "Restarting Neutron services...", False, None, 3, 5): return False
     else:
         if not run_command(["systemctl", "restart", "neutron-periodic-workers", "apache2", "nova-compute"], "Restarting Neutron services...", False, None, 3, 5): return False

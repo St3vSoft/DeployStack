@@ -6,7 +6,7 @@ from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
 from ..utils.core.system_utils import nc_wait
 from ..utils.core import colors
-from ..utils.core.system_utils import service_exists
+from ..utils.core.system_utils import service_exists, is_debian
 
 placement_conf = "/etc/placement/placement.conf"
 
@@ -59,7 +59,7 @@ def finalize(config):
 
     placement_service = []
 
-    if service_exists("placement-api.service"):
+    if service_exists("placement-api.service") and is_debian():
         placement_service.append("placement-api")
     else:
         placement_service.append("apache2")

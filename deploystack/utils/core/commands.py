@@ -2,13 +2,21 @@ import subprocess
 from .spinner import Spinner
 from ...utils.core import colors
 
+from ..core.system_utils import build_openstack_env
+
 import time
 import sys
 
-def run_command_output(cmd, ignore_errors=False):
+OPENSTACK_ENV = None
+
+def init_openstack_context(config):
+    global OPENSTACK_ENV
+    OPENSTACK_ENV = build_openstack_env(config)
+
+def run_command_output(cmd, ignore_errors=False, env=None):
 
     try:
-        result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         if ignore_errors:
@@ -25,7 +33,7 @@ def run_command_sync(command):
         return False
 
 
-def run_command(cmd, message="", ignore_errors=False, ignore_exit_codes=None, retries=0, delay=1):
+def run_command(cmd, message="", ignore_errors=False, ignore_exit_codes=None, retries=0, delay=1, env=None):
     attempt = 0
     spinner = Spinner(message)
     spinner.start()
@@ -36,7 +44,8 @@ def run_command(cmd, message="", ignore_errors=False, ignore_exit_codes=None, re
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                text=True
+                text=True,
+                env=env
             )
 
             output_lines = []
@@ -99,3 +108,9 @@ def run_sync_command_with_retry(command, max_retries=3, interval=1):
 
     sys.exit(1)
     return False
+
+def os_run(cmd, text=None):
+    return run_command(cmd, text=text, env=OPENSTACK_ENV)
+
+def os_run_output(cmd):
+    return run_command_output(cmd, env=OPENSTACK_ENV)

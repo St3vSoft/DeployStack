@@ -3,7 +3,7 @@
 import os
 import json
 
-from ..utils.core.commands import run_command, run_command_output
+from ..utils.core.commands import run_command, run_command_output, os_run, os_run_output
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
@@ -79,20 +79,11 @@ def upload_cirros_image(config):
     ip_address = get(config, "network.HOST_IP")
 
     admin_password = get(config, "passwords.ADMIN_PASSWORD")
-    demo_password = get(config, "passwords.DEMO_PASSWORD")
-
-    os.environ["OS_USERNAME"] = "admin"
-    os.environ["OS_PASSWORD"] = admin_password
-    os.environ["OS_PROJECT_NAME"] = "admin"
-    os.environ["OS_USER_DOMAIN_NAME"] = "Default"
-    os.environ["OS_PROJECT_DOMAIN_NAME"] = "Default"
-    os.environ["OS_AUTH_URL"] = f"http://{ip_address}:5000/v3"
-    os.environ["OS_IDENTITY_API_VERSION"] = "3"
 
     image_name = "cirros"
     image_file_path = "/tmp/cirros-0.4.0-x86_64-disk.img"
 
-    images_list_json = run_command_output(["openstack", "image", "list", "-f", "json"])
+    images_list_json = os_run_output(["openstack", "image", "list", "-f", "json"])
     images_list = json.loads(images_list_json)
 
     cirros_image_exists = any(image.get("Name") == image_name for image in images_list)
@@ -100,9 +91,9 @@ def upload_cirros_image(config):
     if not cirros_image_exists:
         print()
         
-        if not run_command([ "wget", "-O", image_file_path, cirros_image_url], "Downloading a Cirros image...", False, None, 5, 5) : return False
+        if not run_command(["wget", "-O", image_file_path, cirros_image_url], "Downloading a Cirros image...", False, None, 5, 5) : return False
         
-        if not run_command([
+        if not os_run([
             "openstack", "image", "create",
             image_name,
             "--file", image_file_path,

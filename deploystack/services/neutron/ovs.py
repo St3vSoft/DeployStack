@@ -4,13 +4,13 @@ import os
 import shutil
 import json
 
-from ...utils.core.commands import run_command, run_command_sync, run_command_output
+from ...utils.core.commands import run_command, os_run_output, os_run
 from ...utils.apt.apt import apt_install
 from ...utils.config.parser import get
 from ...utils.config.setter import set_conf_option
 from ...utils.core.system_utils import nc_wait, iface_exists
 from ...utils.core import colors
-from ...utils.core.system_utils import service_exists
+from ...utils.core.system_utils import service_exists, is_debian, build_openstack_env
 from ...templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES
 from ...utils.network.net_utils import get_active_interface
 
@@ -229,7 +229,7 @@ def finalize(config):
   
     if service_exists("neutron-server.service"):
         if not run_command(["systemctl", "restart", "neutron-server", "neutron-openvswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
-    elif service_exists("neutron-api.service"):
+    elif service_exists("neutron-api.service") and is_debian():
         if not run_command(["systemctl", "restart", "neutron-api", "neutron-rpc-server", "neutron-l3-agent", "neutron-openvswitch-agent", "neutron-metadata-agent", "nova-compute"], "Restarting Neutron services...", False, None, 3, 5): return False  
     else:
         if not run_command(["systemctl", "restart", "neutron-periodic-workers", "apache2", "neutron-openvswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
@@ -241,10 +241,6 @@ def finalize(config):
 def create_ovs_networks(config):
      
     print()
-    
-    ip_address = get(config, "network.HOST_IP")
-
-    admin_password = get(config, "passwords.ADMIN_PASSWORD")
 
     public_subnet_range_start = get(config, "public_network.PUBLIC_SUBNET_RANGE_START")
     public_subnet_range_end = get(config, "public_network.PUBLIC_SUBNET_RANGE_END")
@@ -264,17 +260,9 @@ def create_ovs_networks(config):
     for dns in public_subnet_dns_servers:
         dns_args.extend(["--dns-nameserver", dns])
 
-    os.environ["OS_USERNAME"] = "admin"
-    os.environ["OS_PASSWORD"] = admin_password
-    os.environ["OS_PROJECT_NAME"] = "admin"
-    os.environ["OS_USER_DOMAIN_NAME"] = "Default"
-    os.environ["OS_PROJECT_DOMAIN_NAME"] = "Default"
-    os.environ["OS_AUTH_URL"] = f"http://{ip_address}:5000/v3"
-    os.environ["OS_IDENTITY_API_VERSION"] = "3"
-
-    networks_list_json = run_command_output(["openstack", "network", "list", "-f", "json"])
-    subnets_list_json = run_command_output(["openstack", "subnet", "list", "-f", "json"])
-    routers_list_json = run_command_output(["openstack", "router", "list", "-f", "json"])
+    networks_list_json = os_run_output(["openstack", "network", "list", "-f", "json"])
+    subnets_list_json = os_run_output(["openstack", "subnet", "list", "-f", "json"])
+    routers_list_json = os_run_output(["openstack", "router", "list", "-f", "json"])
 
     networks_list = json.loads(networks_list_json)
     subnets_list = json.loads(subnets_list_json)
@@ -303,8 +291,9 @@ def create_ovs_networks(config):
         create_internal_network_cmd = ["openstack", "network", "create", "internal"]
 
     public_network_exists = any(net.get("Name") == "public" for net in networks_list)
+
     if not public_network_exists:
-            if not run_command(
+            if not os_run(
                 create_public_network_cmd,
                 "Creating public network..."
             ) : return False
@@ -313,7 +302,7 @@ def create_ovs_networks(config):
 
     public_subnet_exists = any(sub.get("Name") == "public_subnet" for sub in subnets_list)
     if not public_subnet_exists:
-        if not run_command(
+        if not os_run(
             ["openstack", "subnet", "create",
             "--network", "public",
             "--allocation-pool", f"start={public_subnet_range_start},end={public_subnet_range_end}",
@@ -330,7 +319,7 @@ def create_ovs_networks(config):
     internal_network_exists = any(net.get("Name") == "internal" for net in networks_list)
 
     if not internal_network_exists:
-        if not run_command(
+        if not os_run(
             create_internal_network_cmd,
             "Creating internal network...",
             ) : return False
@@ -339,7 +328,7 @@ def create_ovs_networks(config):
 
     internal_subnet_exists = any(sub.get("Name") == "internal_subnet" for sub in subnets_list)
     if not internal_subnet_exists:
-        if not run_command(
+        if not os_run(
             ["openstack", "subnet", "create", "--network", "internal",
             "--subnet-range", "10.0.0.0/24",
             "--gateway", "10.0.0.1",
@@ -355,20 +344,20 @@ def create_ovs_networks(config):
 
     router_exists = any(r.get("Name") == "internal_router" for r in routers_list)
     if not router_exists:
-        if not run_command(
+        if not os_run(
             ["openstack", "router", "create", "internal_router"],
             "Creating internal router...",
         ): return False
 
         if create_ovs_bridges:
-            if not run_command(
+            if not os_run(
                 ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
                 "Setting external gateway for internal router...",
             ): return False
 
         print()
 
-        if not run_command(
+        if not os_run(
             ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
             "Adding internal subnet to router...",
         ): return False
@@ -377,7 +366,7 @@ def create_ovs_networks(config):
     
     print()
 
-    sg_list_json = run_command_output(["openstack", "security", "group", "list", "-f", "json"])
+    sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"])
     sg_list = json.loads(sg_list_json)
 
     matching_sgs = [sg for sg in sg_list if sg["Name"] == "default"]
@@ -385,7 +374,7 @@ def create_ovs_networks(config):
         raise RuntimeError("No security group named 'default' found")
     sg_id = matching_sgs[0]["ID"]
 
-    rules_json = run_command_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"])
+    rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"])
     rules = json.loads(rules_json)
 
     ssh_rule_exists = any(
@@ -397,7 +386,7 @@ def create_ovs_networks(config):
     )
 
     if create_ovs_bridges and not ssh_rule_exists:
-        if not run_command(
+        if not os_run(
             ["openstack", "security", "group", "rule", "create",
             "--proto", "tcp",
             "--dst-port", "22",
