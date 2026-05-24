@@ -162,6 +162,8 @@ def create_services_users(config, env):
 
 def create_services_endpoints(config, env):
 
+    print()
+
     ip_address = get(config, "network.HOST_IP")
     install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
     os_region_name = get(config, "openstack.REGION_NAME")

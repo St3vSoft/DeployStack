@@ -86,12 +86,12 @@ def deploy(config_file):
     
     if install_cinder:
         print("Setting up Cinder\n")
-        if not run_setup_cinder(config, env):
+        if not run_setup_cinder(config):
             sys.exit(1)
             return False
         
     print("Setting up Placement\n")
-    if not run_setup_placement(config, env):
+    if not run_setup_placement(config):
         sys.exit(1)
         return False
     
@@ -112,7 +112,7 @@ def deploy(config_file):
     
     if install_horizon:
         print("Setting up Horizon\n")
-        if not run_setup_horizon(config, env): 
+        if not run_setup_horizon(config): 
             sys.exit(1) 
             return False
     
