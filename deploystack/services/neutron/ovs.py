@@ -351,7 +351,7 @@ def create_ovs_networks(config, env):
         if create_ovs_bridges:
             if not os_run(
                 ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
-                "Setting external gateway for internal router...",
+                "Setting external gateway for internal router...", env=env
             ): return False
 
         print()
