@@ -27,7 +27,7 @@ def install_pkgs():
         "ovn-central",              # ovn-northd + NB/SB ovsdb-server
         "ovn-host",                 # ovn-controller on compute nodes
         "ovn-common",               # ovn-nbctl, ovn-sbctl tools
-        "openv=envswitch-switch",       # OVS dataplane (required by OVN)
+        "openvswitch-switch",       # OVS dataplane (required by OVN)
     ]
 
     if not apt_install(ovn_packages, ux_text="Installing Neutron OVN packages..."):
@@ -39,7 +39,7 @@ def conf_ovn_bridges(config):
 
     print()
 
-    INTERFACES_FILE = "/etc/network/interfaces.d/openv=envswitch"
+    INTERFACES_FILE = "/etc/network/interfaces.d/openvswitch"
 
     public_iface = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE_INTERFACE")
     public_bridge = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")       # e.g. br-ex
@@ -271,7 +271,7 @@ def conf_ovn_neutron(config):
 
     set_conf_option(neutron_conf, "ovn", "enable_distributed_floating_ip", "true" if enable_distributed_floating_ip else "false")
 
-    set_conf_option(conf_nova, "os_vif_ovs", "ovsdb_connection", "unix:/var/run/openv=envswitch/db.sock")
+    set_conf_option(conf_nova, "os_vif_ovs", "ovsdb_connection", "unix:/var/run/openvswitch/db.sock")
     set_conf_option(conf_nova, "neutron", "ovs_bridge", "br-int")
 
     return True
@@ -283,9 +283,9 @@ def finalize(config):
 
     run_command_sync(["ovs-vsctl", "set-manager",
                       f"ptcp:6640:{ip_address}",
-                      "punix:/var/run/openv=envswitch/db.sock"])
+                      "punix:/var/run/openvswitch/db.sock"])
     
-    run_command_sync(["chmod", "o+rw", "/var/run/openv=envswitch/db.sock"])
+    run_command_sync(["chmod", "o+rw", "/var/run/openvswitch/db.sock"])
 
     if not run_command(["systemctl", "enable", "--now", "ovn-northd"],
                        "Starting ovn-northd...", False, None, 3, 5):
@@ -322,7 +322,7 @@ def finalize(config):
             return False
         
     printed_line = False
-    for svc in ["neutron-l3-agent", "neutron-dhcp-agent", "neutron-openv=envswitch-agent"]:
+    for svc in ["neutron-l3-agent", "neutron-dhcp-agent", "neutron-openvswitch-agent"]:
         if service_exists(svc):
             if not printed_line:
                 print()
@@ -331,9 +331,9 @@ def finalize(config):
             run_command(["systemctl", "disable", "--now", svc],
             f"Disabling legacy agent {svc}", ignore_errors=True)
 
-    udev_rule = 'SUBSYSTEM=="unix", ACTION=="add", DEVPATH=="/var/run/openv=envswitch/db.sock", MODE="0666"\n'
+    udev_rule = 'SUBSYSTEM=="unix", ACTION=="add", DEVPATH=="/var/run/openvswitch/db.sock", MODE="0666"\n'
 
-    with open("/etc/udev/rules.d/99-openv=envswitch.rules", "w") as f:
+    with open("/etc/udev/rules.d/99-openvswitch.rules", "w") as f:
         f.write(udev_rule)
 
     run_command_sync(["udevadm", "control", "--reload-rules"])
