@@ -5,6 +5,7 @@ import socket
 from time import sleep, time
 
 from ...utils.core import colors
+from ...utils.config.parser import get
 
 import subprocess
 import sys
@@ -86,16 +87,19 @@ def generate_password(length=12):
     chars = string.ascii_letters + string.digits
     return ''.join(random.choice(chars) for _ in range(length))
 
-def build_openstack_env(ip, username, password, project="admin"):
+def build_openstack_env(config):
     env = os.environ.copy()
 
+    ip_address = get(config, "network.HOST_IP")
+    admin_password = get(config, "passwords.ADMIN_PASSWORD")
+
     env.update({
-        "OS_USERNAME": username,
-        "OS_PASSWORD": password,
-        "OS_PROJECT_NAME": project,
+        "OS_USERNAME": "admin",
+        "OS_PASSWORD": admin_password,
+        "OS_PROJECT_NAME": "admin",
         "OS_USER_DOMAIN_NAME": "Default",
         "OS_PROJECT_DOMAIN_NAME": "Default",
-        "OS_AUTH_URL": f"http://{ip}:5000/v3",
+        "OS_AUTH_URL": f"http://{ip_address}:5000/v3",
         "OS_IDENTITY_API_VERSION": "3",
     })
 
