@@ -109,9 +109,9 @@ def create_projects_and_demo_user(config, env):
         'openstack role add --project demo --user demo user'
     ])
 
-    if not os_run(create_service_project_cmd, "Creating service project...", env) : return False
+    if not os_run(create_service_project_cmd, "Creating service project...", env=env) : return False
     
-    if not run_command(["bash", "-c", create_demo_user_cmds], "Creating demo user...", env): return False    
+    if not run_command(["bash", "-c", create_demo_user_cmds], "Creating demo user...", env=env): return False    
 
     return True
 
@@ -122,37 +122,41 @@ def create_services_users(config, env):
     service_password = get(config, "passwords.SERVICE_PASSWORD")
     install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
 
-    services_user_create_cmds = " && ".join([
+    services_user_create_cmds = [
         f"openstack user create --domain default --password {service_password} glance --or-show",
         f"openstack user create --domain default --password {service_password} placement --or-show",
         f"openstack user create --domain default --password {service_password} nova --or-show",
         f"openstack user create --domain default --password {service_password} neutron --or-show",
-    ])
+    ]
 
-    services_create_cmds = " && ".join([
+    services_create_cmds = [
         'openstack service show glance || openstack service create --name glance --description "OpenStack Image" image',
         'openstack service show placement || openstack service create --name placement --description "Placement API" placement',
         'openstack service show nova || openstack service create --name nova --description "OpenStack Compute" compute',
         'openstack service show neutron || openstack service create --name neutron --description "OpenStack Networking" network',
-    ])
+    ]
 
-    services_role_add_cmds = " && ".join([
+    services_role_add_cmds = [
          "openstack role add --project service --user glance admin || true",
          "openstack role add --project service --user placement admin || true",
          "openstack role add --project service --user nova admin || true",
          "openstack role add --project service --user neutron admin || true",
-    ])
+    ]
 
     if install_cinder:
         services_user_create_cmds.append(f"openstack user create --domain default --password {service_password} cinder --or-show")
         services_create_cmds.append('openstack service show cinderv3 || openstack service create --name cinderv3 --description "OpenStack Block Storage" volumev3')
         services_role_add_cmds.append("openstack role add --project service --user cinder admin || true")
 
-    if not run_command(["bash", "-c", services_user_create_cmds], "Creating services users...",env) : return False
-    
-    if not run_command(["bash", "-c", services_create_cmds], "Creating services...", env) : return False
+    services_user_create_full_cmd = " && ".join(services_user_create_cmds)
+    services_create_cmds_full_cmd = " && ".join(services_create_cmds)
+    services_role_add_cmds_full_cmd = " && ".join(services_role_add_cmds)
 
-    if not run_command(["bash", "-c", services_role_add_cmds], "Assigning services user roles...", env) : return False
+    if not run_command(["bash", "-c", services_user_create_full_cmd], "Creating services users...",env=env) : return False
+    
+    if not run_command(["bash", "-c", services_create_cmds_full_cmd], "Creating services...", env=env) : return False
+
+    if not run_command(["bash", "-c", services_role_add_cmds_full_cmd], "Assigning services user roles...", env=env) : return False
 
     return True
 
@@ -196,7 +200,7 @@ def create_services_endpoints(config, env):
 
     full_cmd = " && ".join(commands)
 
-    if not run_command(["bash", "-c", full_cmd], "Creating services endpoints...", env) : return False
+    if not run_command(["bash", "-c", full_cmd], "Creating services endpoints...", env=env) : return False
 
     return True
 

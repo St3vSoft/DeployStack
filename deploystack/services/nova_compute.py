@@ -3,7 +3,7 @@
 import os
 import json
 
-from ..utils.core.commands import run_command, run_command_output
+from ..utils.core.commands import run_command, os_run, os_run_output
 from ..utils.core.system_utils import has_hw_virtualization, service_exists
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
@@ -66,9 +66,9 @@ def finalize():
 
 def create_default_flavors(env):
 
-    flavors_list_json = run_command_output(
+    flavors_list_json = os_run_output(
         ["openstack", "flavor", "list", "-f", "json"]
-    )
+    env=env)
     flavors_list = json.loads(flavors_list_json)
 
     default_flavors = [
@@ -99,15 +99,13 @@ def create_default_flavors(env):
 
     full_cmd = " && ".join(commands)
 
-    return run_command(
+    if os_run(
         ["bash", "-c", full_cmd],
         "Creating default flavors...",
-        False,
-        None,
-        None,
-        None,
         env=env
-    )
+    ) : return False
+
+    return True
     
 def run_setup_nova_compute(config, env):
      

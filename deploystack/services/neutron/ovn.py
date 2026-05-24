@@ -27,7 +27,7 @@ def install_pkgs():
         "ovn-central",              # ovn-northd + NB/SB ovsdb-server
         "ovn-host",                 # ovn-controller on compute nodes
         "ovn-common",               # ovn-nbctl, ovn-sbctl tools
-        "openvswitch-switch",       # OVS dataplane (required by OVN)
+        "openv=envswitch-switch",       # OVS dataplane (required by OVN)
     ]
 
     if not apt_install(ovn_packages, ux_text="Installing Neutron OVN packages..."):
@@ -39,7 +39,7 @@ def conf_ovn_bridges(config):
 
     print()
 
-    INTERFACES_FILE = "/etc/network/interfaces.d/openvswitch"
+    INTERFACES_FILE = "/etc/network/interfaces.d/openv=envswitch"
 
     public_iface = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE_INTERFACE")
     public_bridge = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")       # e.g. br-ex
@@ -271,7 +271,7 @@ def conf_ovn_neutron(config):
 
     set_conf_option(neutron_conf, "ovn", "enable_distributed_floating_ip", "true" if enable_distributed_floating_ip else "false")
 
-    set_conf_option(conf_nova, "os_vif_ovs", "ovsdb_connection", "unix:/var/run/openvswitch/db.sock")
+    set_conf_option(conf_nova, "os_vif_ovs", "ovsdb_connection", "unix:/var/run/openv=envswitch/db.sock")
     set_conf_option(conf_nova, "neutron", "ovs_bridge", "br-int")
 
     return True
@@ -283,9 +283,9 @@ def finalize(config):
 
     run_command_sync(["ovs-vsctl", "set-manager",
                       f"ptcp:6640:{ip_address}",
-                      "punix:/var/run/openvswitch/db.sock"])
+                      "punix:/var/run/openv=envswitch/db.sock"])
     
-    run_command_sync(["chmod", "o+rw", "/var/run/openvswitch/db.sock"])
+    run_command_sync(["chmod", "o+rw", "/var/run/openv=envswitch/db.sock"])
 
     if not run_command(["systemctl", "enable", "--now", "ovn-northd"],
                        "Starting ovn-northd...", False, None, 3, 5):
@@ -322,7 +322,7 @@ def finalize(config):
             return False
         
     printed_line = False
-    for svc in ["neutron-l3-agent", "neutron-dhcp-agent", "neutron-openvswitch-agent"]:
+    for svc in ["neutron-l3-agent", "neutron-dhcp-agent", "neutron-openv=envswitch-agent"]:
         if service_exists(svc):
             if not printed_line:
                 print()
@@ -331,9 +331,9 @@ def finalize(config):
             run_command(["systemctl", "disable", "--now", svc],
             f"Disabling legacy agent {svc}", ignore_errors=True)
 
-    udev_rule = 'SUBSYSTEM=="unix", ACTION=="add", DEVPATH=="/var/run/openvswitch/db.sock", MODE="0666"\n'
+    udev_rule = 'SUBSYSTEM=="unix", ACTION=="add", DEVPATH=="/var/run/openv=envswitch/db.sock", MODE="0666"\n'
 
-    with open("/etc/udev/rules.d/99-openvswitch.rules", "w") as f:
+    with open("/etc/udev/rules.d/99-openv=envswitch.rules", "w") as f:
         f.write(udev_rule)
 
     run_command_sync(["udevadm", "control", "--reload-rules"])
@@ -364,9 +364,9 @@ def create_ovn_networks(config, env):
     for dns in public_subnet_dns_servers:
         dns_args.extend(["--dns-nameserver", dns])
 
-    networks_list = json.loads(os_run_output(["openstack", "network", "list", "-f", "json"], env))
-    subnets_list = json.loads(os_run_output(["openstack", "subnet", "list", "-f", "json"], env))
-    routers_list = json.loads(os_run_output(["openstack", "router", "list", "-f", "json"], env))
+    networks_list = json.loads(os_run_output(["openstack", "network", "list", "-f", "json"], env=env))
+    subnets_list = json.loads(os_run_output(["openstack", "subnet", "list", "-f", "json"], env=env))
+    routers_list = json.loads(os_run_output(["openstack", "router", "list", "-f", "json"], env=env))
 
     public_network_exists = any(net.get("Name") == "public" for net in networks_list)
     if not public_network_exists:
@@ -397,7 +397,7 @@ def create_ovn_networks(config, env):
         else:
             create_public_network_cmd = ["openstack", "network", "create", "--share", "public"]
 
-        if not os_run(create_public_network_cmd, "Creating public network...", env):
+        if not os_run(create_public_network_cmd, "Creating public network...", env=env):
             return False
 
         public_subnet_exists = any(sub.get("Name") == "public_subnet" for sub in subnets_list)
@@ -410,7 +410,7 @@ def create_ovn_networks(config, env):
                 "--subnet-range", public_subnet_cidr
             ] + dns_args + ["public_subnet"]
 
-            if not os_run(subnet_cmd, "Creating public subnet...", env):
+            if not os_run(subnet_cmd, "Creating public subnet...", env=env):
                 return False
     else:
         print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
@@ -426,7 +426,7 @@ def create_ovn_networks(config, env):
     ] if create_ovn_bridges else ["openstack", "network", "create", "internal"]
 
     if not internal_network_exists:
-        if not os_run(create_internal_network_cmd, f"Creating internal ({ovn_encap_type}) network...", env):
+        if not os_run(create_internal_network_cmd, f"Creating internal ({ovn_encap_type}) network...", env=env):
             return False
     else:
         print(f"{colors.YELLOW}Internal network already exists, skipping creation.{colors.RESET}")
@@ -442,7 +442,7 @@ def create_ovn_networks(config, env):
             "--dns-nameserver", "8.8.8.8",
             "internal_subnet"
         ]
-        if not os_run(internal_subnet_cmd, "Creating internal subnet...", env):
+        if not os_run(internal_subnet_cmd, "Creating internal subnet...", env=env):
             return False
     else:
         print(f"{colors.YELLOW}Internal subnet already exists, skipping creation.{colors.RESET}")
@@ -451,13 +451,13 @@ def create_ovn_networks(config, env):
 
     router_exists = any(r.get("Name") == "internal_router" for r in routers_list)
     if not router_exists:
-        if not os_run(["openstack", "router", "create", "internal_router"], "Creating internal router...", env):
+        if not os_run(["openstack", "router", "create", "internal_router"], "Creating internal router...", env=env):
             return False
 
         if create_ovn_bridges:
             if not os_run(
                 ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
-                "Setting external gateway for internal router...", env
+                "Setting external gateway for internal router...", env=env
             ):
                 return False
             
@@ -465,7 +465,7 @@ def create_ovn_networks(config, env):
 
         if not os_run(
             ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
-            "Adding internal subnet to router...", env
+            "Adding internal subnet to router...", env=env
         ):
             return False
     else:
@@ -473,13 +473,13 @@ def create_ovn_networks(config, env):
 
     print()
 
-    sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env))
+    sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
     default_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
     if not default_sg:
         raise RuntimeError("No security group named 'default' found")
     sg_id = default_sg["ID"]
 
-    rules = json.loads(os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env))
+    rules = json.loads(os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env=env))
 
     ssh_rule_exists = any(
         rule.get("IP Protocol") == "tcp" and
@@ -491,7 +491,7 @@ def create_ovn_networks(config, env):
         if not os_run(
             ["openstack", "security", "group", "rule", "create",
              "--proto", "tcp", "--dst-port", "22", "--remote-ip", "0.0.0.0/0", sg_id],
-            "Allowing SSH access...", env
+            "Allowing SSH access...", env=env
         ):
             return False
     else:
@@ -504,7 +504,7 @@ def create_ovn_networks(config, env):
         if not os_run(
             ["openstack", "security", "group", "rule", "create",
              "--proto", "icmp", sg_id],
-            "Allowing ICMP (ping)...", env
+            "Allowing ICMP (ping)...", env=env
         ):
             return False
     else:
@@ -513,7 +513,7 @@ def create_ovn_networks(config, env):
     print()
 
     if create_ovn_bridges:
-        router_gw_ip = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json"], env))
+        router_gw_ip = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json"], env=env))
         gw_ip = router_gw_ip["external_gateway_info"]["external_fixed_ips"][0]["ip_address"]
         run_command_sync(["ip", "route", "replace", "10.0.0.0/24", "via", gw_ip, "dev", ovn_public_bridge])
 

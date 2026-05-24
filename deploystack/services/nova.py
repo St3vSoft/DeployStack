@@ -157,14 +157,14 @@ def add_default_keypair(env):
     key_file = f"/root/{key_name}.pem"
 
     check_cmd = ["openstack", "keypair", "show", key_name]
-    exists = run_command_sync(check_cmd, env)
+    exists = run_command_sync(check_cmd, env=env)
 
     if exists:
         print(f"{colors.YELLOW}Keypair '{key_name}' already exists, skipping creation.{colors.RESET}")
         return True
 
     create_cmd = ["openstack", "keypair", "create", key_name, "--private-key", key_file]
-    if not os_run(create_cmd, "Creating default keypair...", env) : return False
+    if not os_run(create_cmd, "Creating default keypair...", env=env) : return False
 
     os.chmod(key_file, stat.S_IRUSR | stat.S_IWUSR)
     os.chown(key_file, os.getuid(), os.getgid())

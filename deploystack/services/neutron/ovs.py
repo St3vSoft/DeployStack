@@ -1,4 +1,4 @@
-# Configure the OpenvSwitch (OVS) Driver for Neutron
+# Configure the Openv=envSwitch (OVS) Driver for Neutron
 
 import os
 import shutil
@@ -10,13 +10,13 @@ from ...utils.config.parser import get
 from ...utils.config.setter import set_conf_option
 from ...utils.core.system_utils import nc_wait, iface_exists
 from ...utils.core import colors
-from ...utils.core.system_utils import service_exists, is_debian, build_openstack_env
+from ...utils.core.system_utils import service_exists, is_debian, build_openstack_env=env
 from ...templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES
 from ...utils.network.net_utils import get_active_interface
 
 neutron_conf="/etc/neutron/neutron.conf"
 conf_ml2="/etc/neutron/plugins/ml2/ml2_conf.ini"
-conf_openvswitch="/etc/neutron/plugins/ml2/openvswitch_agent.ini"
+conf_openv=envswitch="/etc/neutron/plugins/ml2/openv=envswitch_agent.ini"
 conf_dhcp_agent="/etc/neutron/dhcp_agent.ini"
 conf_metadata_agent="/etc/neutron/metadata_agent.ini"
 conf_l3_agent="/etc/neutron/l3_agent.ini"
@@ -27,21 +27,21 @@ def install_pkgs():
     print()
 
     ovs_packages = [
-        "neutron-openvswitch-agent", 
+        "neutron-openv=envswitch-agent", 
         "neutron-dhcp-agent", 
         "neutron-metadata-agent", 
         "neutron-l3-agent", 
-        "openvswitch-switch"]
+        "openv=envswitch-switch"]
 
     if not apt_install(ovs_packages, ux_text=f"Installing OVS packages...") : return False
 
     return True
 
-def conf_openvswitch_bridges(config):
+def conf_openvenvswitch_bridges(config):
 
     print()
       
-    INTERFACES_FILE = "/etc/network/interfaces.d/openvswitch"
+    INTERFACES_FILE = "/etc/network/interfaces.d/openv=envswitch"
 
     public_iface = get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
     public_bridge = get(config, "neutron.ovs.PUBLIC_BRIDGE")
@@ -194,15 +194,15 @@ def conf_neutron_ovs(config):
         if vlan_networks_str:
             set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_networks_str)
 
-        set_conf_option(conf_openvswitch, "ovs", "bridge_mappings", bridge_mappings)
+        set_conf_option(conf_openv=envswitch, "ovs", "bridge_mappings", bridge_mappings)
 
     set_conf_option(conf_ml2, "securitygroup", "enable_ipset", "true")
-    set_conf_option(conf_ml2, "ml2", "mechanism_drivers", "openvswitch")
+    set_conf_option(conf_ml2, "ml2", "mechanism_drivers", "openv=envswitch")
 
-    set_conf_option(conf_openvswitch, "ovs", "integration_bridge", "br-int")
+    set_conf_option(conf_openv=envswitch, "ovs", "integration_bridge", "br-int")
 
-    set_conf_option(conf_openvswitch, "securitygroup", "enable_security_group", "true")
-    set_conf_option(conf_openvswitch, "securitygroup", "firewall_driver", "openvswitch")
+    set_conf_option(conf_openv=envswitch, "securitygroup", "enable_security_group", "true")
+    set_conf_option(conf_openv=envswitch, "securitygroup", "firewall_driver", "openv=envswitch")
 
     set_conf_option(conf_dhcp_agent, "DEFAULT", "interface_driver", "neutron.agent.linux.interface.OVSInterfaceDriver")
     set_conf_option(conf_dhcp_agent, "DEFAULT", "dhcp_driver", "neutron.agent.linux.dhcp.Dnsmasq")
@@ -228,11 +228,11 @@ def finalize(config):
         if not run_command(["systemctl", "restart", "nova-api"], "Restarting Nova API...", False, None, 3, 5): return False
   
     if service_exists("neutron-server.service"):
-        if not run_command(["systemctl", "restart", "neutron-server", "neutron-openvswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
+        if not run_command(["systemctl", "restart", "neutron-server", "neutron-openv=envswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
     elif service_exists("neutron-api.service") and is_debian():
-        if not run_command(["systemctl", "restart", "neutron-api", "neutron-rpc-server", "neutron-l3-agent", "neutron-openvswitch-agent", "neutron-metadata-agent", "nova-compute"], "Restarting Neutron services...", False, None, 3, 5): return False  
+        if not run_command(["systemctl", "restart", "neutron-api", "neutron-rpc-server", "neutron-l3-agent", "neutron-openv=envswitch-agent", "neutron-metadata-agent", "nova-compute"], "Restarting Neutron services...", False, None, 3, 5): return False  
     else:
-        if not run_command(["systemctl", "restart", "neutron-periodic-workers", "apache2", "neutron-openvswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
+        if not run_command(["systemctl", "restart", "neutron-periodic-workers", "apache2", "neutron-openv=envswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
 
     if not nc_wait(ip_address, 9696) : return False
 
@@ -260,9 +260,9 @@ def create_ovs_networks(config, env):
     for dns in public_subnet_dns_servers:
         dns_args.extend(["--dns-nameserver", dns])
 
-    networks_list_json = os_run_output(["openstack", "network", "list", "-f", "json"], env)
-    subnets_list_json = os_run_output(["openstack", "subnet", "list", "-f", "json"], env)
-    routers_list_json = os_run_output(["openstack", "router", "list", "-f", "json"], env)
+    networks_list_json = os_run_output(["openstack", "network", "list", "-f", "json"], env=env)
+    subnets_list_json = os_run_output(["openstack", "subnet", "list", "-f", "json"], env=env)
+    routers_list_json = os_run_output(["openstack", "router", "list", "-f", "json"], env=env)
 
     networks_list = json.loads(networks_list_json)
     subnets_list = json.loads(subnets_list_json)
@@ -295,7 +295,7 @@ def create_ovs_networks(config, env):
     if not public_network_exists:
             if not os_run(
                 create_public_network_cmd,
-                "Creating public network...", env
+                "Creating public network...", env=env
             ) : return False
     else:
             print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
@@ -309,7 +309,7 @@ def create_ovs_networks(config, env):
             "--gateway", public_subnet_gateway,
             "--subnet-range", public_subnet_cidr,
             "public_subnet"] + dns_args,
-            "Creating public subnet...", env
+            "Creating public subnet...", env=env
         ) : return False
     else:
         print(f"{colors.YELLOW}Public subnet already exists, skipping creation.{colors.RESET}")
@@ -321,7 +321,7 @@ def create_ovs_networks(config, env):
     if not internal_network_exists:
         if not os_run(
             create_internal_network_cmd,
-            "Creating internal network...", env
+            "Creating internal network...", env=env
             ) : return False
     else:
         print(f"{colors.YELLOW}Internal network already exists, skipping creation.{colors.RESET}")
@@ -335,7 +335,7 @@ def create_ovs_networks(config, env):
             "--allocation-pool", "start=10.0.0.10,end=10.0.0.200",
             "--dns-nameserver", "8.8.8.8",
             "internal_subnet"],
-            "Creating internal subnet...", env
+            "Creating internal subnet...", env=env
             ) : return False
     else:
         print(f"{colors.YELLOW}Internal subnet already exists, skipping creation.{colors.RESET}")
@@ -346,7 +346,7 @@ def create_ovs_networks(config, env):
     if not router_exists:
         if not os_run(
             ["openstack", "router", "create", "internal_router"],
-            "Creating internal router...", env
+            "Creating internal router...", env=env
         ): return False
 
         if create_ovs_bridges:
@@ -359,14 +359,14 @@ def create_ovs_networks(config, env):
 
         if not os_run(
             ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
-            "Adding internal subnet to router...", env
+            "Adding internal subnet to router...", env=env
         ): return False
     else:
         print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
     
     print()
 
-    sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"], env)
+    sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env)
     sg_list = json.loads(sg_list_json)
 
     matching_sgs = [sg for sg in sg_list if sg["Name"] == "default"]
@@ -374,7 +374,7 @@ def create_ovs_networks(config, env):
         raise RuntimeError("No security group named 'default' found")
     sg_id = matching_sgs[0]["ID"]
 
-    rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env)
+    rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env=env)
     rules = json.loads(rules_json)
 
     ssh_rule_exists = any(
@@ -392,7 +392,7 @@ def create_ovs_networks(config, env):
             "--dst-port", "22",
             "--remote-ip", public_subnet_cidr,
             sg_id],
-            "Allowing SSH access...", env): 
+            "Allowing SSH access...", env=env): 
             return False
     else:
         print(f"{colors.YELLOW}SSH rule skipped (no OVS bridge or already exists).{colors.RESET}")
@@ -412,10 +412,10 @@ def run_setup_ovs_neutron(config, env):
     if not install_pkgs(): return False
     
     if create_ovs_bridges:
-        if not conf_openvswitch_bridges(config) : return False
+        if not conf_openv=envswitch_bridges(config) : return False
     
     if not conf_neutron_ovs(config) : return False
     if not finalize(config) : return False   
-    if not create_ovs_networks(config, env): return False
+    if not create_ovs_networks(config, env=env): return False
 
     return True

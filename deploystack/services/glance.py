@@ -79,7 +79,7 @@ def upload_cirros_image(env):
     image_name = "cirros"
     image_file_path = "/tmp/cirros-0.4.0-x86_64-disk.img"
 
-    images_list_json = os_run_output(["openstack", "image", "list", "-f", "json"], env)
+    images_list_json = os_run_output(["openstack", "image", "list", "-f", "json"], env=env)
     images_list = json.loads(images_list_json)
 
     cirros_image_exists = any(image.get("Name") == image_name for image in images_list)
@@ -96,7 +96,7 @@ def upload_cirros_image(env):
             "--disk-format", "qcow2",
             "--container-format", "bare",
             "--public"
-            ] , f"Adding cirros image...", env) : return False
+            ] , f"Adding cirros image...", env=env) : return False
         
         os.remove(image_file_path)
 
