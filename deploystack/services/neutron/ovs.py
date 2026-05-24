@@ -10,7 +10,7 @@ from ...utils.config.parser import get
 from ...utils.config.setter import set_conf_option
 from ...utils.core.system_utils import nc_wait, iface_exists
 from ...utils.core import colors
-from ...utils.core.system_utils import service_exists, is_debian, build_openstack_env=env
+from ...utils.core.system_utils import service_exists, is_debian
 from ...templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES
 from ...utils.network.net_utils import get_active_interface
 
