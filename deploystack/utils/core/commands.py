@@ -110,7 +110,7 @@ def run_sync_command_with_retry(command, max_retries=3, interval=1):
     return False
 
 def os_run(cmd, text=None):
-    return run_command(cmd, text=text, env=OPENSTACK_ENV)
+    return run_command(cmd, message=text, env=OPENSTACK_ENV)
 
 def os_run_output(cmd):
     return run_command_output(cmd, env=OPENSTACK_ENV)
