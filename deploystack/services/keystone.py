@@ -2,8 +2,8 @@
 
 import os
 
-from ..utils.core.commands import run_command, os_run, os_run_output
-from ..utils.core.system_utils import service_exists, build_openstack_env
+from ..utils.core.commands import run_command, os_run
+from ..utils.core.system_utils import service_exists, is_debian 
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
@@ -87,7 +87,7 @@ def finalize(config):
 
     if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2...") : return False
 
-    if service_exists("keystone.service"):
+    if service_exists("keystone.service") and is_debian():
         if not run_command(["systemctl", "restart", "keystone"], "Restarting Keystone...") : return False
      
     if not nc_wait(ip_address, 5000) : return False
