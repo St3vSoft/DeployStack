@@ -74,16 +74,12 @@ def finalize(config):
 
     return True
 
-def upload_cirros_image(config):
-
-    ip_address = get(config, "network.HOST_IP")
-
-    admin_password = get(config, "passwords.ADMIN_PASSWORD")
+def upload_cirros_image(env):
 
     image_name = "cirros"
     image_file_path = "/tmp/cirros-0.4.0-x86_64-disk.img"
 
-    images_list_json = os_run_output(["openstack", "image", "list", "-f", "json"])
+    images_list_json = os_run_output(["openstack", "image", "list", "-f", "json"], env)
     images_list = json.loads(images_list_json)
 
     cirros_image_exists = any(image.get("Name") == image_name for image in images_list)
@@ -100,18 +96,18 @@ def upload_cirros_image(config):
             "--disk-format", "qcow2",
             "--container-format", "bare",
             "--public"
-            ] , f"Adding cirros image...") : return False
+            ] , f"Adding cirros image...", env) : return False
         
         os.remove(image_file_path)
 
     return True
     
-def run_setup_glance(config):
+def run_setup_glance(config, env):
      
     if not install_pkgs(): return False 
     if not conf_glance(config): return False 
     if not finalize(config): return False 
-    if not upload_cirros_image(config): return False
+    if not upload_cirros_image(env): return False
 
     print(f"\n{colors.GREEN}Glance configured successfully!{colors.RESET}\n")
 

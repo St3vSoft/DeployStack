@@ -94,7 +94,7 @@ def finalize(config):
 
     return True
     
-def create_projects_and_demo_user(config, venv):
+def create_projects_and_demo_user(config, env):
 
     print()
 
@@ -109,9 +109,9 @@ def create_projects_and_demo_user(config, venv):
         'openstack role add --project demo --user demo user'
     ])
 
-    if not os_run(create_service_project_cmd, "Creating service project...") : return False
+    if not os_run(create_service_project_cmd, "Creating service project...", env) : return False
     
-    if not run_command(["bash", "-c", create_demo_user_cmds], "Creating demo user...", False, None, None, None, venv): return False    
+    if not run_command(["bash", "-c", create_demo_user_cmds], "Creating demo user...", False, None, None, None, env): return False    
 
     return True
 

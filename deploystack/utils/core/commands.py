@@ -7,8 +7,6 @@ from ..core.system_utils import build_openstack_env
 import time
 import sys
 
-OPENSTACK_ENV = None
-
 def init_openstack_context(config):
     global OPENSTACK_ENV
     OPENSTACK_ENV = build_openstack_env(config)
@@ -25,9 +23,9 @@ def run_command_output(cmd, ignore_errors=False, env=None):
             raise
 
 
-def run_command_sync(command):
+def run_command_sync(command, env=None):
     try:
-        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
         return True
     except subprocess.CalledProcessError:
         return False
@@ -109,8 +107,8 @@ def run_sync_command_with_retry(command, max_retries=3, interval=1):
     sys.exit(1)
     return False
 
-def os_run(cmd, text=None):
-    return run_command(cmd, message=text, env=OPENSTACK_ENV)
+def os_run(cmd, text=None, env=None):
+    return run_command(cmd, message=text, env=env)
 
-def os_run_output(cmd):
-    return run_command_output(cmd, env=OPENSTACK_ENV)
+def os_run_output(cmd, env=None):
+    return run_command_output(cmd, env=env)

@@ -150,21 +150,21 @@ def finalize(config):
 
     return True
 
-def add_default_keypair(config):
+def add_default_keypair(env):
     print()
 
-    key_name = get(config, "DEFAULT_KEYPAIR_NAME", "default")
+    key_name = "default"
     key_file = f"/root/{key_name}.pem"
 
     check_cmd = ["openstack", "keypair", "show", key_name]
-    exists = run_command_sync(check_cmd)
+    exists = run_command_sync(check_cmd, env)
 
     if exists:
         print(f"{colors.YELLOW}Keypair '{key_name}' already exists, skipping creation.{colors.RESET}")
         return True
 
     create_cmd = ["openstack", "keypair", "create", key_name, "--private-key", key_file]
-    if not os_run(create_cmd, "Creating default keypair...") : return False
+    if not os_run(create_cmd, "Creating default keypair...", env) : return False
 
     os.chmod(key_file, stat.S_IRUSR | stat.S_IWUSR)
     os.chown(key_file, os.getuid(), os.getgid())
@@ -172,12 +172,12 @@ def add_default_keypair(config):
     print(f"{colors.YELLOW}Keypair '{key_name}' created and saved to {key_file}{colors.RESET}")
     return True
 
-def run_setup_nova(config):
+def run_setup_nova(config, env):
      
     if not install_pkgs(): return False  
     if not conf_nova(config): return False 
     if not finalize(config): return False
-    if not add_default_keypair(config): return False
+    if not add_default_keypair(env): return False
     
     print(f"\n{colors.GREEN}Nova configured successfully!{colors.RESET}\n")
     return True

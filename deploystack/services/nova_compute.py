@@ -4,7 +4,7 @@ import os
 import json
 
 from ..utils.core.commands import run_command, run_command_output
-from ..utils.core.system_utils import has_hw_virtualization, service_exists, build_openstack_env
+from ..utils.core.system_utils import has_hw_virtualization, service_exists
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
@@ -64,7 +64,7 @@ def finalize():
 
     return True
 
-def create_default_flavors(config, env):
+def create_default_flavors(env):
 
     flavors_list_json = run_command_output(
         ["openstack", "flavor", "list", "-f", "json"]
@@ -114,7 +114,7 @@ def run_setup_nova_compute(config, env):
     if not install_pkgs(): return False   
     conf_nova_compute(config)   
     if not finalize(): return False   
-    if not create_default_flavors(config, env): return False
+    if not create_default_flavors(env): return False
     
     print(f"\n{colors.GREEN}Compute Node configured successfully!{colors.RESET}\n")
     return True

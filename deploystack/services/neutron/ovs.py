@@ -238,7 +238,7 @@ def finalize(config):
 
     return True
 
-def create_ovs_networks(config):
+def create_ovs_networks(config, env):
      
     print()
 
@@ -260,9 +260,9 @@ def create_ovs_networks(config):
     for dns in public_subnet_dns_servers:
         dns_args.extend(["--dns-nameserver", dns])
 
-    networks_list_json = os_run_output(["openstack", "network", "list", "-f", "json"])
-    subnets_list_json = os_run_output(["openstack", "subnet", "list", "-f", "json"])
-    routers_list_json = os_run_output(["openstack", "router", "list", "-f", "json"])
+    networks_list_json = os_run_output(["openstack", "network", "list", "-f", "json"], env)
+    subnets_list_json = os_run_output(["openstack", "subnet", "list", "-f", "json"], env)
+    routers_list_json = os_run_output(["openstack", "router", "list", "-f", "json"], env)
 
     networks_list = json.loads(networks_list_json)
     subnets_list = json.loads(subnets_list_json)
@@ -295,7 +295,7 @@ def create_ovs_networks(config):
     if not public_network_exists:
             if not os_run(
                 create_public_network_cmd,
-                "Creating public network..."
+                "Creating public network...", env
             ) : return False
     else:
             print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
@@ -309,7 +309,7 @@ def create_ovs_networks(config):
             "--gateway", public_subnet_gateway,
             "--subnet-range", public_subnet_cidr,
             "public_subnet"] + dns_args,
-            "Creating public subnet..."
+            "Creating public subnet...", env
         ) : return False
     else:
         print(f"{colors.YELLOW}Public subnet already exists, skipping creation.{colors.RESET}")
@@ -321,7 +321,7 @@ def create_ovs_networks(config):
     if not internal_network_exists:
         if not os_run(
             create_internal_network_cmd,
-            "Creating internal network...",
+            "Creating internal network...", env
             ) : return False
     else:
         print(f"{colors.YELLOW}Internal network already exists, skipping creation.{colors.RESET}")
@@ -335,7 +335,7 @@ def create_ovs_networks(config):
             "--allocation-pool", "start=10.0.0.10,end=10.0.0.200",
             "--dns-nameserver", "8.8.8.8",
             "internal_subnet"],
-            "Creating internal subnet...",
+            "Creating internal subnet...", env
             ) : return False
     else:
         print(f"{colors.YELLOW}Internal subnet already exists, skipping creation.{colors.RESET}")
@@ -346,7 +346,7 @@ def create_ovs_networks(config):
     if not router_exists:
         if not os_run(
             ["openstack", "router", "create", "internal_router"],
-            "Creating internal router...",
+            "Creating internal router...", env
         ): return False
 
         if create_ovs_bridges:
@@ -359,14 +359,14 @@ def create_ovs_networks(config):
 
         if not os_run(
             ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
-            "Adding internal subnet to router...",
+            "Adding internal subnet to router...", env
         ): return False
     else:
         print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
     
     print()
 
-    sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"])
+    sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"], env)
     sg_list = json.loads(sg_list_json)
 
     matching_sgs = [sg for sg in sg_list if sg["Name"] == "default"]
@@ -374,7 +374,7 @@ def create_ovs_networks(config):
         raise RuntimeError("No security group named 'default' found")
     sg_id = matching_sgs[0]["ID"]
 
-    rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"])
+    rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env)
     rules = json.loads(rules_json)
 
     ssh_rule_exists = any(
@@ -392,14 +392,14 @@ def create_ovs_networks(config):
             "--dst-port", "22",
             "--remote-ip", public_subnet_cidr,
             sg_id],
-            "Allowing SSH access..."): 
+            "Allowing SSH access...", env): 
             return False
     else:
         print(f"{colors.YELLOW}SSH rule skipped (no OVS bridge or already exists).{colors.RESET}")
 
     return True
 
-def run_setup_ovs_neutron(config):
+def run_setup_ovs_neutron(config, env):
 
     tenant_type = get(config, "neutron.tenant_network.TYPE", "geneve")
     if tenant_type == "geneve":
@@ -416,6 +416,6 @@ def run_setup_ovs_neutron(config):
     
     if not conf_neutron_ovs(config) : return False
     if not finalize(config) : return False   
-    if not create_ovs_networks(config): return False
+    if not create_ovs_networks(config, env): return False
 
     return True
