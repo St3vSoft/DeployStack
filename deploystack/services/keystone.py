@@ -111,7 +111,7 @@ def create_projects_and_demo_user(config, env):
 
     if not os_run(create_service_project_cmd, "Creating service project...", env) : return False
     
-    if not run_command(["bash", "-c", create_demo_user_cmds], "Creating demo user...", False, None, None, None, env): return False    
+    if not run_command(["bash", "-c", create_demo_user_cmds], "Creating demo user...", env): return False    
 
     return True
 
@@ -148,11 +148,11 @@ def create_services_users(config, env):
         services_create_cmds.append('openstack service show cinderv3 || openstack service create --name cinderv3 --description "OpenStack Block Storage" volumev3')
         services_role_add_cmds.append("openstack role add --project service --user cinder admin || true")
 
-    if not run_command(["bash", "-c", services_user_create_cmds], "Creating services users...", False, None, None, None, env) : return False
+    if not run_command(["bash", "-c", services_user_create_cmds], "Creating services users...",env) : return False
     
-    if not run_command(["bash", "-c", services_create_cmds], "Creating services...", False, None, None, None, env) : return False
+    if not run_command(["bash", "-c", services_create_cmds], "Creating services...", env) : return False
 
-    if not run_command(["bash", "-c", services_role_add_cmds], "Assigning services user roles...", False, None, None, None, env) : return False
+    if not run_command(["bash", "-c", services_role_add_cmds], "Assigning services user roles...", env) : return False
 
     return True
 
@@ -196,15 +196,9 @@ def create_services_endpoints(config, env):
 
     full_cmd = " && ".join(commands)
 
-    return run_command(
-        ["bash", "-c", full_cmd],
-        "Creating services endpoints...",
-        False,
-        None,
-        None,
-        None,
-        env
-    )
+    if not run_command(["bash", "-c", full_cmd], "Creating services endpoints...", env) : return False
+
+    return True
 
 def generate_environment_cli_scripts(config):
      
