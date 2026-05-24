@@ -66,6 +66,8 @@ def finalize():
 
 def create_default_flavors(env):
 
+    print()
+
     flavors_list_json = os_run_output(["openstack", "flavor", "list", "-f", "json"], env=env)
     
     flavors_list = json.loads(flavors_list_json)
@@ -98,7 +100,7 @@ def create_default_flavors(env):
 
     full_cmd = " && ".join(commands)
 
-    if os_run(
+    if not os_run(
         ["bash", "-c", full_cmd],
         "Creating default flavors...",
         env=env
