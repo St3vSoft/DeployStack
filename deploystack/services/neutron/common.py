@@ -121,12 +121,12 @@ def finalize():
 
     return True
 
-def run_setup_neutron_common(config, driver_fn):
+def run_setup_neutron_common(config, driver_fn, env):
     
     if not install_pkgs(): return False
     if not conf_neutron(config): return False
     if not finalize(): return False
-    if not driver_fn(config): return False
+    if not driver_fn(config, env): return False
 
     print(f"\n{colors.GREEN}Neutron configured successfully!{colors.RESET}\n")
     return True
