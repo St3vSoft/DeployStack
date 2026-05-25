@@ -88,6 +88,10 @@ def upload_cirros_image(env):
         print()
         
         if not run_command(["wget", "-O", image_file_path, cirros_image_url], "Downloading a Cirros image...", False, None, 5, 5) : return False
+
+        if not os.path.exists(image_file_path) or os.path.getsize(image_file_path) == 0:
+            print(f"\n{colors.RED}Invalid Cirros image download: missing or empty file ({image_file_path}){colors.RESET}")
+            return False
         
         if not os_run([
             "openstack", "image", "create",
