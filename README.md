@@ -65,6 +65,7 @@ pip install .
 With the virtual environment active:
 
 ```bash
+sudo su     # Log in as root first
 deploystack --help
 ```
 
@@ -76,6 +77,9 @@ deploystack --help
 ✅ DeployStack is now ready for development and testing.
 
 > ⚠️ **Note:** For production, an official `.deb` package will be provided, which installs the CLI properly in the system PATH and manages dependencies automatically.
+
+> ⚠️ **Warning:** DeployStack installed from source currently requires root execution. The `sudo` command is unable to resolve the `deploystack` binary in `/usr/bin` because it resides within the virtual environment rather than the system path.
+
 
 ---
 
