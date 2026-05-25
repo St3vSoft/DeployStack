@@ -1,0 +1,14 @@
+[Unit]
+Description=Fix OVSDB socket permissions for Nova
+After=ovsdb-server.service openvswitch-switch.service
+Requires=ovsdb-server.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/chgrp nova /run/openvswitch /run/openvswitch/db.sock
+ExecStart=/bin/chmod 750 /run/openvswitch
+ExecStart=/bin/chmod 770 /run/openvswitch/db.sock
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

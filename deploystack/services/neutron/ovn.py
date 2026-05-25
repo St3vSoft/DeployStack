@@ -11,7 +11,7 @@ from ...utils.config.setter import set_conf_option
 from ...utils.core.system_utils import nc_wait, iface_exists
 from ...utils.core import colors
 from ...utils.core.system_utils import service_exists, is_debian
-from ...templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES
+from ...templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 
 neutron_conf = "/etc/neutron/neutron.conf"
 conf_ml2 = "/etc/neutron/plugins/ml2/ml2_conf.ini"
@@ -285,7 +285,17 @@ def finalize(config):
                       f"ptcp:6640:{ip_address}",
                       "punix:/var/run/openvswitch/db.sock"])
     
-    run_command_sync(["chmod", "o+rw", "/var/run/openvswitch/db.sock"])
+    udev_rule = 'SUBSYSTEM=="unix", ACTION=="add", DEVPATH=="/var/run/openvswitch/db.sock", MODE="0666"\n'
+
+    with open("/etc/udev/rules.d/99-openvswitch.rules", "w") as f:
+        f.write(udev_rule)
+
+    shutil.copy(OVS_PERMISSIONS_SERVICE, "/etc/systemd/system/ovs-nova-perms.service")
+
+    if not run_command(["systemctl", "daemon-reload"], "Reloading system daemon...") : return False
+    if not run_command(["systemctl", "enable", "--now", "ovs-nova-perms.service"], "Enabling OVS Nova Permission Service...") : return False
+
+    print()
 
     if not run_command(["systemctl", "enable", "--now", "ovn-northd"],
                        "Starting ovn-northd...", False, None, 3, 5):
