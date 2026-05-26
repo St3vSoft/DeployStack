@@ -22,7 +22,6 @@ def run_command_output(cmd, ignore_errors=False, env=None):
     )
     return result.stdout.strip()
 
-
 def run_command_sync(command, env=None):
     try:
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
@@ -30,6 +29,20 @@ def run_command_sync(command, env=None):
     except subprocess.CalledProcessError:
         return False
 
+def run_commands(steps: list[tuple], env=None) -> bool:
+    for step in steps:
+        cmd = step[0]
+        message = step[1]
+        kwargs = step[2] if len(step) > 2 else {}
+
+        ignore_errors = kwargs.get("ignore_errors", False)
+
+        ok = run_command(cmd, message, env=env, ignore_errors=ignore_errors)
+
+        if not ok and not ignore_errors:
+            return False
+
+    return True
 
 def run_command(cmd, message="", ignore_errors=False, ignore_exit_codes=None, retries=0, delay=1, env=None):
     attempt = 0

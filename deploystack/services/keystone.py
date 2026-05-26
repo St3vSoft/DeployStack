@@ -3,7 +3,7 @@
 import os
 import json
 
-from ..utils.core.commands import run_command, os_run, run_command_output
+from ..utils.core.commands import run_command, os_run, run_command_output, run_commands
 from ..utils.core.system_utils import service_exists, is_debian 
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
@@ -112,14 +112,13 @@ def finalize(config):
     
 def create_projects_and_demo_user(config, env):
 
+    print()
+
     demo_password = get(config, "passwords.DEMO_PASSWORD")
 
     assignments = get_role_assignments(env)
 
-    existing_assignments = {
-        (a["User"], a["Project"], a["Role"])
-        for a in assignments
-    }
+    existing_assignments = {(a["User"], a["Project"], a["Role"]) for a in assignments}
 
     create_service_project_cmd = [
         "openstack", "project", "create",
@@ -139,12 +138,9 @@ def create_projects_and_demo_user(config, env):
             ["openstack", "role", "add", "--project", "demo", "--user", "demo", "user"]
         )
 
-    if not run_command(create_service_project_cmd, "Creating service project...", env=env):
-        return False
+    if not run_command(create_service_project_cmd, "Creating service project...", env=env): return False
 
-    for cmd in create_demo_user_cmds:
-        if not run_command(cmd, "Creating demo user...", env=env):
-            return False
+    if not run_commands(create_demo_user_cmds, "Creating demo user...", env=env): return False  
 
     return True
 
@@ -216,19 +212,13 @@ def create_services_users(config, env):
         if ("cinder", "service", "admin") not in existing_assignments:
             services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "cinder", "admin"])
 
-    for cmd in services_user_create_cmds:
-        if not run_command(cmd, "Creating services users...", env=env):
-            return False
-    
-    for cmd in services_create_cmds:
-        if not run_command(cmd, "Creating services...", env=env):
-            return False
-        
-    for cmd in services_role_add_cmds:
-        if not run_command(cmd, "Assigning services user roles...", env=env):
-            return False
+    all_steps = (
+        [(cmd, "Creating service user...") for cmd in services_user_create_cmds] +
+        [(cmd, "Creating service...")      for cmd in services_create_cmds] +
+        [(cmd, "Assigning service role...") for cmd in services_role_add_cmds]
+    )
 
-    return True
+    return run_commands(all_steps, env=env)
 
 def create_services_endpoints(config, env):
 
@@ -269,7 +259,7 @@ def create_services_endpoints(config, env):
             ep("volumev3", "admin",    cinder_url),
         ]
 
-    if not all(run_command(cmd, "Creating services endpoints...", env=env) for cmd in endpoints_create_cmds) : return False
+    if not run_commands(endpoints_create_cmds, "Creating services endpoints...", env=env) : return False
 
     return True
 
