@@ -128,7 +128,7 @@ def create_projects_and_demo_user(config, env):
     ]
 
     create_demo_user_cmds = [
-        ["openstack", "project", "create", "--domain", "default", "--description", "Demo Project", "demo", "--or-show"],
+        ["openstack", "project", "create", "--domain", "default", "--description", '"Demo Project"', "demo", "--or-show"],
         ["openstack", "user", "create", "--domain", "default", "--password", demo_password, "demo", "--or-show"],
         ["openstack", "role", "create", "user", "--or-show"],
     ]
