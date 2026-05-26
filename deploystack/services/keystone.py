@@ -18,7 +18,6 @@ def get_role_assignments(env=None):
         ["openstack", "role", "assignment", "list", "--names", "-f", "json"],
         env=env
     )
-
     return json.loads(raw or "[]")
 
 def get_services(env=None):

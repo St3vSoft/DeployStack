@@ -12,21 +12,15 @@ def init_openstack_context(config):
     OPENSTACK_ENV = build_openstack_env(config)
 
 def run_command_output(cmd, ignore_errors=False, env=None):
-    if isinstance(cmd, str):
-        cmd = cmd.split()
-
     result = subprocess.run(
         cmd,
+        check=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
         env=env
     )
-
-    if result.returncode != 0 and not ignore_errors:
-        raise RuntimeError(result.stderr)
-
-    return result
+    return result.stdout.strip()
 
 
 def run_command_sync(command, env=None):
