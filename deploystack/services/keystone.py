@@ -114,6 +114,13 @@ def create_projects_and_demo_user(config, env):
 
     print()
 
+    if env:
+        for k, v in env.items():
+            if k.startswith("OS_"):
+                print(f"  {k} = {v}")
+    else:
+        print("  env is None!")
+
     demo_password = get(config, "passwords.DEMO_PASSWORD")
 
     assignments = get_role_assignments(env)
