@@ -12,7 +12,7 @@ def get_instance_id_from_name(instance_name:str ) -> str:
 
     instance_show_info_cmd = [
         "openstack", "server", "show",
-        instance_name, "-f", "value", "-c", "ID"
+        instance_name, "-f", "value", "-c", "id"
     ]
 
     try:
