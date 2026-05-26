@@ -1,8 +1,9 @@
 # Configure the Identity service (Keystone)
 
 import os
+import json
 
-from ..utils.core.commands import run_command, os_run
+from ..utils.core.commands import run_command, os_run, run_command_output
 from ..utils.core.system_utils import service_exists, is_debian 
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
@@ -11,6 +12,22 @@ from ..utils.core.system_utils import nc_wait
 from ..utils.core import colors
 
 keystone_conf = "/etc/keystone/keystone.conf"
+
+def get_role_assignments(env=None):
+    r = run_command_output("openstack role assignment list --names -f json", env=env)
+
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr)
+
+    return json.loads(r.stdout)
+
+def get_services(env=None):
+    r = run_command_output("openstack service list -f json", False, env=env)
+
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr)
+
+    return json.loads(r.stdout)
 
 def install_pkgs():
 
@@ -96,22 +113,39 @@ def finalize(config):
     
 def create_projects_and_demo_user(config, env):
 
-    print()
-
     demo_password = get(config, "passwords.DEMO_PASSWORD")
 
-    create_service_project_cmd = ["openstack", "project", "create", "--domain", "default", "--description", "Service Project", "service", "--or-show"]
+    assignments = get_role_assignments(env)
 
-    create_demo_user_cmds =  " && ".join([
-        'openstack project create --domain default --description "Demo Project" demo --or-show',
-        f'openstack user create --domain default --password {demo_password} demo --or-show',
-        'openstack role create user --or-show',
-        'openstack role add --project demo --user demo user'
-    ])
+    existing_assignments = {
+        (a["User"], a["Project"], a["Role"])
+        for a in assignments
+    }
 
-    if not os_run(create_service_project_cmd, "Creating service project...", env=env) : return False
-    
-    if not run_command(["bash", "-c", create_demo_user_cmds], "Creating demo user...", env=env): return False    
+    create_service_project_cmd = [
+        "openstack", "project", "create",
+        "--domain", "default",
+        "--description", "Service Project",
+        "service", "--or-show"
+    ]
+
+    create_demo_user_cmds = [
+        ["openstack", "project", "create", "--domain", "default", "--description", "Demo Project", "demo", "--or-show"],
+        ["openstack", "user", "create", "--domain", "default", "--password", demo_password, "demo", "--or-show"],
+        ["openstack", "role", "create", "user", "--or-show"],
+    ]
+
+    if ("demo", "demo", "user") not in existing_assignments:
+        create_demo_user_cmds.append(
+            ["openstack", "role", "add", "--project", "demo", "--user", "demo", "user"]
+        )
+
+    if not run_command(create_service_project_cmd, "Creating service project...", env=env):
+        return False
+
+    for cmd in create_demo_user_cmds:
+        if not run_command(cmd, "Creating demo user...", env=env):
+            return False
 
     return True
 
@@ -122,41 +156,78 @@ def create_services_users(config, env):
     service_password = get(config, "passwords.SERVICE_PASSWORD")
     install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
 
+    services = get_services(env)
+    assignments = get_role_assignments(env)
+
     services_user_create_cmds = [
-        f"openstack user create --domain default --password {service_password} glance --or-show",
-        f"openstack user create --domain default --password {service_password} placement --or-show",
-        f"openstack user create --domain default --password {service_password} nova --or-show",
-        f"openstack user create --domain default --password {service_password} neutron --or-show",
+        ["openstack", "user", "create", "--domain", "default", "--password", service_password, "glance", "--or-show"],
+        ["openstack", "user", "create", "--domain", "default", "--password", service_password, "placement", "--or-show"],
+        ["openstack", "user", "create", "--domain", "default", "--password", service_password, "nova", "--or-show"],
+        ["openstack", "user", "create", "--domain", "default", "--password", service_password, "neutron", "--or-show"],
     ]
 
-    services_create_cmds = [
-        'openstack service show glance || openstack service create --name glance --description "OpenStack Image" image',
-        'openstack service show placement || openstack service create --name placement --description "Placement API" placement',
-        'openstack service show nova || openstack service create --name nova --description "OpenStack Compute" compute',
-        'openstack service show neutron || openstack service create --name neutron --description "OpenStack Networking" network',
-    ]
+    services_create_cmds = []
+    services_role_add_cmds = []
 
-    services_role_add_cmds = [
-         "openstack role add --project service --user glance admin || true",
-         "openstack role add --project service --user placement admin || true",
-         "openstack role add --project service --user nova admin || true",
-         "openstack role add --project service --user neutron admin || true",
-    ]
+    existing_assignments = {
+        (
+            a["User"],
+            a["Project"],
+            a["Role"]
+        )
+        for a in assignments
+    }
+
+    existing_services = {
+        s.get("Name") or s.get("name")
+        for s in services
+    }
+
+    if "glance" not in existing_services:
+        services_create_cmds.append(["openstack", "service", "create", "--name", "glance", "--description", "OpenStack Image", "image"])
+
+    if "placement" not in existing_services:
+        services_create_cmds.append(["openstack", "service", "create", "--name", "placement", "--description", "Placement API", "placement"])
+
+    if "nova" not in existing_services:
+        services_create_cmds.append(["openstack", "service", "create", "--name", "nova", "--description", "OpenStack Compute", "compute"])
+
+    if "neutron" not in existing_services:
+        services_create_cmds.append(["openstack", "service", "create", "--name", "neutron", "--description", "OpenStack Networking", "network"])
+
+    if ("glance", "service", "admin") not in existing_assignments:
+        services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "glance", "admin"])
+
+    if ("placement", "service", "admin") not in existing_assignments:
+        services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "placement", "admin"])
+
+    if ("nova", "service", "admin") not in existing_assignments:
+        services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "nova", "admin"])
+
+    if ("neutron", "service", "admin") not in existing_assignments:
+        services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "neutron", "admin"])
 
     if install_cinder:
-        services_user_create_cmds.append(f"openstack user create --domain default --password {service_password} cinder --or-show")
-        services_create_cmds.append('openstack service show cinderv3 || openstack service create --name cinderv3 --description "OpenStack Block Storage" volumev3')
-        services_role_add_cmds.append("openstack role add --project service --user cinder admin || true")
 
-    services_user_create_full_cmd = " && ".join(services_user_create_cmds)
-    services_create_cmds_full_cmd = " && ".join(services_create_cmds)
-    services_role_add_cmds_full_cmd = " && ".join(services_role_add_cmds)
+        services_user_create_cmds.append(["openstack", "user", "create", "--domain", "default", "--password", service_password, "cinder", "--or-show"])
 
-    if not run_command(["bash", "-c", services_user_create_full_cmd], "Creating services users...",env=env) : return False
+        if "cinderv3" not in existing_services:
+            services_create_cmds.append(["openstack", "service", "create", "--name", "cinderv3", "--description", "OpenStack Block Storage", "volumev3"])
+
+        if ("cinder", "service", "admin") not in existing_assignments:
+            services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "cinder", "admin"])
+
+    for cmd in services_user_create_cmds:
+        if not run_command(cmd, "Creating services users...", env=env):
+            return False
     
-    if not run_command(["bash", "-c", services_create_cmds_full_cmd], "Creating services...", env=env) : return False
-
-    if not run_command(["bash", "-c", services_role_add_cmds_full_cmd], "Assigning services user roles...", env=env) : return False
+    for cmd in services_create_cmds:
+        if not run_command(cmd, "Creating services...", env=env):
+            return False
+        
+    for cmd in services_role_add_cmds:
+        if not run_command(cmd, "Assigning services user roles...", env=env):
+            return False
 
     return True
 
@@ -169,12 +240,11 @@ def create_services_endpoints(config, env):
     os_region_name = get(config, "openstack.REGION_NAME")
 
     def ep(service, interface, url):
-        return (
-            f"openstack endpoint create --region {os_region_name} "
-            f"{service} {interface} '{url}'"
-        )
+        return [
+            "openstack", "endpoint", "create", "--region", os_region_name, service, interface, url
+        ]
 
-    commands = [
+    endpoints_create_cmds = [
         ep("image", "public",   f"http://{ip_address}:9292"),
         ep("image", "internal", f"http://{ip_address}:9292"),
         ep("image", "admin",    f"http://{ip_address}:9292"),
@@ -194,15 +264,13 @@ def create_services_endpoints(config, env):
 
     if install_cinder:
         cinder_url = f"http://{ip_address}:8776/v3/%(project_id)s"
-        commands += [
+        endpoints_create_cmds += [
             ep("volumev3", "public",   cinder_url),
             ep("volumev3", "internal", cinder_url),
             ep("volumev3", "admin",    cinder_url),
         ]
 
-    full_cmd = " && ".join(commands)
-
-    if not run_command(["bash", "-c", full_cmd], "Creating services endpoints...", env=env) : return False
+    if not all(run_command(cmd, "Creating services endpoints...", env=env) for cmd in endpoints_create_cmds) : return False
 
     return True
 
