@@ -35,21 +35,15 @@ def run_commands(steps, message=None, env=None):
         spinner.start()
 
     for step in steps:
-
-        cmd = step[0]
-
-        kwargs = {}
-        if len(step) > 1 and isinstance(step[1], dict):
-            kwargs = step[1]
+        if isinstance(step[0], list):
+            cmd = step[0]
+            kwargs = step[1] if len(step) > 1 and isinstance(step[1], dict) else {}
+        else:
+            cmd = step
+            kwargs = {}
 
         ignore_errors = kwargs.get("ignore_errors", False)
-
-        ok = run_command(
-            cmd,
-            message="",
-            env=env,
-            ignore_errors=ignore_errors
-        )
+        ok = run_command(cmd, message="", env=env, ignore_errors=ignore_errors)
 
         if not ok and not ignore_errors:
             if spinner:
