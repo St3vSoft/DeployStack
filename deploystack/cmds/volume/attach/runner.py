@@ -10,7 +10,7 @@ def get_volume_id_from_name(volume_name:str ) -> str:
 
     volume_show_info_cmd = [
         "openstack", "volume", "show",
-        volume_name, "-f", "value", "-c", "ID"
+        volume_name, "-f", "value", "-c", "id"
     ]
 
     try:
