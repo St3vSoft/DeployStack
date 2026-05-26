@@ -29,18 +29,19 @@ def run_command_sync(command, env=None):
     except subprocess.CalledProcessError:
         return False
 
-def run_commands(steps: list[tuple], message: str = None, env=None) -> bool:
-    spinner = Spinner(message) if message else None
+def run_commands(steps: list[tuple], global_message: str = None, env=None) -> bool:
+    spinner = Spinner(global_message) if global_message else None
     if spinner:
         spinner.start()
 
     for step in steps:
         cmd = step[0]
-        kwargs = step[1] if len(step) > 1 else {}
+        message = step[1] if len(step) > 1 else ""
+        kwargs = step[2] if len(step) > 2 else {}
+
         ignore_errors = kwargs.get("ignore_errors", False)
 
-        # Esegui senza spinner interno (message=None)
-        ok = run_command(cmd, message="", env=env, ignore_errors=ignore_errors)
+        ok = run_command(cmd, message=message, env=env, ignore_errors=ignore_errors)
 
         if not ok and not ignore_errors:
             if spinner:
@@ -49,6 +50,7 @@ def run_commands(steps: list[tuple], message: str = None, env=None) -> bool:
 
     if spinner:
         spinner.stop("DONE", color="yellow", width=50)
+
     return True
 
 def run_command(cmd, message="", ignore_errors=False, ignore_exit_codes=None, retries=0, delay=1, env=None):
