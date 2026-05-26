@@ -29,7 +29,7 @@ def run_command_sync(command, env=None):
     except subprocess.CalledProcessError:
         return False
 
-def run_commands(steps: list[tuple], env=None) -> bool:
+def run_commands(steps: list[tuple], message:str = None, env=None) -> bool:
     for step in steps:
         cmd = step[0]
         message = step[1]
@@ -37,7 +37,7 @@ def run_commands(steps: list[tuple], env=None) -> bool:
 
         ignore_errors = kwargs.get("ignore_errors", False)
 
-        ok = run_command(cmd, message, env=env, ignore_errors=ignore_errors)
+        ok = run_command(cmd, message=message, env=env, ignore_errors=ignore_errors)
 
         if not ok and not ignore_errors:
             return False
