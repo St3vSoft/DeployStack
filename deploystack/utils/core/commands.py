@@ -138,7 +138,7 @@ def run_command(
             if spinner:
                 spinner.stop("ERROR", color="red", width=50)
 
-            print(f"\n{colors.RED}Command failed:{colors.RESET} {' '.join(cmd)}")
+            print(f"\n{colors.RED}Execution of: {' '.join(cmd)} returned exit code {returncode} {colors.RESET}")
             if output_lines:
                 print("\nLast output:")
                 print("\n".join(output_lines))
