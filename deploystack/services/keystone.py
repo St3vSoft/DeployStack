@@ -14,20 +14,20 @@ from ..utils.core import colors
 keystone_conf = "/etc/keystone/keystone.conf"
 
 def get_role_assignments(env=None):
-    r = run_command_output(["openstack", "role", "assignment", "list", "--names", "-f", "json"], False, env=env)
+    raw = run_command_output(
+        ["openstack", "role", "assignment", "list", "--names", "-f", "json"],
+        env=env
+    )
 
-    if r.returncode != 0:
-        raise RuntimeError(r.stderr)
-
-    return json.loads(r.stdout)
+    return json.loads(raw or "[]")
 
 def get_services(env=None):
-    r = run_command_output(["openstack", "service", "list", "-f", "json"], False, env=env)
+    raw = run_command_output(
+        ["openstack", "service", "list", "-f", "json"],
+        env=env
+    )
 
-    if r.returncode != 0:
-        raise RuntimeError(r.stderr)
-
-    return json.loads(r.stdout)
+    return json.loads(raw or "[]")
 
 def install_pkgs():
 
