@@ -58,7 +58,7 @@ def run_commands(steps: list, message: str = None, env=None) -> bool:
 def run_command(cmd, message="", ignore_errors=False, ignore_exit_codes=None, retries=0, delay=1, env=None):
     attempt = 0
     spinner = Spinner(message) if message else None
-    
+
     if spinner:
         spinner.start()
 
