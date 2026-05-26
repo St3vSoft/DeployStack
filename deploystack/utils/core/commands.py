@@ -29,19 +29,22 @@ def run_command_sync(command, env=None):
     except subprocess.CalledProcessError:
         return False
 
-def run_commands(steps: list[tuple], message: str = None, env=None) -> bool:
+def run_commands(steps: list, message: str = None, env=None) -> bool:
     spinner = Spinner(message) if message else None
     if spinner:
         spinner.start()
 
     for step in steps:
-        cmd = step[0]
-        msg = step[1] if len(step) > 1 else ""
-        kwargs = step[2] if len(step) > 2 and isinstance(step[2], dict) else {}
+        # Normalizza: accetta sia [cmd] che (cmd,) che (cmd, msg) che (cmd, msg, kwargs)
+        if isinstance(step[0], str):
+            # È una lista/cmd diretto: ["openstack", ...]
+            cmd, kwargs = step, {}
+        else:
+            cmd = step[0]
+            kwargs = step[1] if len(step) > 1 and isinstance(step[1], dict) else {}
 
         ignore_errors = kwargs.get("ignore_errors", False)
-
-        ok = run_command(cmd, message=msg, env=env, ignore_errors=ignore_errors)
+        ok = run_command(cmd, message="", env=env, ignore_errors=ignore_errors)
 
         if not ok and not ignore_errors:
             if spinner:
@@ -50,13 +53,12 @@ def run_commands(steps: list[tuple], message: str = None, env=None) -> bool:
 
     if spinner:
         spinner.stop("DONE", color="yellow", width=50)
-
     return True
 
 def run_command(cmd, message="", ignore_errors=False, ignore_exit_codes=None, retries=0, delay=1, env=None):
     attempt = 0
-    spinner = Spinner(message)
-
+    spinner = Spinner(message) if message else None
+    
     if spinner:
         spinner.start()
 
