@@ -55,7 +55,16 @@ def run_commands(steps, message=None, env=None):
 
     return True
 
-def run_command(cmd, message="", ignore_errors=False, ignore_exit_codes=None, retries=0, delay=1, env=None):
+def run_command(
+    cmd,
+    message="",
+    ignore_errors=False,
+    ignore_exit_codes=None,
+    retries=0,
+    delay=1,
+    env=None,
+    timeout=120
+):
     attempt = 0
     spinner = Spinner(message) if message else None
 
@@ -72,57 +81,79 @@ def run_command(cmd, message="", ignore_errors=False, ignore_exit_codes=None, re
                 env=env
             )
 
-            output_lines = []
-            for line in iter(process.stdout.readline, ''):
-                line = line.rstrip('\n')
-                if line:
-                    output_lines.append(line)
+            try:
+                output, _ = process.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                output, _ = process.communicate()
 
-            process.wait()
+                if attempt < retries:
+                    attempt += 1
+                    if spinner:
+                        spinner.stop("TIMEOUT RETRY", color="yellow", width=50)
+                    time.sleep(delay)
+                    if spinner:
+                        spinner.start()
+                    continue
+
+                if spinner:
+                    spinner.stop("TIMEOUT", color="red", width=50)
+
+                print(f"{colors.RED}Timeout running: {' '.join(cmd)}{colors.RESET}")
+                return False
+
             returncode = process.returncode
+            output_lines = output.splitlines() if output else []
 
             if ignore_exit_codes and returncode in ignore_exit_codes:
-                spinner.stop("WARNING", color="green", width=50)
+                if spinner:
+                    spinner.stop("WARNING", color="green", width=50)
                 return True
 
             if returncode == 0:
-                spinner.stop("DONE", color="yellow", width=50)
+                if spinner:
+                    spinner.stop("DONE", color="yellow", width=50)
                 return True
 
-            # Failed: retry?
+            # retry
             if attempt < retries:
+                attempt += 1
                 if spinner:
                     spinner.stop("RETRY", color="yellow", width=50)
-                    time.sleep(delay)
-                    attempt += 1
-                    spinner = Spinner(message)
+                time.sleep(delay)
+                if spinner:
                     spinner.start()
-                    continue
+                continue
 
-            # Print output only on error
+            # error output
             if ignore_errors:
                 if spinner:
                     spinner.stop("WARNING", color="green", width=50)
-                    print(f"{colors.GREEN}Command '{' '.join(cmd)}' failed with exit code {returncode} but ignored as non-critical{colors.RESET}")
-                    return True
-            else:
-                if spinner:
-                    spinner.stop("ERROR", color="red", width=50)
-                    print(f"\n{colors.RED}Execution of: '{' '.join(cmd)}' returned exit code {returncode}{colors.RESET}")
-                    if output_lines:
-                        print("\nCommand Last Output:")
-                        print("\n".join(output_lines))
-                    return False
+                print(
+                    f"{colors.GREEN}Command failed (ignored): "
+                    f"{' '.join(cmd)}{colors.RESET}"
+                )
+                return True
+
+            if spinner:
+                spinner.stop("ERROR", color="red", width=50)
+
+            print(f"\n{colors.RED}Command failed:{colors.RESET} {' '.join(cmd)}")
+            if output_lines:
+                print("\nLast output:")
+                print("\n".join(output_lines))
+
+            return False
 
         except Exception as e:
-                if spinner:
-                    spinner.stop("ERROR", color="red", width=50)
-                    print(f"{colors.RED}Exception running command: {e}{colors.RESET}")
-                    return False
+            if spinner:
+                spinner.stop("ERROR", color="red", width=50)
+            print(f"{colors.RED}Exception: {e}{colors.RESET}")
+            return False
 
     if spinner:
         spinner.stop("FAILED", color="red", width=50)
-        sys.exit(1)
+    return False
 
 def run_sync_command_with_retry(command, max_retries=3, interval=1):
     for attempt in range(max_retries):
