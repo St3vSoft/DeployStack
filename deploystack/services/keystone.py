@@ -114,13 +114,6 @@ def create_projects_and_demo_user(config, env):
 
     print()
 
-    if env:
-        for k, v in env.items():
-            if k.startswith("OS_"):
-                print(f"  {k} = {v}")
-    else:
-        print("  env is None!")
-
     demo_password = get(config, "passwords.DEMO_PASSWORD")
 
     assignments = get_role_assignments(env)
@@ -135,7 +128,7 @@ def create_projects_and_demo_user(config, env):
     ]
 
     create_demo_user_cmds = [
-        ["openstack", "project", "create", "--domain", "default", "--description", '"Demo Project"', "demo", "--or-show"],
+        ["openstack", "project", "create", "--domain", "default", "--description", "Demo Project", "demo", "--or-show"],
         ["openstack", "user", "create", "--domain", "default", "--password", demo_password, "demo", "--or-show"],
         ["openstack", "role", "create", "user", "--or-show"],
     ]
