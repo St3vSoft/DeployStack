@@ -212,12 +212,11 @@ def create_services_users(config, env):
         if ("cinder", "service", "admin") not in existing_assignments:
             services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "cinder", "admin"])
 
-
     if not run_commands(services_user_create_cmds, "Creating services users...", env=env) : return False
 
     if not run_commands(services_create_cmds, "Creating services...", env=env) : return False
 
-    if not run_commands(services_role_add_cmds, "Assigning services roles...", env=env) : return False
+    if not run_commands(services_role_add_cmds, "Assigning services users roles...", env=env) : return False
 
     return True
 

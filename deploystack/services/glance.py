@@ -12,7 +12,7 @@ from ..utils.core import colors
 
 glance_conf= "/etc/glance/glance-api.conf"
 
-cirros_image_url = "http://download.cirros-cloud.net/0.4.0/cirros-0.4.0-x86_64-disk.img"
+cirros_image_url = "http://download.cirros-cloud.net/0.6.3/cirros-0.6.3-x86_64-disk.img"
 
 def install_pkgs():
 
