@@ -12,37 +12,38 @@ def init_parser(subparsers):
         help="Create a new volume"
     )
 
-    group = parser.add_mutually_exclusive_group(required=True)
+    required_group = parser.add_mutually_exclusive_group(required=True)
+    source_group = parser.add_mutually_exclusive_group(required=False)
 
-    parser.add_argument(
+    required_group.add_argument(
         "--name",
         default=f"volume-{uuid.uuid4().hex[:8]}",
         help="The name of the volume to create"
     )
 
-    parser.add_argument(
+    required_group.add_argument(
         "--size",
         default=5,
         help="The size of the volume in GB (default: 5 GB)"
     )
 
-    group.add_argument(
+    source_group.add_argument(
         "--is-bootable",
         action="store_true",
         help="Mark the volume as bootable. Use this flag if the volume should be usable as a boot disk."
     )
 
-    group.add_argument(
+    source_group.add_argument(
         "--image",
         help="Optional Glance image ID or name to create the volume from."
     )
 
-    group.add_argument(
+    source_group.add_argument(
         "--backup",
         help="Optional Cinder Volume Backup ID or name to create the volume from."
     )
 
-    group.add_argument(
+    source_group.add_argument(
         "--snapshot",
         help="Optional Cinder Volume Snapshot ID or name to create the volume from."
     )
