@@ -12,7 +12,6 @@ def init_parser(subparsers):
         help="Create a new volume"
     )
 
-    required_group = parser.add_mutually_exclusive_group(required=True)
     source_group = parser.add_mutually_exclusive_group(required=False)
 
     parser.add_argument(
@@ -21,7 +20,7 @@ def init_parser(subparsers):
         help="The name of the volume to create"
     )
 
-    required_group.add_argument(
+    parser.add_argument(
         "--size",
         default=5,
         help="The size of the volume in GB (default: 5 GB)"
