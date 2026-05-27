@@ -2,6 +2,8 @@
 
 import os
 import json
+import requests
+import hashlib
 
 from ..utils.core.commands import run_command, run_command_output, os_run, os_run_output
 from ..utils.apt.apt import apt_install
@@ -13,6 +15,7 @@ from ..utils.core import colors
 glance_conf= "/etc/glance/glance-api.conf"
 
 cirros_image_url = "http://download.cirros-cloud.net/0.6.3/cirros-0.6.3-x86_64-disk.img"
+checksums_url = "http://download.cirros-cloud.net/0.6.3/SHA256SUMS"
 
 def install_pkgs():
 
@@ -77,35 +80,79 @@ def finalize(config):
 def upload_cirros_image(env):
 
     image_name = "cirros"
-    image_file_path = "/tmp/cirros-0.4.0-x86_64-disk.img"
+    filename = cirros_image_url.split("/")[-1]
+    image_file_path = f"/tmp/{filename}"
 
-    images_list_json = os_run_output(["openstack", "image", "list", "-f", "json"], env=env)
+    images_list_json = os_run_output(
+        ["openstack", "image", "list", "-f", "json"],
+        env=env
+    )
     images_list = json.loads(images_list_json)
 
-    cirros_image_exists = any(image.get("Name") == image_name for image in images_list)
+    cirros_image_exists = any(
+        image.get("Name") == image_name for image in images_list
+    )
 
-    if not cirros_image_exists:
-        print()
-        
-        if not run_command(["wget", "-O", image_file_path, cirros_image_url], "Downloading a Cirros image...", False, None, 5, 5) : return False
+    if cirros_image_exists:
+        return True
 
-        if not os.path.exists(image_file_path) or os.path.getsize(image_file_path) == 0:
-            print(f"\n{colors.RED}Invalid Cirros image download: missing or empty file ({image_file_path}){colors.RESET}")
-            return False
-        
-        if not os_run([
-            "openstack", "image", "create",
-            image_name,
-            "--file", image_file_path,
-            "--disk-format", "qcow2",
-            "--container-format", "bare",
-            "--public"
-            ] , f"Adding cirros image...", env=env) : return False
-        
-        os.remove(image_file_path)
+    print()
+
+    if not run_command(
+        ["wget", "-O", image_file_path, cirros_image_url],
+        "Downloading Cirros image...",
+        False, None, 5, 5
+    ):
+        return False
+
+    if not os.path.exists(image_file_path) or os.path.getsize(image_file_path) == 0:
+        print(f"{colors.RED}ERROR: Invalid Cirros image download (missing or empty file){colors.RESET}")
+        return False
+
+    sha256 = hashlib.sha256()
+
+    with open(image_file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha256.update(chunk)
+
+    calculated_hash = sha256.hexdigest()
+
+    checksums_text = requests.get(checksums_url).text
+    official_hash = None
+
+    for line in checksums_text.splitlines():
+        if filename in line:
+            official_hash = line.split()[0]
+            break
+
+    if official_hash is None:
+        print(f"{colors.RED}ERROR: Unable to retrieve official SHA256 checksum{colors.RESET}")
+        return False
+
+    # Compare hashes
+    if calculated_hash != official_hash:
+        print(
+            f"{colors.RED}ERROR: SHA256 checksum mismatch!\n"
+            f"Expected: {official_hash}\n"
+            f"Got:      {calculated_hash}\n"
+            f"The downloaded image may be corrupted or tampered with.{colors.RESET}"
+        )
+        return False
+
+    if not os_run([
+        "openstack", "image", "create",
+        image_name,
+        "--file", image_file_path,
+        "--disk-format", "qcow2",
+        "--container-format", "bare",
+        "--public"
+    ], "Adding Cirros image...", env=env):
+        return False
+
+    os.remove(image_file_path)
 
     return True
-    
+
 def run_setup_glance(config, env):
      
     if not install_pkgs(): return False 
