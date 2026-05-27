@@ -15,7 +15,7 @@ def init_parser(subparsers):
     required_group = parser.add_mutually_exclusive_group(required=True)
     source_group = parser.add_mutually_exclusive_group(required=False)
 
-    required_group.add_argument(
+    parser.add_argument(
         "--name",
         default=f"volume-{uuid.uuid4().hex[:8]}",
         help="The name of the volume to create"
