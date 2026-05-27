@@ -56,18 +56,29 @@ def create(
     volume_name: str,
     volume_size: int,
     is_bootable: bool,
-    image: str = None
+    image: str = None,
+    backup: str = None,
+    snapshot: str = None
 ) -> None:
 
-    mark_bootable_flag = is_bootable and not image
+    mark_bootable_flag = is_bootable and not image or backup or snapshot
 
-    if is_bootable and image:
+    has_source = image or backup or snapshot
+
+    if is_bootable and has_source:
         logger.warning(
-            f"{colors.YELLOW}The --is-bootable flag is redundant when creating a volume from an image; "
+            f"{colors.YELLOW}The --is-bootable flag is redundant when creating a volume from a source; "
             f"the volume will automatically be bootable.{colors.RESET}\n"
         )
 
-    print(f"Creating the volume '{volume_name}' ...\n")
+    if image:
+        print(f"Creating the volume '{volume_name}' from image '{image}'...\n")
+    elif backup:
+        print(f"Creating the volume '{volume_name}' from backup '{backup}'...\n")
+    elif snapshot:
+        print(f"Creating the volume '{volume_name}' from snapshot '{snapshot}'...\n")
+
+    
     volume_id = create_volume(volume_name, volume_size, image)
 
     if mark_bootable_flag:

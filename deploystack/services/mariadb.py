@@ -59,6 +59,7 @@ def create_services_databases(config):
     install_cinder = get(config, "optional_services.INSTALL_CINDER", "no") == "yes"
 
     databases = ["keystone", "glance", "placement", "nova_api", "nova_cell0", "nova", "neutron"]
+    
     if install_cinder:
         databases.append("cinder")
 

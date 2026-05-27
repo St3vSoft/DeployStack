@@ -164,6 +164,7 @@ def add_default_keypair(env):
         return True
 
     create_cmd = ["openstack", "keypair", "create", key_name, "--private-key", key_file]
+    
     if not os_run(create_cmd, "Creating default keypair...", env=env) : return False
 
     os.chmod(key_file, stat.S_IRUSR | stat.S_IWUSR)
