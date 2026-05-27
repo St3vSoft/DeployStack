@@ -21,17 +21,15 @@ def mark_as_bootable(id: str):
             sys.exit(1)
     
 
-def create_volume(name: str, size: int, image: str = None) -> str:
-    """
-    Create a volume with or without an image. Returns the volume ID as string.
-    """
+def create_volume(name: str, size: int, source_type: str = None, source_name_or_id: str = None) -> str:
+
     size_str = str(size)
 
-    if image:
+    if source_type:
         cmd = [
             "openstack", "volume", "create",
             "--size", size_str,
-            "--image", image,
+            f"--{source_type}", source_name_or_id,
             name,
             "-f", "value", "-c", "id"
         ]
@@ -61,28 +59,43 @@ def create(
     snapshot: str = None
 ) -> None:
 
-    mark_bootable_flag = is_bootable and not image or backup or snapshot
-
-    has_source = image or backup or snapshot
-
-    if is_bootable and has_source:
-        logger.warning(
-            f"{colors.YELLOW}The --is-bootable flag is redundant when creating a volume from a source; "
-            f"the volume will automatically be bootable.{colors.RESET}\n"
-        )
+    source_type = None
+    source_value = None
 
     if image:
-        print(f"Creating the volume '{volume_name}' from image '{image}'...\n")
+        source_type = "image"
+        source_value = image
     elif backup:
-        print(f"Creating the volume '{volume_name}' from backup '{backup}'...\n")
+        source_type = "backup"
+        source_value = backup
     elif snapshot:
-        print(f"Creating the volume '{volume_name}' from snapshot '{snapshot}'...\n")
+        source_type = "snapshot"
+        source_value = snapshot
 
-    
-    volume_id = create_volume(volume_name, volume_size, image)
+    mark_bootable_flag = (
+        is_bootable and source_type is not None
+    )
+
+    if source_type:
+        print(
+            f"Creating volume '{volume_name}' "
+            f"from {source_type} '{source_value}'...\n"
+        )
+    else:
+        print(f"Creating empty volume '{volume_name}'...\n")
+
+    volume_id = create_volume(
+        volume_name,
+        volume_size,
+        source_type,
+        source_value
+    )
 
     if mark_bootable_flag:
         print("Marking volume as bootable ...\n")
         mark_as_bootable(volume_id)
 
-    print(f"{colors.GREEN}Volume '{volume_name}' (ID: {volume_id}) successfully created!{colors.RESET}")
+    print(
+        f"{colors.GREEN}Volume '{volume_name}' "
+        f"(ID: {volume_id}) successfully created!{colors.RESET}"
+    )
