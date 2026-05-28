@@ -1,4 +1,4 @@
-# Configure the Networking service (Neutron)
+# Configure the Networking service (Neutron) (Controller Node)
 
 import os
 

@@ -2,11 +2,6 @@
 
 import os
 import re
-import subprocess
-import sys
-
-import pwd
-import grp
 
 from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install, apt_update

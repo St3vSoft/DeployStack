@@ -6,23 +6,7 @@ from ....utils.core import colors
 
 from ...shell import logger, is_uuid
 
-from ..attach.runner import get_volume_id_from_name
-
-def get_instance_id_from_name(instance_name:str ) -> str:
-
-    instance_show_info_cmd = [
-        "openstack", "server", "show",
-        instance_name, "-f", "value", "-c", "id"
-    ]
-
-    try:
-        result = subprocess.run(instance_show_info_cmd, capture_output=True, text=True, check=True)
-
-        volume_id = result.stdout.strip()
-        return volume_id
-    except subprocess.CalledProcessError as e:
-        logger.error(f"{colors.RED}Error while trying to list instance info: {e}\n{e.stderr}{colors.RESET}")
-        sys.exit(1)
+from ..helpers import get_volume_id_from_name, get_instance_id_from_name
 
 def volume_already_detached(instance: str, volume: str) -> bool:
     cmd = [
@@ -89,9 +73,6 @@ def reset_volume_state(volume: str):
         sys.exit(1)
 
 def mark_volume_deleted(volume_id: str, instance_id: str):
-    """
-    Marks the volume as deleted in the Nova database for a given instance.
-    """
 
     cmd = [
         "mysql", "-u", "root",
@@ -134,5 +115,6 @@ def detach(
 
     mark_volume_deleted(volume_id, instance_id)
 
-    print(f"{colors.GREEN}Volume '{volume}' successfully detached from {instance} instance{colors.RESET}")
+    print(f"{colors.GREEN}Volume '{volume}' "
+          f"(ID: {volume_id}) successfully detached from '{instance}' (ID: {instance_id}) instance{colors.RESET}")
 

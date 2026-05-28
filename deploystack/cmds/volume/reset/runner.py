@@ -48,4 +48,7 @@ def reset(
        print(f"Resetting volume '{volume_id}' status ...\n")
        reset_volume_state(volume_id)
 
-       print(f"{colors.GREEN}Status successfully resetted to '{volume}' volume{colors.RESET}")
+       print(
+            f"{colors.GREEN}Volume '{volume}' "
+            f"(ID: {volume_id}) status successfully resetted!{colors.RESET}"
+        )

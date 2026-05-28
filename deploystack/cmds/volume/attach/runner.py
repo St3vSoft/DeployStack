@@ -6,21 +6,7 @@ from ....utils.core import colors
 
 from ...shell import logger, is_uuid
 
-def get_volume_id_from_name(volume_name:str ) -> str:
-
-    volume_show_info_cmd = [
-        "openstack", "volume", "show",
-        volume_name, "-f", "value", "-c", "id"
-    ]
-
-    try:
-        result = subprocess.run(volume_show_info_cmd, capture_output=True, text=True, check=True)
-
-        volume_id = result.stdout.strip()
-        return volume_id
-    except subprocess.CalledProcessError as e:
-        logger.error(f"{colors.RED}Error while trying to list volume info: {e}\n{e.stderr}{colors.RESET}")
-        sys.exit(1)
+from ..helpers import get_volume_id_from_name, get_instance_id_from_name
 
 def volume_already_attached(instance: str, volume: str) -> bool:
     cmd = [
@@ -67,6 +53,9 @@ def attach(
     instance: str
 ):
     
+    volume_id = volume if is_uuid(volume) else get_volume_id_from_name(volume)
+    instance_id = instance if is_uuid(instance) else get_instance_id_from_name(instance)
+    
     if volume_already_attached(instance, volume):
         logger.warning(
             f"{colors.YELLOW}Volume '{volume}' is already attached to instance '{instance}'. No action will be taken.{colors.RESET}"
@@ -77,5 +66,6 @@ def attach(
 
     attach_volume(volume, instance)
 
-    print(f"{colors.GREEN}Volume '{volume}' successfully attached to '{instance}' Instance{colors.RESET}")
+    print(f"{colors.GREEN}Volume '{volume}' "
+        f"(ID: {volume_id}) successfully attached from '{instance}' (ID: {instance_id}) instance{colors.RESET}")
 

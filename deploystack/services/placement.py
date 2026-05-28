@@ -53,9 +53,9 @@ def conf_placement(config):
 
 def finalize(config):
 
-    ip_address = get(config, "network.HOST_IP")
-     
     print()
+    
+    ip_address = get(config, "network.HOST_IP")    
 
     placement_service = []
 
