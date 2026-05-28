@@ -5,6 +5,7 @@ import subprocess
 import time
 import sys
 import itertools
+import termios
 
 from tqdm import tqdm
 
@@ -32,33 +33,49 @@ def generate_temp_filename(os_name: str, version: str, arch: str, url: str, temp
     return os_module.path.join(temp_dir, filename)
 
 def download_image(url: str, output_path: str):
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
 
-    total_size = int(response.headers.get("content-length", 0))
-    chunk_size = 1024 * 1024  # 1 MB
-    downloaded = 0
+    fd = sys.stdin.fileno()
+    old_term = termios.tcgetattr(fd)
 
-    spinner = itertools.cycle(["|", "/", "-", "\\"])
+    new_term = termios.tcgetattr(fd)
+    new_term[3] &= ~termios.ECHO  # disabilita echo input
 
-    with open(output_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=chunk_size):
-            if chunk:
-                f.write(chunk)
-                downloaded += len(chunk)
-                percent = int(downloaded / total_size * 100)
-                spin_char = next(spinner)
+    try:
+        termios.tcsetattr(fd, termios.TCSADRAIN, new_term)
 
-                sys.stdout.write(
-                    f"\rDownloading {os_module.path.basename(output_path)}: {percent}% {spin_char}"
-                )
-                sys.stdout.flush()
-                time.sleep(0.1)
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
 
-    line = f"Downloading {os_module.path.basename(output_path)}: 100%"
+        total_size = int(response.headers.get("content-length", 0))
+        chunk_size = 1024 * 1024
+        downloaded = 0
 
-    sys.stdout.write("\r" + line + " " * 10 + "\n")
-    sys.stdout.flush()
+        spinner = itertools.cycle(["|", "/", "-", "\\"])
+
+        with open(output_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=chunk_size):
+
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
+
+                    percent = int(downloaded / total_size * 100)
+                    spin_char = next(spinner)
+
+                    sys.stdout.write(
+                        f"\rDownloading {os_module.path.basename(output_path)}: {percent}% {spin_char}"
+                    )
+
+                    sys.stdout.flush()
+                    time.sleep(0.1)
+
+        line = f"Downloading {os_module.path.basename(output_path)}: 100%"
+
+        sys.stdout.write("\r" + line + " " * 10 + "\n")
+        sys.stdout.flush()
+
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_term)
 
 def image_already_exists(image_name) -> bool:
 

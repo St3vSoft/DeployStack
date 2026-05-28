@@ -5,7 +5,7 @@ import json
 import requests
 import hashlib
 
-from ..utils.core.commands import run_command, run_command_output, os_run, os_run_output
+from ..utils.core.commands import run_command, os_run, os_run_output
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
