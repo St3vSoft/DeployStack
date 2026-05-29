@@ -137,7 +137,7 @@ def create(
     )
 
     if mark_bootable_flag:
-        print("\nMarking volume as bootable ...\n")
+        print("\nMarking volume as bootable ...")
         mark_as_bootable(volume_id, timeout)
 
     print(
