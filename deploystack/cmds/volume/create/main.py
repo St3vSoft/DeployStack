@@ -26,7 +26,7 @@ def init_parser(subparsers):
         help="The size of the volume in GB (default: 5 GB)"
     )
 
-    source_group.add_argument(
+    parser.add_argument(
         "--is-bootable",
         action="store_true",
         help="Mark the volume as bootable. Use this flag if the volume should be usable as a boot disk."
