@@ -17,6 +17,11 @@ def wait_for_volume(volume_name, timeout=300):
         print(f"\rWaiting for volume '{volume_name}' to become available: {status}\033[K", end="")
         if status.lower() == "available":
             break
+        elif status.lower() == "error":
+            print(f"\n{colors.RED}Volume '{volume_name}' is in ERROR state! "
+                f"Check the Cinder logs on the controller or run 'openstack volume show {volume_name}' for details.{colors.RESET}")
+            sys.exit(1)
+
         if time.time() - start > timeout:
             raise TimeoutError(f"Volume {volume_name} did not become available in {timeout} seconds")
         time.sleep(5)
