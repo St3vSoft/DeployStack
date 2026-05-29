@@ -52,7 +52,7 @@ def init_parser(subparsers):
         default=300,
         dest="timeout",
         type=int,
-        help="Maximum time in seconds to wait for the volume to become ACTIVE in OpenStack (default: 300s)"
+        help="Maximum time in seconds to wait for the volume to become available in OpenStack (default: 300s)"
     )
 
 def create(parser, args) -> None:

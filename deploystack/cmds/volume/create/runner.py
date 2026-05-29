@@ -14,11 +14,11 @@ def wait_for_volume(volume_name, timeout=300):
             capture_output=True, text=True
         )
         status = result.stdout.strip()
-        print(f"\rWaiting for volume '{volume_name}' to become active: {status}", end="")
-        if status.lower() == "active":
+        print(f"\rWaiting for volume '{volume_name}' to become available: {status}", end="")
+        if status.lower() == "available":
             break
         if time.time() - start > timeout:
-            raise TimeoutError(f"Volume {volume_name} did not become active in {timeout} seconds")
+            raise TimeoutError(f"Volume {volume_name} did not become available in {timeout} seconds")
         time.sleep(5)
     print()
 
