@@ -347,8 +347,6 @@ def wait_for_active(server_id: str, timeout: int = 100):
             "-c", "status"
         ).strip().upper()
 
-        print(f"Current status: {status}")
-
         if status == "ACTIVE":
             return
 
