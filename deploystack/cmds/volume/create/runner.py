@@ -14,7 +14,7 @@ def wait_for_volume(volume_name, timeout=300):
             capture_output=True, text=True
         )
         status = result.stdout.strip()
-        print(f"\rWaiting for volume '{volume_name}' to become available: {status}", end="")
+        print(f"\rWaiting for volume '{volume_name}' to become available: {status}\033[K", end="")
         if status.lower() == "available":
             break
         if time.time() - start > timeout:
@@ -139,6 +139,6 @@ def create(
         mark_as_bootable(volume_id, timeout)
 
     print(
-        f"{colors.GREEN}Volume '{volume_name}' "
+        f"{colors.GREEN}\nVolume '{volume_name}' "
         f"(ID: {volume_id}) successfully created!{colors.RESET}"
     )
