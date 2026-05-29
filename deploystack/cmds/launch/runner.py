@@ -351,14 +351,14 @@ def wait_for_active(server_id: str, timeout: int = 100):
             return
 
         if status == "ERROR":
-            logger.error(f"Server {server_id} is in ERROR state")
+            logger.error(f"{colors.RED}Server {server_id} is in ERROR state{colors.RESET}\n")
             sys.exit(1)
 
         time.sleep(5)
 
     logger.error(
-        f"Timeout exceeded ({timeout}s). "
-        f"Server {server_id} did not become ACTIVE."
+        f"{colors.RED}Timeout exceeded ({timeout}s). "
+        f"Server {server_id} did not become ACTIVE.{colors.RESET}\n"
     )
     sys.exit(1)
 
