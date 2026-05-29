@@ -72,9 +72,7 @@ def create(
         source_type = "snapshot"
         source_value = snapshot
 
-    mark_bootable_flag = (
-        is_bootable and source_type is not None
-    )
+    mark_bootable_flag = is_bootable
 
     if source_type:
         print(
