@@ -47,6 +47,14 @@ def init_parser(subparsers):
         help="Optional Cinder Volume Snapshot ID or name to create the volume from."
     )
 
+    parser.add_argument(
+        "--timeout",
+        default=300,
+        dest="timeout",
+        type=int,
+        help="Maximum time in seconds to wait for the volume to become ACTIVE in OpenStack (default: 300s)"
+    )
+
 def create(parser, args) -> None:
 
     if args.command is None:
@@ -65,7 +73,8 @@ def create(parser, args) -> None:
         args.is_bootable,
         args.image,
         args.backup,
-        args.snapshot
+        args.snapshot,
+        args.timeout
     )
 
 

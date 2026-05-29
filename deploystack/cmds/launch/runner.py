@@ -370,6 +370,7 @@ def print_summary(name: str, fip: str, key_path: str | None, is_password: bool,
         else:
             ssh_cmd = f"ssh {username}@{ssh_target}"
             print(f"You can connect to the instance with:\n  {ssh_cmd}\n")
+
             logger.info(f"{colors.YELLOW}Specify your private key with -i if password auth is disabled.{colors.RESET}\n")
 
     elif os_type == "windows":
