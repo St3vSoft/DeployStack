@@ -18,7 +18,7 @@ def wait_for_volume(volume_name, timeout=300):
         if status.lower() == "available":
             break
         elif status.lower() == "error":
-            print(f"\n{colors.RED}Volume '{volume_name}' is in ERROR state! "
+            print(f"\n\n{colors.RED}Volume '{volume_name}' is in ERROR state! "
                 f"Check the Cinder logs on the controller or run 'openstack volume show {volume_name}' for details.{colors.RESET}")
             sys.exit(1)
 
