@@ -35,7 +35,6 @@ def mark_as_bootable(volume_id: str, timeout: int = 300):
 
     try:
         subprocess.run(set_bootable_cmd, capture_output=True, text=True, check=True)
-        logger.info(f"{colors.GREEN}Volume {volume_id} marked as bootable command sent.{colors.RESET}")
     except subprocess.CalledProcessError as e:
         logger.error(f"{colors.RED}Error sending bootable command: {e}{colors.RESET}")
         sys.exit(1)
@@ -51,8 +50,6 @@ def mark_as_bootable(volume_id: str, timeout: int = 300):
             bootable_status, vol_status = output
         else:
             bootable_status, vol_status = "False", "unknown"
-
-        print(f"\rWaiting for volume '{volume_id}' to be bootable: {bootable_status} (status: {vol_status})", end="")
 
         if bootable_status.lower() == "true" and vol_status.lower() == "available":
             break
@@ -140,7 +137,7 @@ def create(
     )
 
     if mark_bootable_flag:
-        print("Marking volume as bootable ...\n")
+        print("\nMarking volume as bootable ...\n")
         mark_as_bootable(volume_id, timeout)
 
     print(
