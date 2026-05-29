@@ -244,7 +244,6 @@ def create_server(name: str, image_id: str, flavor_id: str,
             "--flavor",   flavor_id,
             "--network",  network_id,
             "--key-name", keypair_name,
-            "--wait",
             "-f", "value", "-c", "id",
             name
         ])
@@ -263,7 +262,7 @@ def create_server(name: str, image_id: str, flavor_id: str,
         for line in out.stdout.splitlines():
             instance_id, instance_name = line.split(None, 1)
             if name in instance_name:
-                 delete_instance(instance_id)
+                delete_instance(instance_id)
 
         logger.error(f"{colors.RED}OpenStack server creation command failed: {e}{colors.RESET}\n\nFor more information about the error, please see the log: /var/log/nova/nova-compute.log")
         sys.exit(1) 
@@ -296,7 +295,6 @@ def create_server_with_password(
             "--key-name",     keypair_name,
             "--config-drive", "true",
             "--user-data",    config_drive_file_path,
-            "--wait",
             "-f", "value", "-c", "id",
             name
         ])
@@ -332,23 +330,39 @@ def allocate_floating_ip(external_net: str = EXTERNAL_NET) -> str:
         sys.exit(1)
     return fip
 
-
 def attach_floating_ip(server_id: str, fip: str) -> None:
     print(f"Attaching floating IP {fip} to instance {server_id} ...\n")
     _os("server", "add", "floating", "ip", server_id, fip)
 
-def wait_for_active(server_id: str, timeout: int = 1000) -> None:
+def wait_for_active(server_id: str, timeout: int = 100):
+
     deadline = time.time() + timeout
+
     while time.time() < deadline:
-        status = _os_value("server", "show", server_id, "-c", "status")
+
+        status = _os_value(
+            "server", "show",
+            server_id,
+            "-f", "value",
+            "-c", "status"
+        ).strip().upper()
+
+        print(f"Current status: {status}")
+
         if status == "ACTIVE":
             return
+
         if status == "ERROR":
             logger.error(f"Server {server_id} is in ERROR state")
             sys.exit(1)
-        time.sleep(5)
-    logger.warning(f"Server {server_id} not ACTIVE after {timeout}s")
 
+        time.sleep(5)
+
+    logger.error(
+        f"Timeout exceeded ({timeout}s). "
+        f"Server {server_id} did not become ACTIVE."
+    )
+    sys.exit(1)
 
 def print_summary(name: str, fip: str, key_path: str | None, is_password: bool,
                   username: str, password: str, os_type: str, ip_address: str = None) -> None:
