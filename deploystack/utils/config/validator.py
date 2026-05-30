@@ -138,8 +138,6 @@ def validate_neutron(config) -> bool:
     tenant_type = get(config, "neutron.tenant_network.TYPE").lower()
     vni_range = get(config, "neutron.tenant_network.VNI_RANGE").lower()
 
-    ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE").lower()
-
     networks = get_provider_networks(config)
 
     for net in networks:
@@ -152,7 +150,9 @@ def validate_neutron(config) -> bool:
         print(f"{colors.RED}Error: Invalid network type '{tenant_type}' specified in field neutron.tenant_network.TYPE{colors.RESET}")
         ok = False
 
-    if neutron_driver == "ovn":
+    if neutron_driver == "ovn":  
+        ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE").lower()
+
         if not tenant_type and not vni_range:
             print(f"{colors.RED}Error: neutron.tenant_network.TYPE or VNI_RANGE not set{colors.RESET}")
             ok = False
