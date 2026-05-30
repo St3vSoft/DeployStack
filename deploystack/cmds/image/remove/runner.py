@@ -29,7 +29,7 @@ def get_image_name_from_uuid(uuid) -> str:
 def get_image_id_from_name(name) -> str:
 
     get_image_id_cmd = [
-        "openstack", "image", "show", name, "-f", "value", "-c", "ID"
+        "openstack", "image", "show", name, "-f", "value", "-c", "id"
     ]
 
     try:
@@ -85,7 +85,7 @@ def remove_glance_image(identifier: str, timeout: int = 30) -> bool:
 
         try:
             result = subprocess.run(
-                ["openstack", "image", "list", "-f", "value", "-c", "ID"],
+                ["openstack", "image", "list", "-f", "value", "-c", "id"],
                 capture_output=True,
                 text=True,
                 check=True
