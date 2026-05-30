@@ -15,7 +15,6 @@ from ...templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES
 
 neutron_conf = "/etc/neutron/neutron.conf"
 conf_ml2 = "/etc/neutron/plugins/ml2/ml2_conf.ini"
-conf_metadata_agent = "/etc/neutron/metadata_agent.ini"
 conf_nova = "/etc/nova/nova.conf"
 
 def install_pkgs():
@@ -226,6 +225,8 @@ def conf_ovn_neutron(config):
     tenant_network_vni_range = get(config, "neutron.tenant_network.VNI_RANGE", "1:1000")
 
     ovn_l3_scheduler = get(config, "neutron.ovn.OVN_L3_SCHEDULER", "leastloaded").lower()
+
+    service_password = get(config, "passwords.SERVICE_PASSWORD")
     
     provider_networks = get(config, "neutron.provider_networks", [])
 
@@ -525,7 +526,7 @@ def create_ovn_networks(config, env):
     if create_ovn_bridges:
         router_gw_ip = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json"], env=env))
         gw_ip = router_gw_ip["external_gateway_info"]["external_fixed_ips"][0]["ip_address"]
-        run_command_sync(["ip", "route", "replace", "10.0.0.0/24", "via", gw_ip, "dev", ovn_public_bridge])
+        #run_command_sync(["ip", "route", "replace", "10.0.0.0/24", "via", gw_ip, "dev", ovn_public_bridge])
 
     if not run_command([
         "neutron-ovn-db-sync-util",

@@ -19,7 +19,9 @@ iface {public_bridge} inet static
     pre-up ip link set {public_iface} up
     post-down ovs-vsctl --if-exists del-br {public_bridge}
 
+# IF_INTERNAL_BRIDGE_BEGIN
 auto {internal_bridge}
 iface {internal_bridge} inet manual
     pre-up ovs-vsctl --may-exist add-br {internal_bridge}
     up ip link set {internal_bridge} up
+# IF_INTERNAL_BRIDGE_END

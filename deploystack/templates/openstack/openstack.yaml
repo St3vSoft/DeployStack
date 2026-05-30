@@ -48,7 +48,7 @@ neutron:
 
   # Tenant network configuration (common to OVS and OVN)
   tenant_network:
-    TYPE: "geneve"      # OVN: geneve | OVS: flat, vlan
+    TYPE: "geneve"      # OVN: geneve, vxlan | OVS: flat, vlan, vxlan
     VNI_RANGE: "1:65536"
 
   # Configure provider networks

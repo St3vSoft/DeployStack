@@ -21,7 +21,9 @@ iface {public_bridge} inet manual
     pre-up ovs-vsctl --may-exist add-port {public_bridge} {public_iface}
     pre-up ip link set {public_iface} up
 
+# IF_INTERNAL_BRIDGE_BEGIN
 auto {internal_bridge}
 iface {internal_bridge} inet manual
     pre-up ovs-vsctl --may-exist add-br {internal_bridge}
     up ip link set {internal_bridge} up
+# IF_INTERNAL_BRIDGE_END

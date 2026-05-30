@@ -17,7 +17,6 @@ neutron_conf="/etc/neutron/neutron.conf"
 conf_ml2="/etc/neutron/plugins/ml2/ml2_conf.ini"
 conf_openvswitch="/etc/neutron/plugins/ml2/openvswitch_agent.ini"
 conf_dhcp_agent="/etc/neutron/dhcp_agent.ini"
-conf_metadata_agent="/etc/neutron/metadata_agent.ini"
 conf_l3_agent="/etc/neutron/l3_agent.ini"
 conf_nova="/etc/nova/nova.conf"
 
@@ -42,6 +41,9 @@ def conf_openvswitch_bridges(config):
       
     INTERFACES_FILE = "/etc/network/interfaces.d/openvswitch"
 
+    tenant_network_type = get(config, "neutron.tenant_network.TYPE")
+    use_internal_bridge = tenant_network_type != "vxlan"
+
     public_iface = get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
     public_bridge = get(config, "neutron.ovs.PUBLIC_BRIDGE")
     internal_bridge = get(config, "neutron.ovs.INTERNAL_BRIDGE")
@@ -55,15 +57,23 @@ def conf_openvswitch_bridges(config):
 
     management_iface = get(config, "network.HOST_MGMT_INTERFACE")
 
+    start_tag = "IF_INTERNAL_BRIDGE_BEGIN"
+    end_tag = "IF_INTERNAL_BRIDGE_END"
+
     is_dual_nic = (public_iface != management_iface)
 
-    for iface in [public_iface, public_bridge, internal_bridge]:
+    bridges_to_manage = [public_bridge]
+
+    if tenant_network_type != "vxlan":
+        bridges_to_manage.append(internal_bridge)
+
+    for iface in [public_iface] + bridges_to_manage:
         if iface_exists(iface):
-            if iface != internal_bridge:
+            if iface != management_iface:
                 run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
-    for bridge, port in [(public_bridge, public_iface), (internal_bridge, None)]:
+    for bridge, port in [(public_bridge, public_iface)] + ([(internal_bridge, None)] if tenant_network_type != "vxlan" else []):
         if iface_exists(bridge):
             if port:
                 run_command(["ovs-vsctl", "--if-exists", "del-port", bridge, port], f"Deleting port {port} from {bridge}", ignore_errors=True)
@@ -71,42 +81,30 @@ def conf_openvswitch_bridges(config):
 
     print()
 
-    with open(OVS_BRIDGES_INTERFACES, "r") as f:
-        template = f.read()
-
     if isinstance(subnet_dns, list):
         subnet_dns = " ".join(subnet_dns)
 
-    if is_dual_nic:
+    template_file = OVS_DUAL_NIC_BRIDGES_INTERFACES if is_dual_nic else OVS_BRIDGES_INTERFACES
 
-        with open(OVS_DUAL_NIC_BRIDGES_INTERFACES, "r") as f:
-            template = f.read()
+    with open(template_file, "r") as f:
+        template = f.read()
 
-        bridges_interfaces_content = template.format(
-            management_iface=management_iface,
-            ip_address=ip_address,
-            netmask=ip_address_netmask,
-            gateway=ip_address_gateway,
-            subnet_address_dns_servers=subnet_dns,
+    if not use_internal_bridge:        
+        if start_tag in template and end_tag in template:
+            start = template.index(start_tag)
+            end = template.index(end_tag) + len(end_tag)
+            template = template[:start] + template[end:]
 
-            public_iface=public_iface,
-            public_bridge=public_bridge,
-            internal_bridge=internal_bridge
-        )
-    else:
-        with open(OVS_BRIDGES_INTERFACES, "r") as f:
-            template = f.read()
-
-        bridges_interfaces_content = template.format(
-            ip_address=ip_address,
-            ip_address_netmask=ip_address_netmask,
-            subnet_address_gateway=subnet_gateway,
-            subnet_address_dns_servers=subnet_dns,
-
-            public_iface=public_iface,
-            public_bridge=public_bridge,
-            internal_bridge=internal_bridge
-        )
+    bridges_interfaces_content = template.format(
+        management_iface=management_iface if is_dual_nic else "",
+        ip_address=ip_address,
+        netmask=ip_address_netmask,
+        gateway=ip_address_gateway if is_dual_nic else subnet_gateway,
+        subnet_address_dns_servers=subnet_dns,
+        public_iface=public_iface,
+        public_bridge=public_bridge,
+        internal_bridge=internal_bridge if use_internal_bridge else ""
+    )
 
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)
@@ -124,7 +122,12 @@ def conf_openvswitch_bridges(config):
                 os.remove(backup_path)
             shutil.move(full_path, backup_path)
 
-    for bridge, port in [(public_bridge, public_iface), (internal_bridge, None)]:
+    bridges_to_add = [(public_bridge, public_iface)]
+
+    if tenant_network_type != "vxlan":
+        bridges_to_add.append((internal_bridge, None))
+
+    for bridge, port in bridges_to_add:
         if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {bridge}"):
             return False
         if port:
@@ -155,21 +158,19 @@ def conf_openvswitch_bridges(config):
 
 def conf_neutron_ovs(config):
 
-    service_password = get(config, "passwords.SERVICE_PASSWORD")
-
-    ip_address = get(config, "network.HOST_IP")
-
-    public_bridge = get(config, "neutron.ovs.PUBLIC_BRIDGE")
-    internal_bridge = get(config, "neutron.ovs.INTERNAL_BRIDGE")
-
     tenant_network_type = get(config, "neutron.tenant_network.TYPE")
+    tenant_network_vni_range = get(config, "neutron.tenant_network.VNI_RANGE")
 
     provider_networks = get(config, "neutron.provider_networks", [])
 
     flat_networks  = [n["name"] for n in provider_networks if n["type"] == "flat"]
     vlan_networks  = [n["name"] for n in provider_networks if n["type"] == "vlan"]
 
-    bridge_mappings = ",".join(f'{n["name"]}:{n["bridge"]}' for n in provider_networks)
+    bridge_mappings = ",".join(
+        f'{n["name"]}:{n["bridge"]}'
+        for n in provider_networks
+        if n.get("name") and n.get("bridge")
+    )
 
     flat_networks_str = ",".join(flat_networks)
 
@@ -177,10 +178,13 @@ def conf_neutron_ovs(config):
 
     create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes" 
 
-    set_conf_option(conf_ml2, "ml2", "type_drivers", "flat,vlan,local")
+    set_conf_option(conf_ml2, "ml2", "type_drivers", "flat,vlan,vxlan,local")
     
     if create_ovs_bridges:
         set_conf_option(conf_ml2, "ml2", "tenant_network_types", tenant_network_type)
+
+        if tenant_network_type == "vxlan":
+            set_conf_option(conf_ml2, "ml2_type_vxlan", "vni_ranges", tenant_network_vni_range)
     else:
         set_conf_option(conf_ml2, "ml2", "tenant_network_types", "local")
 
@@ -206,9 +210,6 @@ def conf_neutron_ovs(config):
     set_conf_option(conf_dhcp_agent, "DEFAULT", "interface_driver", "neutron.agent.linux.interface.OVSInterfaceDriver")
     set_conf_option(conf_dhcp_agent, "DEFAULT", "dhcp_driver", "neutron.agent.linux.dhcp.Dnsmasq")
     set_conf_option(conf_dhcp_agent, "DEFAULT", "enable_isolated_metadata", "true")
-
-    set_conf_option(conf_metadata_agent, "DEFAULT", "nova_metadata_host", ip_address)
-    set_conf_option(conf_metadata_agent, "DEFAULT", "metadata_proxy_shared_secret", service_password)
 
     set_conf_option(conf_l3_agent, "DEFAULT", "interface_driver", "neutron.agent.linux.interface.OVSInterfaceDriver")
     set_conf_option(conf_l3_agent, "DEFAULT", "external_network_bridge", "")
@@ -267,6 +268,8 @@ def create_ovs_networks(config, env):
 
     create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes" 
 
+    tenant_network_type = get(config, "neutron.tenant_network.TYPE")
+
     dns_args = []
     for dns in public_subnet_dns_servers:
         dns_args.extend(["--dns-nameserver", dns])
@@ -289,14 +292,24 @@ def create_ovs_networks(config, env):
 
     create_flat_internal_network_cmd = ["openstack", "network", "create", "--share",
                 "--provider-physical-network", "internal",
-                "--provider-network-type", "flat", "internal"]
+                "internal"]
+    
+    create_vxlan_internal_network_cmd = [
+        "openstack", "network", "create",
+        "--share",
+        "internal"
+    ]
 
     create_public_network_cmd = []
     create_internal_network_cmd = []
 
     if create_ovs_bridges:
         create_public_network_cmd = create_flat_public_network_cmd
-        create_internal_network_cmd = create_flat_internal_network_cmd
+
+        if "vxlan" in tenant_network_type:
+            create_internal_network_cmd = create_vxlan_internal_network_cmd
+        else:
+             create_internal_network_cmd = create_flat_internal_network_cmd      
     else:
         create_public_network_cmd = ["openstack", "network", "create", "--share", "public"] 
         create_internal_network_cmd = ["openstack", "network", "create", "internal"]
