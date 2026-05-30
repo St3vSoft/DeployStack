@@ -198,14 +198,8 @@ def conf_neutron_ovs(config):
     if create_ovs_bridges:
         set_conf_option(conf_ml2, "ml2", "tenant_network_types", tenant_network_type)
 
-        if tenant_network_type == "vxlan":
-            set_conf_option(conf_ml2, "ml2_type_vxlan", "vni_ranges", tenant_network_vni_range)
-    else:
-        set_conf_option(conf_ml2, "ml2", "tenant_network_types", "local")
+        set_conf_option(conf_ml2, "ml2", "extension_drivers", "port_security")
 
-    set_conf_option(conf_ml2, "ml2", "extension_drivers", "port_security")
-
-    if create_ovs_bridges:
         if flat_networks_str:
             set_conf_option(conf_ml2, "ml2_type_flat", "flat_networks", flat_networks_str)
 
@@ -218,11 +212,15 @@ def conf_neutron_ovs(config):
             
             tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE").lower()
 
+            set_conf_option(conf_ml2, "ml2_type_vxlan", "vni_ranges", tenant_network_vni_range)
+
             set_conf_option(conf_openvswitch, "agent", "l2_population", "true")
             set_conf_option(conf_openvswitch, "agent", "tunnel_types", "vxlan")
 
             set_conf_option(conf_openvswitch, "ovs", "tunnel_bridge", tunnel_bridge)
             set_conf_option(conf_openvswitch, "ovs", "local_ip", ip_address)
+    else:
+        set_conf_option(conf_ml2, "ml2", "tenant_network_types", "local")
 
 
     set_conf_option(conf_ml2, "securitygroup", "enable_ipset", "true")
