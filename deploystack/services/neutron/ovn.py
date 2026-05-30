@@ -236,7 +236,11 @@ def conf_ovn_neutron(config):
     flat_networks_str = ",".join(flat_networks)
     vlan_networks_str = ",".join(f'{n["name"]}:{n["vlan_range"]}' for n in vlan_networks)
 
-    bridge_mappings = ",".join(f'{n["name"]}:{n["bridge"]}' for n in provider_networks)
+    bridge_mappings = ",".join(
+        f'{n["name"]}:{n["bridge"]}'
+        for n in provider_networks
+        if n.get("name") and n.get("bridge")
+    )
 
     enable_distributed_floating_ip = get(config, "neutron.ovn.ENABLE_DISTRIBUTED_FLOATING_IP", "no") == "yes"
 
@@ -501,7 +505,7 @@ def create_ovn_networks(config, env):
     if create_ovn_bridges and not ssh_rule_exists:
         if not os_run(
             ["openstack", "security", "group", "rule", "create",
-             "--proto", "tcp", "--dst-port", "22", "--remote-ip", "0.0.0.0/0", sg_id],
+             "--proto", "tcp", "--dst-port", "22", "--remote-ip", public_subnet_cidr, sg_id],
             "Allowing SSH access...", env=env
         ):
             return False

@@ -134,14 +134,13 @@ def validate_neutron(config) -> bool:
                 ok = False
 
     # Tenant network
-    neutron_driver = get(config, "neutron.DRIVER")
-    tenant_type = get(config, "neutron.tenant_network.TYPE")
-    vni_range = get(config, "neutron.tenant_network.VNI_RANGE")
+    neutron_driver = get(config, "neutron.DRIVER").lower()
+    tenant_type = get(config, "neutron.tenant_network.TYPE").lower()
+    vni_range = get(config, "neutron.tenant_network.VNI_RANGE").lower()
 
-    ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE")
+    ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE").lower()
 
     networks = get_provider_networks(config)
-
 
     for net in networks:
         net_type = net["type"]
@@ -158,6 +157,10 @@ def validate_neutron(config) -> bool:
         ok = False
     elif not tenant_type and neutron_driver == "ovs":
         print(f"{colors.RED}Error: neutron.tenant_network.TYPE not set{colors.RESET}")
+        ok = False
+
+    if tenant_type == "geneve" and neutron_driver == "ovs":
+        print(f"{colors.RED}Error: neutron.tenant_network type 'geneve' is not supported by OVS{colors.RESET}")
         ok = False
 
     if ovn_encap_type != tenant_type and neutron_driver == "ovn":

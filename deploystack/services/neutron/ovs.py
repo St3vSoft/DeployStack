@@ -306,10 +306,10 @@ def create_ovs_networks(config, env):
     if create_ovs_bridges:
         create_public_network_cmd = create_flat_public_network_cmd
 
-        if "vxlan" in tenant_network_type:
+        if tenant_network_type == "vxlan":
             create_internal_network_cmd = create_vxlan_internal_network_cmd
         else:
-             create_internal_network_cmd = create_flat_internal_network_cmd      
+            create_internal_network_cmd = create_flat_internal_network_cmd      
     else:
         create_public_network_cmd = ["openstack", "network", "create", "--share", "public"] 
         create_internal_network_cmd = ["openstack", "network", "create", "internal"]
@@ -425,12 +425,6 @@ def create_ovs_networks(config, env):
 
 def run_setup_ovs_neutron(config, env):
 
-    tenant_type = get(config, "neutron.tenant_network.TYPE", "geneve")
-    if tenant_type == "geneve":
-        print(f"\n{colors.YELLOW}Warning: OVS does not support 'geneve' as tenant network type. "
-              f"Overriding with 'flat'.{colors.RESET}")
-        config["neutron"]["tenant_network"]["TYPE"] = "flat"
-     
     create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes"
 
     if not install_pkgs(): return False
