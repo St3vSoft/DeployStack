@@ -33,6 +33,6 @@ def remove(parser, args) -> None:
     if not is_openstack_ready():
         sys.exit(1)
 
-    remove_image(args.image, None, args.timeout)
+    remove_image(args.image, args.timeout)
 
    
