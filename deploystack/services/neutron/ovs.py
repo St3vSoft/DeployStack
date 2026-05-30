@@ -315,7 +315,7 @@ def create_ovs_networks(config, env):
     ]
 
     create_flat_internal_network_cmd = ["openstack", "network", "create", "--share",
-                "--provider-physical-network", "internal",
+                "--provider-network-type", "flat", "--provider-physical-network", "internal",
                 "internal"]
     
     create_vxlan_internal_network_cmd = [
