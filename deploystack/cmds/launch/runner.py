@@ -353,12 +353,24 @@ def wait_for_active(server_id: str, timeout: int = 100):
         if status == "ERROR":
             logger.error(f"{colors.RED}Server {server_id} is in ERROR state{colors.RESET}\n")
 
-            out = subprocess.run(["openstack", "server", "list", "--long", "--status",  "ERROR",  "-f", "value", "-c", "ID"], capture_output=True, text=True, check=True)
+            out = subprocess.run(
+                [
+                    "openstack", "server", "list",
+                    "--status", "ERROR",
+                    "-f", "value",
+                    "-c", "ID"
+                ],
+                capture_output=True,
+                text=True,
+                check=True
+            )
 
-            for line in out.stdout.splitlines():
-                instance_id = line.split(None, 1)
-                if server_id in instance_id:
+            error_ids = out.stdout.splitlines()
+
+            for instance_id in error_ids:
+                if instance_id == server_id:
                     delete_instance(instance_id)
+
             sys.exit(1)
 
         time.sleep(5)
