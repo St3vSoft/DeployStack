@@ -28,6 +28,7 @@ neutron:
     CREATE_BRIDGES: "yes"
     PUBLIC_BRIDGE_INTERFACE: ""
     PUBLIC_BRIDGE: "br-ex"
+    TUNNEL_BRIDGE: "br-tun" # only for VXLAN networks tenant
     INTERNAL_BRIDGE: "br-internal"  # only OVS, OVN manages it alone
 
   # OVN-specific

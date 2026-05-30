@@ -47,6 +47,7 @@ def conf_openvswitch_bridges(config):
     public_iface = get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
     public_bridge = get(config, "neutron.ovs.PUBLIC_BRIDGE")
     internal_bridge = get(config, "neutron.ovs.INTERNAL_BRIDGE")
+    tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE")
 
     ip_address = get(config, "network.HOST_IP")
     ip_address_netmask = get(config, "network.HOST_IP_NETMASK")
@@ -126,6 +127,8 @@ def conf_openvswitch_bridges(config):
 
     if tenant_network_type != "vxlan":
         bridges_to_add.append((internal_bridge, None))
+    elif tenant_network_type == "vxlan":
+        bridges_to_add.append((tunnel_bridge, None))
 
     for bridge, port in bridges_to_add:
         if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {bridge}"):
@@ -158,19 +161,31 @@ def conf_openvswitch_bridges(config):
 
 def conf_neutron_ovs(config):
 
+    ip_address = get(config, "network.HOST_IP")
+
     tenant_network_type = get(config, "neutron.tenant_network.TYPE")
     tenant_network_vni_range = get(config, "neutron.tenant_network.VNI_RANGE")
 
     provider_networks = get(config, "neutron.provider_networks", [])
 
+    use_internal_bridge = tenant_network_type != "vxlan"
+
     flat_networks  = [n["name"] for n in provider_networks if n["type"] == "flat"]
     vlan_networks  = [n["name"] for n in provider_networks if n["type"] == "vlan"]
 
-    bridge_mappings = ",".join(
-        f'{n["name"]}:{n["bridge"]}'
-        for n in provider_networks
-        if n.get("name") and n.get("bridge")
-    )
+    bridge_mappings: str = ""
+
+    if use_internal_bridge:
+        bridge_mappings = ",".join(
+            f'{n["name"]}:{n["bridge"]}'
+            for n in provider_networks
+            if n.get("name") and n.get("bridge")
+        )
+    else:
+        for n in provider_networks:
+            if n.get("name") and n.get("bridge"):
+                bridge_mappings = f'{n["name"]}:{n["bridge"]}'
+                break 
 
     flat_networks_str = ",".join(flat_networks)
 
@@ -198,6 +213,17 @@ def conf_neutron_ovs(config):
             set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_networks_str)
 
         set_conf_option(conf_openvswitch, "ovs", "bridge_mappings", bridge_mappings)
+
+        if not use_internal_bridge:
+            
+            tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE").lower()
+
+            set_conf_option(conf_openvswitch, "agent", "l2_population", "true")
+            set_conf_option(conf_openvswitch, "agent", "tunnel_types", "vxlan")
+
+            set_conf_option(conf_openvswitch, "ovs", "tunnel_bridge", tunnel_bridge)
+            set_conf_option(conf_openvswitch, "ovs", "local_ip", ip_address)
+
 
     set_conf_option(conf_ml2, "securitygroup", "enable_ipset", "true")
     set_conf_option(conf_ml2, "ml2", "mechanism_drivers", "openvswitch")
