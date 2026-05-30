@@ -152,22 +152,24 @@ def validate_neutron(config) -> bool:
         print(f"{colors.RED}Error: Invalid network type '{tenant_type}' specified in field neutron.tenant_network.TYPE{colors.RESET}")
         ok = False
 
-    if not tenant_type and not vni_range and neutron_driver == "ovn":
-        print(f"{colors.RED}Error: neutron.tenant_network.TYPE or VNI_RANGE not set{colors.RESET}")
-        ok = False
-    elif not tenant_type and neutron_driver == "ovs":
-        print(f"{colors.RED}Error: neutron.tenant_network.TYPE not set{colors.RESET}")
-        ok = False
+    if neutron_driver == "ovn":
+        if not tenant_type and not vni_range:
+            print(f"{colors.RED}Error: neutron.tenant_network.TYPE or VNI_RANGE not set{colors.RESET}")
+            ok = False
 
-    if tenant_type == "geneve" and neutron_driver == "ovs":
-        print(f"{colors.RED}Error: neutron.tenant_network type 'geneve' is not supported by OVS{colors.RESET}")
-        ok = False
+        if ovn_encap_type != tenant_type:
+            print(f"{colors.RED}Error: OVN_ENCAP_TYPE ({ovn_encap_type}) "
+                f"does not match tenant network type ({tenant_type}).{colors.RESET}")
+            ok = False   
+    elif neutron_driver == "ovs":
+        if not tenant_type:
+            print(f"{colors.RED}Error: neutron.tenant_network.TYPE not set{colors.RESET}")
+            ok = False
 
-    if ovn_encap_type != tenant_type and neutron_driver == "ovn":
-
-        print(f"{colors.RED}Error: OVN_ENCAP_TYPE ({ovn_encap_type}) "
-            f"does not match tenant network type ({tenant_type}).{colors.RESET}")
-        ok = False    
+        if tenant_type == "geneve":
+            print(f"{colors.RED}Error: neutron.tenant_network type 'geneve' is not supported by OVS{colors.RESET}")
+            ok = False
+    
 
     # Provider networks
     provider_networks = get(config, "neutron.provider_networks", [])
