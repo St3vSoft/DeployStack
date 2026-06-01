@@ -3,7 +3,7 @@
 import os
 import json
 
-from ..utils.core.commands import run_command, os_run, os_run_output
+from ..utils.core.commands import run_command, run_commands, os_run_output
 from ..utils.core.system_utils import has_hw_virtualization, service_exists
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
@@ -12,6 +12,14 @@ from ..utils.core import colors
 
 nova_conf= "/etc/nova/nova.conf"
 nova_compute_conf= "/etc/nova/nova-compute.conf"
+
+def get_flavors(env=None):
+    raw = os_run_output(
+        ["openstack", "flavor", "list", "-f", "json"],
+        env=env
+    )
+
+    return json.loads(raw or "[]")
 
 def install_pkgs():
 
@@ -66,45 +74,38 @@ def finalize():
 
 def create_default_flavors(env):
 
-    print()
+    flavors_list = get_flavors(env)
 
-    flavors_list_json = os_run_output(["openstack", "flavor", "list", "-f", "json"], env=env)
-    
-    flavors_list = json.loads(flavors_list_json)
+    existing_flavors = {
+        (a["Name"], str(a["RAM"]), str(a["VCPUs"]))
+        for a in flavors_list
+    }
 
     default_flavors = [
-        {"name": "m1.tiny",   "id": "1", "ram": 512,   "disk": 1,   "vcpus": 1},
-        {"name": "m1.small",  "id": "2", "ram": 2048,  "disk": 20,  "vcpus": 1},
-        {"name": "m1.medium", "id": "3", "ram": 4096,  "disk": 40,  "vcpus": 2},
-        {"name": "m1.large",  "id": "4", "ram": 8192,  "disk": 80,  "vcpus": 4},
-        {"name": "m1.xlarge", "id": "5", "ram": 16384, "disk": 160, "vcpus": 8},
+        {"name": "m1.tiny", "id": 1, "ram": 512, "disk": 1, "vcpus": 1},
+        {"name": "m1.small", "id": 2, "ram": 2048, "disk": 20, "vcpus": 1},
+        {"name": "m1.medium", "id": 3, "ram": 4096, "disk": 40, "vcpus": 2},
+        {"name": "m1.large", "id": 4, "ram": 8192, "disk": 80, "vcpus": 4},
+        {"name": "m1.xlarge", "id": 5, "ram": 16384, "disk": 160, "vcpus": 8},
     ]
 
-    existing_ids = {f["ID"] for f in flavors_list}
-    existing_names = {f["Name"] for f in flavors_list}
-
-    commands = []
+    flavors_create_cmds = []
 
     for f in default_flavors:
-        if f["id"] not in existing_ids and f["name"] not in existing_names:
-            commands.append(
-                f"openstack flavor create {f['name']} "
-                f"--id {f['id']} "
-                f"--ram {f['ram']} "
-                f"--disk {f['disk']} "
-                f"--vcpus {f['vcpus']}"
-            )
+        if (f["name"], str(f["ram"]), str(f["vcpus"])) not in existing_flavors:
+            flavors_create_cmds.append([
+                "openstack", "flavor", "create",
+                "--name", f["name"],
+                "--id", str(f["id"]),
+                "--ram", str(f["ram"]),
+                "--disk", str(f["disk"]),
+                "--vcpus", str(f["vcpus"])
+            ])
 
-    if not commands:
-        return True
-
-    full_cmd = " && ".join(commands)
-
-    if not os_run(
-        ["bash", "-c", full_cmd],
-        "Creating default flavors...",
-        env=env
-    ) : return False
+    if flavors_create_cmds:
+        print()
+        if not run_commands(flavors_create_cmds, "Creating default flavors...", env=env):
+            return False
 
     return True
     
