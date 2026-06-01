@@ -43,11 +43,21 @@ def run_commands(steps, message=None, env=None):
             kwargs = {}
 
         ignore_errors = kwargs.get("ignore_errors", False)
-        ok = run_command(cmd, message="", env=env, ignore_errors=ignore_errors)
+        res = None
+
+        ok = run_command(cmd, message="", env=env, ignore_errors=ignore_errors, silent=True, context=res)
 
         if not ok and not ignore_errors:
             if spinner:
                 spinner.stop("ERROR", color="red", width=50)
+                
+                output_lines = res.output.splitlines() if res.output else []
+
+                print(f"\n{colors.RED}Execution of: '{' '.join(res.cmd)}' returned exit code {res.returncode}{colors.RESET}")
+                if output_lines:
+                    print("\nLast output:")
+                    print("\n".join(output_lines))
+                    print()
             return False
 
     if spinner:
@@ -63,7 +73,9 @@ def run_command(
     retries=0,
     delay=1,
     env=None,
-    timeout=120
+    timeout=120,
+    silent=False,
+    context=None
 ):
     attempt = 0
     spinner = Spinner(message) if message else None
@@ -138,13 +150,19 @@ def run_command(
             if spinner:
                 spinner.stop("ERROR", color="red", width=50)
 
-            print(f"\n{colors.RED}Execution of: '{' '.join(cmd)}' returned exit code {returncode} {colors.RESET}")
-            if output_lines:
-                print("\nLast output:")
-                print("\n".join(output_lines))
-                print()
+            if not silent:
+                print(f"\n{colors.RED}Execution of: '{' '.join(cmd)}' returned exit code {returncode}{colors.RESET}")
+                if output_lines:
+                    print("\nLast output:")
+                    print("\n".join(output_lines))
+                    print()
 
-            return False
+            if context is not None and isinstance(context, dict):
+                context["cmd"] = cmd
+                context["returncode"] = returncode
+                context["output_lines"] = output_lines
+                context["output"] = output
+                return False
 
         except Exception as e:
             if spinner:
