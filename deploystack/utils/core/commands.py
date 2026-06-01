@@ -50,14 +50,19 @@ def run_commands(steps, message=None, env=None):
         if not ok and not ignore_errors:
             if spinner:
                 spinner.stop("ERROR", color="red", width=50)
-                
-                output_lines = res.get("output", "").splitlines()
 
-                print(f"\n{colors.RED}Execution of: '{' '.join(res.cmd)}' returned exit code {res.returncode}{colors.RESET}")
-                if output_lines:
-                    print("\nLast output:")
-                    print("\n".join(output_lines))
-                    print()
+            output_lines = (res.get("output") or "").splitlines()
+
+            print(
+                f"\n{colors.RED}Execution of: '{' '.join(res.get('cmd') or [])}' "
+                f"returned exit code {res.get('returncode')}{colors.RESET}"
+            )
+
+            if output_lines:
+                print("\nLast output:")
+                print("\n".join(output_lines))
+                print()
+
             return False
 
     if spinner:
