@@ -89,38 +89,59 @@ def validate_public_network(config) -> bool:
 # --- Neutron ---
 def validate_neutron(config) -> bool:
     ok = True
-    driver = get(config, "neutron.DRIVER")
-    
+
+    # Prendi le variabili principali con fallback
+    neutron_driver = (get(config, "neutron.DRIVER") or "").lower()
+    tenant_type = (get(config, "neutron.tenant_network.TYPE") or "").lower()
     ovs_create_bridges = get(config, "neutron.ovs.CREATE_BRIDGES")
-
     public_bridge_interface_ovs = get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
+    ovn_encap_type = (get(config, "neutron.ovn.OVN_ENCAP_TYPE") or "").lower()
 
-    if driver not in ("ovs", "ovn"):
-        print(f"{colors.RED}Error: neutron.DRIVER must be 'ovs' or 'ovn' (got '{driver}'){colors.RESET}")
+    # Validazione driver
+    if neutron_driver not in ("ovs", "ovn"):
+        print(f"{colors.RED}Error: neutron.DRIVER must be 'ovs' or 'ovn' (got '{neutron_driver}'){colors.RESET}")
         ok = False
 
-    if driver == "ovs":
+    # ==========================
+    # OVS
+    # ==========================
+    if neutron_driver == "ovs":
         ovs_fields = [
             "neutron.ovs.PUBLIC_BRIDGE",
             "neutron.ovs.INTERNAL_BRIDGE",
-            "neutron.ovs.PUBLIC_BRIDGE_INTERFACE",
+            "neutron.ovs.PUBLIC_BRIDGE_INTERFACE"
         ]
+        if tenant_type == "vxlan":
+            ovs_fields.append("neutron.ovs.TUNNEL_BRIDGE")
+
         for field in ovs_fields:
             value = get(config, field)
             if not value:
                 print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
                 ok = False
-        
+
         if ovs_create_bridges not in ("yes", "no"):
-            print(f"{colors.RED}Error: '{ovs_create_bridges}' must be 'yes' or 'no' (got '{value}'){colors.RESET}")
+            print(f"{colors.RED}Error: 'neutron.ovs.CREATE_BRIDGES' must be 'yes' or 'no' (got '{ovs_create_bridges}'){colors.RESET}")
             ok = False
 
-        if not interface_exists(public_bridge_interface_ovs):
+        if public_bridge_interface_ovs and not interface_exists(public_bridge_interface_ovs):
             print(f"{colors.RED}The interface '{public_bridge_interface_ovs}' specified in neutron.ovs.PUBLIC_BRIDGE_INTERFACE does not exist.{colors.RESET}")
             ok = False
 
+        if tenant_type == "geneve":
+            print(f"{colors.RED}Error: neutron.tenant_network.TYPE 'geneve' is not supported by OVS{colors.RESET}")
+            ok = False
 
-    if driver == "ovn":
+        if tenant_type == "vxlan":
+            vni_range = (get(config, "neutron.tenant_network.VNI_RANGE") or "").lower()
+            if not vni_range:
+                print(f"{colors.RED}Error: VNI_RANGE must be set for VXLAN tenant networks{colors.RESET}")
+                ok = False
+
+    # ==========================
+    # OVN
+    # ==========================
+    if neutron_driver == "ovn":
         ovn_fields = [
             "neutron.ovn.OVN_PUBLIC_BRIDGE",
             "neutron.ovn.OVN_PUBLIC_BRIDGE_INTERFACE",
@@ -133,49 +154,13 @@ def validate_neutron(config) -> bool:
                 print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
                 ok = False
 
-    # Tenant network
-    neutron_driver = get(config, "neutron.DRIVER").lower()
-    tenant_type = get(config, "neutron.tenant_network.TYPE").lower()
-
-    if tenant_type != "flat":
-        vni_range = get(config, "neutron.tenant_network.VNI_RANGE").lower()
-
-        if not tenant_type and not vni_range:
-            print(f"{colors.RED}Error: neutron.tenant_network.TYPE or VNI_RANGE not set{colors.RESET}")
+        if ovn_encap_type and tenant_type and ovn_encap_type != tenant_type:
+            print(f"{colors.RED}Error: OVN_ENCAP_TYPE ({ovn_encap_type}) does not match tenant network type ({tenant_type}).{colors.RESET}")
             ok = False
 
-        if ovn_encap_type != tenant_type:
-            print(f"{colors.RED}Error: OVN_ENCAP_TYPE ({ovn_encap_type}) "
-                f"does not match tenant network type ({tenant_type}).{colors.RESET}")
-            ok = False   
-
-    networks = get_provider_networks(config)
-
-    for net in networks:
-        net_type = net["type"]
-        if net_type not in ["geneve", "flat", "vlan"]:
-            print(f"{colors.RED}Error: Invalid network type '{net_type}' specified in field {net}{colors.RESET}")
-            ok = False
-
-    if tenant_type not in ["geneve", "flat", "vxlan"]:
-        print(f"{colors.RED}Error: Invalid network type '{tenant_type}' specified in field neutron.tenant_network.TYPE{colors.RESET}")
-        ok = False
-
-    if neutron_driver == "ovn":  
-        ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE").lower()
-
-       
-    elif neutron_driver == "ovs":
-        if not tenant_type:
-            print(f"{colors.RED}Error: neutron.tenant_network.TYPE not set{colors.RESET}")
-            ok = False
-
-        if tenant_type == "geneve":
-            print(f"{colors.RED}Error: neutron.tenant_network type 'geneve' is not supported by OVS{colors.RESET}")
-            ok = False
-    
-
+    # ==========================
     # Provider networks
+    # ==========================
     provider_networks = get(config, "neutron.provider_networks", [])
     if not provider_networks:
         print(f"{colors.RED}Error: neutron.provider_networks is empty{colors.RESET}")
@@ -185,9 +170,16 @@ def validate_neutron(config) -> bool:
             if not net.get("name") or not net.get("bridge") or not net.get("type"):
                 print(f"{colors.RED}Error: neutron.provider_networks[{i}] missing required keys{colors.RESET}")
                 ok = False
+            elif net.get("type") not in ["geneve", "flat", "vlan"]:
+                print(f"{colors.RED}Error: Invalid network type '{net.get('type')}' in provider_networks[{i}]{colors.RESET}")
+                ok = False
+
+    # Controllo tenant_type
+    if tenant_type not in ["geneve", "flat", "vxlan"]:
+        print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
+        ok = False
 
     return ok
-
 # --- Cinder ---
 def validate_cinder(config) -> bool:
     ok = True
