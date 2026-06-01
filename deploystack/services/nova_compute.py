@@ -95,11 +95,11 @@ def create_default_flavors(env):
         if (f["name"], str(f["ram"]), str(f["vcpus"])) not in existing_flavors:
             flavors_create_cmds.append([
                 "openstack", "flavor", "create",
-                "--name", f["name"],
                 "--id", str(f["id"]),
                 "--ram", str(f["ram"]),
                 "--disk", str(f["disk"]),
-                "--vcpus", str(f["vcpus"])
+                "--vcpus", str(f["vcpus"]),
+                str(f["name"])
             ])
 
     if flavors_create_cmds:
