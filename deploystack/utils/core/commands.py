@@ -43,7 +43,7 @@ def run_commands(steps, message=None, env=None):
             kwargs = {}
 
         ignore_errors = kwargs.get("ignore_errors", False)
-        res = None
+        res = {}
 
         ok = run_command(cmd, message="", env=env, ignore_errors=ignore_errors, silent=True, context=res)
 
