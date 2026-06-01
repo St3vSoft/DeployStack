@@ -51,7 +51,7 @@ def run_commands(steps, message=None, env=None):
             if spinner:
                 spinner.stop("ERROR", color="red", width=50)
                 
-                output_lines = res.output.splitlines() if res.output else []
+                output_lines = res.get("output", "").splitlines()
 
                 print(f"\n{colors.RED}Execution of: '{' '.join(res.cmd)}' returned exit code {res.returncode}{colors.RESET}")
                 if output_lines:
@@ -158,11 +158,14 @@ def run_command(
                     print()
 
             if context is not None and isinstance(context, dict):
-                context["cmd"] = cmd
-                context["returncode"] = returncode
-                context["output_lines"] = output_lines
-                context["output"] = output
-                return False
+                 context.update({
+                    "cmd": cmd,
+                    "returncode": returncode,
+                    "output_lines": output_lines,
+                    "output": output
+                })
+            
+            return False
 
         except Exception as e:
             if spinner:
