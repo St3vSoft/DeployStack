@@ -99,9 +99,11 @@ def conf_openvswitch_bridges(config):
     bridges_interfaces_content = template.format(
         management_iface=management_iface if is_dual_nic else "",
         ip_address=ip_address,
-        netmask=ip_address_netmask,
-        gateway=ip_address_gateway if is_dual_nic else subnet_gateway,
+        ip_address_netmask=ip_address_netmask,
+
+        subnet_address_gateway=ip_address_gateway if is_dual_nic else subnet_gateway,
         subnet_address_dns_servers=subnet_dns,
+
         public_iface=public_iface,
         public_bridge=public_bridge,
         internal_bridge=internal_bridge if use_internal_bridge else ""

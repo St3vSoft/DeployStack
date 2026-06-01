@@ -72,34 +72,22 @@ def conf_ovn_bridges(config):
     if isinstance(subnet_address_dns_servers, list):
         subnet_address_dns_servers = " ".join(subnet_address_dns_servers)
 
-    if is_dual_nic:
+    template_file = OVN_DUAL_NIC_BRIDGES_INTERFACES if is_dual_nic else OVN_BRIDGES_INTERFACES
 
-        with open(OVN_DUAL_NIC_BRIDGES_INTERFACES, "r") as f:
-            template = f.read()
+    with open(template_file, "r") as f:
+        template = f.read()
 
-        bridges_interfaces_content = template.format(
-            management_iface=management_iface,
-            ip_address=ip_address,
-            netmask=ip_address_netmask,
-            gateway=ip_address_gateway,
-            subnet_address_dns_servers=subnet_address_dns_servers,
+    bridges_interfaces_content = template.format(
+        management_iface=management_iface if is_dual_nic else "",
+        ip_address=ip_address,
+        ip_address_netmask=ip_address_netmask,
 
-            public_iface=public_iface,
-            public_bridge=public_bridge
-        )
-    else:
-        with open(OVN_BRIDGES_INTERFACES, "r") as f:
-            template = f.read()
+        subnet_address_gateway=ip_address_gateway if is_dual_nic else subnet_address_gateway,
+        subnet_address_dns_servers=subnet_address_dns_servers,
 
-        bridges_interfaces_content = template.format(
-            ip_address=ip_address,
-            ip_address_netmask=ip_address_netmask,
-            subnet_address_gateway=subnet_address_gateway,
-            subnet_address_dns_servers=subnet_address_dns_servers,
-
-            public_iface=public_iface,
-            public_bridge=public_bridge
-        )
+        public_iface=public_iface,
+        public_bridge=public_bridge,
+    )
 
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)

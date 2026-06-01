@@ -4,8 +4,8 @@ iface lo inet loopback
 auto {management_iface}
 iface {management_iface} inet static
     address {ip_address}
-    netmask {netmask}
-    gateway {gateway}
+    netmask {ip_address_netmask}
+    gateway {subnet_address_gateway}
     dns-nameservers {subnet_address_dns_servers}
 
 auto {public_iface}
