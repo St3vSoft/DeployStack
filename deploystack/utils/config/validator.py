@@ -318,12 +318,17 @@ def validate_openstack(config) -> bool:
     return ok
 
 def validate_all(config) -> bool:
+    install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
+
     ok = True
     ok &= validate_passwords(config)
     ok &= validate_host_network(config)
     ok &= validate_public_network(config)
     ok &= validate_neutron(config)
-    ok &= validate_cinder(config)
+
+    if install_cinder:
+        ok &= validate_cinder(config)
+
     ok &= validate_compute(config)
     ok &= validate_optional_services(config)
     ok &= validate_openstack(config)
