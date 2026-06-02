@@ -183,48 +183,63 @@ def validate_neutron(config) -> bool:
         ok = False
 
     return ok
+
 # --- Cinder ---
 def validate_cinder(config) -> bool:
-
     ok = True
 
-    cinder_volume_lvm_image_size_in_gb = int(get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB"))
-    cinder_volume_lvm_image_path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
+    size_raw = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB")
+    path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
+    pv = get(config, "cinder.lvm.PHYSICAL_VOLUME")
 
-    cinder_fields = [
+    size = None
+    if size_raw:
+        try:
+            size = int(size_raw)
+        except ValueError:
+            print(f"{colors.RED}Error: invalid integer for CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB{colors.RESET}")
+            ok = False
+
+    required_fields = [
         "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
         "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",
     ]
-    for field in cinder_fields:
-        value = get(config, field)
-        if not value:
+
+    for field in required_fields:
+        if not get(config, field):
             print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
             ok = False
 
-    dir = os.path.dirname(cinder_volume_lvm_image_path)
-
-    while not os.path.exists(dir):
-        parent = os.path.dirname(dir)
-
-        if parent == dir:
-            break
-
-        dir = parent
-
-    _, _, free_space = shutil.disk_usage(dir)
-
-    free_space_in_gb = free_space / (1024**3)
-
-    if cinder_volume_lvm_image_size_in_gb >= free_space_in_gb:
-        print(
-            f"{colors.RED}Error: 'cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB' "
-            f"({cinder_volume_lvm_image_size_in_gb} GB) exceeds the available disk space "
-            f"({free_space_in_gb:.2f} GB) on the target filesystem.{colors.RESET}"
-        )
+    if not path and not pv:
+        print(f"{colors.RED}Error: either IMAGE_FILE_PATH or PHYSICAL_VOLUME must be set{colors.RESET}")
         ok = False
+        return ok
 
+    if path:
+        directory = os.path.dirname(path) or "/"
 
-    
+        while not os.path.exists(directory):
+            parent = os.path.dirname(directory)
+            if parent == directory:
+                directory = "/"
+                break
+            directory = parent
+
+        try:
+            _, _, free = shutil.disk_usage(directory)
+            free_gb = free / (1024**3)
+
+            if size is not None and size > free_gb:
+                print(
+                    f"{colors.RED}Error: insufficient disk space. "
+                    f"Required: {size} GB, available: {free_gb:.2f} GB{colors.RESET}"
+                )
+                ok = False
+
+        except FileNotFoundError:
+            print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
+            ok = False
+
     return ok
 
 # --- Compute ---
