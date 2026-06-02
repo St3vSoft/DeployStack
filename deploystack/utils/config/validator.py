@@ -203,13 +203,13 @@ def validate_cinder(config) -> bool:
 
     dir = os.path.dirname(cinder_volume_lvm_image_path)
 
-    while not os.path.exists(path):
-        parent = os.path.dirname(path)
+    while not os.path.exists(dir):
+        parent = os.path.dirname(dir)
 
-        if parent == path:
+        if parent == dir:
             break
 
-        path = parent
+        dir = parent
 
     _, _, free_space = shutil.disk_usage(dir)
 
