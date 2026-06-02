@@ -1,3 +1,6 @@
+import shutil
+import os
+
 from .helpers import get_provider_networks, interface_exists, validate_ip, validate_cidr
 from ..core import colors
 from .parser import get
@@ -182,7 +185,12 @@ def validate_neutron(config) -> bool:
     return ok
 # --- Cinder ---
 def validate_cinder(config) -> bool:
+
     ok = True
+
+    cinder_volume_lvm_image_size_in_gb = int(get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB"))
+    cinder_volume_lvm_image_path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
+
     cinder_fields = [
         "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
         "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",
@@ -192,6 +200,23 @@ def validate_cinder(config) -> bool:
         if not value:
             print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
             ok = False
+
+    dir = os.path.dirname(cinder_volume_lvm_image_path) or "/"
+
+    _, _, free_space = shutil.disk_usage(dir)
+
+    free_space_in_gb = free_space / (1024**3)
+
+    if cinder_volume_lvm_image_size_in_gb >= free_space_in_gb:
+        print(
+            f"{colors.RED}Error: 'cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB' "
+            f"({cinder_volume_lvm_image_size_in_gb} GB) exceeds the available disk space "
+            f"({free_space_in_gb:.2f} GB) on the target filesystem.{colors.RESET}"
+        )
+        ok = False
+
+
+    
     return ok
 
 # --- Compute ---
