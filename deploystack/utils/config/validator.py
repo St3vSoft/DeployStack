@@ -1,4 +1,5 @@
 import shutil
+import subprocess
 import os
 
 from .helpers import get_provider_networks, interface_exists, validate_ip, validate_cidr
@@ -193,7 +194,19 @@ def validate_cinder(config) -> bool:
     pv = get(config, "cinder.lvm.PHYSICAL_VOLUME")
 
     if pv:
-        return True  # tutto ok
+        if not os.path.exists(pv):
+            print(f"{colors.RED}Error: PHYSICAL_VOLUME '{pv}' does not exist{colors.RESET}")
+            return False
+
+        try:
+            out = subprocess.check_output(["blkid", pv], text=True, stderr=subprocess.DEVNULL)
+            if "LVM2_member" in out:
+                print(f"{colors.RED}Error: '{pv}' is already an LVM PV{colors.RESET}")
+                return False
+        except Exception:
+            pass
+
+        return True
 
     size = None
     if size_raw:
