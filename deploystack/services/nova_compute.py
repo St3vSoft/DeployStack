@@ -68,7 +68,7 @@ def finalize():
     "nova-manage", "cell_v2", "discover_hosts", "--verbose"
 ]
     
-    if not run_command(cell_discover_hosts_migration_cmd, "Discovering the Compute Node on Cell0...") : return False
+    if not run_command(cell_discover_hosts_migration_cmd, "Discovering and registering compute hosts in Nova Cell V2...") : return False
 
     return True
 
