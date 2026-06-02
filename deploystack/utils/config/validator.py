@@ -201,7 +201,7 @@ def validate_cinder(config) -> bool:
             print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
             ok = False
 
-    dir = os.path.dirname(cinder_volume_lvm_image_path) or "/"
+    dir = os.path.dirname(cinder_volume_lvm_image_path)
 
     while not os.path.exists(path):
         parent = os.path.dirname(path)
