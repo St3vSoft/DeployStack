@@ -192,11 +192,9 @@ def validate_cinder(config) -> bool:
     path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
     pv = get(config, "cinder.lvm.PHYSICAL_VOLUME")
 
-    # Se PHYSICAL_VOLUME è settato, non serve IMAGE_FILE_PATH/IMAGE_SIZE
     if pv:
         return True  # tutto ok
 
-    # --- Solo se non c'è PV, validiamo IMAGE_FILE_PATH e IMAGE_SIZE ---
     size = None
     if size_raw:
         try:
@@ -205,10 +203,10 @@ def validate_cinder(config) -> bool:
             print(f"{colors.RED}Error: invalid integer for CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB{colors.RESET}")
             ok = False
 
-    # Ora i campi diventano obbligatori
     required_fields = [
         "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
         "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",
+        "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",
     ]
 
     for field in required_fields:
@@ -216,7 +214,6 @@ def validate_cinder(config) -> bool:
             print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
             ok = False
 
-    # --- Controllo dello spazio libero solo se path è settato ---
     if path:
         directory = os.path.dirname(path) or "/"
 
