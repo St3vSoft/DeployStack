@@ -60,11 +60,12 @@ def conf_ovn_bridges(config):
 
     print()
 
-    run_command(["ovs-vsctl", "--if-exists", "del-port", public_bridge, public_iface],
-                f"Removing port {public_iface} from {public_bridge} if exists", ignore_errors=True)
-    run_command(["ovs-vsctl", "--if-exists", "del-br", public_bridge],
-                f"Deleting bridge {public_bridge} if exists", ignore_errors=True)
-    
+    for bridge, port in [(public_bridge, public_iface)]:
+        if iface_exists(bridge):
+            if port:
+                run_command(["ovs-vsctl", "--if-exists", "del-port", bridge, port], f"Deleting port {port} from {bridge}", ignore_errors=True)
+            run_command(["ovs-vsctl", "--if-exists", "del-br", bridge], f"Deleting bridge {bridge}", ignore_errors=True)
+
     print()
 
     if isinstance(subnet_dns, list):
