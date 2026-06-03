@@ -189,9 +189,9 @@ def validate_neutron(config) -> bool:
 def validate_cinder(config) -> bool:
     ok = True
 
-    size_raw = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB")
-    path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
-    pv = get(config, "cinder.lvm.PHYSICAL_VOLUME")
+    size_raw = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB" or "").lower()
+    path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH" or "").lower()
+    pv = get(config, "cinder.lvm.PHYSICAL_VOLUME" or "").lower()
 
     if pv:
         if not os.path.exists(pv):
@@ -259,6 +259,8 @@ def validate_compute(config) -> bool:
     ok = True
     warnings = []
 
+    nova_compute_virt_type = get(config, "compute.NOVA_COMPUTE_VIRT_TYPE" or "").lower()
+
     compute_fields = [
         "compute.NOVA_COMPUTE_VIRT_TYPE",
         "compute.CPU_ALLOCATION_RATIO",
@@ -283,6 +285,13 @@ def validate_compute(config) -> bool:
         if value is None:
             print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
             ok = False
+
+    if nova_compute_virt_type not in ("kvm", "qemu"):
+        print(
+            f"{colors.RED}Error: unsupported virt_type '{nova_compute_virt_type}'. "
+            f"Allowed values are 'kvm' and 'qemu'.{colors.RESET}"
+        )
+        ok = False
 
     for key, min_value in ratios.items():
         value = get(config, key)

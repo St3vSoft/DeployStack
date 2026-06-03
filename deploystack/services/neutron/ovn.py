@@ -3,6 +3,7 @@
 import os
 import shutil
 import json
+import time
 
 from ...utils.core.commands import run_command, run_command_sync, os_run, os_run_output
 from ...utils.apt.apt import apt_install
@@ -35,45 +36,41 @@ def install_pkgs():
     return True
 
 def conf_ovn_bridges(config):
-
     print()
 
     INTERFACES_FILE = "/etc/network/interfaces.d/openvswitch"
 
     public_iface = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE_INTERFACE")
-    public_bridge = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")       # e.g. br-ex
-    internal_bridge = "br-int"   # e.g. br-int (managed by OVN)
+    public_bridge = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")
+    internal_bridge = "br-int" 
 
     ip_address = get(config, "network.HOST_IP")
     ip_address_netmask = get(config, "network.HOST_IP_NETMASK")
     ip_address_gateway = get(config, "network.HOST_IP_GATEWAY")
-
-    subnet_address_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
-    subnet_address_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
-
+    subnet_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
+    subnet_dns = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
     management_iface = get(config, "network.HOST_MGMT_INTERFACE")
 
     is_dual_nic = (public_iface != management_iface)
 
-    for iface in [public_iface, public_bridge, internal_bridge]:
+    for iface in [public_iface, public_bridge]:
         if iface_exists(iface):
-            check_cmd = ["ip", "link", "show", iface]
-            if run_command(check_cmd, f"Checking if {iface} exists", ignore_errors=True):
-                run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
-                run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
+            run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
+            run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
     run_command(["ovs-vsctl", "--if-exists", "del-port", public_bridge, public_iface],
                 f"Removing port {public_iface} from {public_bridge}", ignore_errors=True)
     run_command(["ovs-vsctl", "--if-exists", "del-br", public_bridge],
                 f"Deleting bridge {public_bridge} if exists", ignore_errors=True)
-    run_command(["ovs-vsctl", "--if-exists", "del-br", internal_bridge],
-                f"Deleting bridge {internal_bridge} if exists", ignore_errors=True)
 
-    if isinstance(subnet_address_dns_servers, list):
-        subnet_address_dns_servers = " ".join(subnet_address_dns_servers)
+    if isinstance(subnet_dns, list):
+        subnet_dns = " ".join(subnet_dns)
 
     template_file = OVN_DUAL_NIC_BRIDGES_INTERFACES if is_dual_nic else OVN_BRIDGES_INTERFACES
-
+    
+    if not os.path.exists(template_file):
+        print(f"{colors.RED}Error: template file '{template_file}' not found{colors.RESET}")
+        return False
     with open(template_file, "r") as f:
         template = f.read()
 
@@ -81,10 +78,8 @@ def conf_ovn_bridges(config):
         management_iface=management_iface if is_dual_nic else "",
         ip_address=ip_address,
         ip_address_netmask=ip_address_netmask,
-
-        subnet_address_gateway=ip_address_gateway if is_dual_nic else subnet_address_gateway,
-        subnet_address_dns_servers=subnet_address_dns_servers,
-
+        subnet_address_gateway=ip_address_gateway if is_dual_nic else subnet_gateway,
+        subnet_address_dns_servers=subnet_dns,
         public_iface=public_iface,
         public_bridge=public_bridge,
     )
@@ -95,40 +90,40 @@ def conf_ovn_bridges(config):
     interfaces_dir = "/etc/network/interfaces.d/"
     backup_dir = "/root/net-backup"
     os.makedirs(backup_dir, exist_ok=True)
-    for f in os.listdir(interfaces_dir):
-        full_path = os.path.join(interfaces_dir, f)
-        backup_path = os.path.join(backup_dir, f)
-        if full_path != INTERFACES_FILE and os.path.isfile(full_path):
-            if os.path.exists(backup_path):
-                os.remove(backup_path)
-            shutil.move(full_path, backup_path)
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    for filename in os.listdir(interfaces_dir):
+        full_path = os.path.join(interfaces_dir, filename)
+        if full_path == INTERFACES_FILE or not os.path.isfile(full_path):
+            continue
+        backup_name = f"{filename}.{timestamp}"
+        backup_path = os.path.join(backup_dir, backup_name)
+        shutil.move(full_path, backup_path)
 
-    print()
-
-    # Create OVS bridges
-    # NOTE: br-int is created and managed automatically by ovn-controller — do NOT create it manually
-    if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge], f"Adding bridge {public_bridge}") : return False
+    if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge],
+                       f"Adding bridge {public_bridge}"):
+        return False
     if not run_command(["ovs-vsctl", "--may-exist", "add-port", public_bridge, public_iface],
-                f"Adding port {public_iface} to {public_bridge}") : return False
-    
+                       f"Adding port {public_iface} to {public_bridge}"):
+        return False
+
+    if not run_command(["ip", "link", "set", public_iface, "up"], f"Bringing {public_iface} up"):
+        return False
+    if not run_command(["ip", "link", "set", public_bridge, "up"], f"Bringing {public_bridge} up"):
+        return False
+
     print()
 
-    if not run_command(["ip", "link", "set", public_iface, "up"], f"Bringing {public_iface} up") : return False
-    if not run_command(["ip", "link", "set", public_bridge, "up"], f"Bringing {public_bridge} up") : return False
-
-    print()
-
-    networking_restart_cmds = [
+    networking_cmds = [
         "systemctl disable systemd-networkd",
         "systemctl stop systemd-networkd",
         "systemctl enable networking",
         "systemctl restart networking",
     ]
-    
-    if not run_command(
-        ["bash", "-c", " ; ".join(networking_restart_cmds)],
-        "Restarting Networking service..."
-    ) : return False
+
+    full_cmd = " && ".join(networking_cmds)
+
+    if not run_command(["bash", "-c", full_cmd], "Restarting Networking service..."):
+        return False
 
     return True
 

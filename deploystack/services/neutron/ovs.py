@@ -3,6 +3,7 @@
 import os
 import shutil
 import json
+import time
 
 from ...utils.core.commands import run_command, os_run_output, os_run
 from ...utils.apt.apt import apt_install
@@ -35,7 +36,7 @@ def install_pkgs():
 
     return True
 
-def conf_openvswitch_bridges(config):
+def conf_ovs_bridges(config):
 
     print()
       
@@ -87,10 +88,14 @@ def conf_openvswitch_bridges(config):
 
     template_file = OVS_DUAL_NIC_BRIDGES_INTERFACES if is_dual_nic else OVS_BRIDGES_INTERFACES
 
-    with open(template_file, "r") as f:
-        template = f.read()
+    if os.path.exists(template_file):
+        with open(template_file, "r") as f:
+            template = f.read()
+    else:
+        print(f"{colors.RED}Error: template file in '{template_file}' not found{colors.RESET}")
+        return False
 
-    if not use_internal_bridge:        
+    if not use_internal_bridge:
         if start_tag in template and end_tag in template:
             start = template.index(start_tag)
             end = template.index(end_tag) + len(end_tag)
@@ -100,10 +105,8 @@ def conf_openvswitch_bridges(config):
         management_iface=management_iface if is_dual_nic else "",
         ip_address=ip_address,
         ip_address_netmask=ip_address_netmask,
-
         subnet_address_gateway=ip_address_gateway if is_dual_nic else subnet_gateway,
         subnet_address_dns_servers=subnet_dns,
-
         public_iface=public_iface,
         public_bridge=public_bridge,
         internal_bridge=internal_bridge if use_internal_bridge else ""
@@ -116,14 +119,18 @@ def conf_openvswitch_bridges(config):
     backup_dir = "/root/net-backup"
     os.makedirs(backup_dir, exist_ok=True)
 
-    for f in os.listdir(interfaces_dir):
-        full_path = os.path.join(interfaces_dir, f)
-        backup_path = os.path.join(backup_dir, f)
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
 
-        if full_path != INTERFACES_FILE and os.path.isfile(full_path):
-            if os.path.exists(backup_path):
-                os.remove(backup_path)
-            shutil.move(full_path, backup_path)
+    for filename in os.listdir(interfaces_dir):
+        full_path = os.path.join(interfaces_dir, filename)
+
+        if full_path == INTERFACES_FILE or not os.path.isfile(full_path):
+            continue
+
+        backup_name = f"{filename}.{timestamp}"
+        backup_path = os.path.join(backup_dir, backup_name)
+
+        shutil.move(full_path, backup_path)
 
     bridges_to_add = [(public_bridge, public_iface)]
 
@@ -155,7 +162,8 @@ def conf_openvswitch_bridges(config):
         "systemctl enable networking",
         "systemctl restart networking",
     ]
-    full_cmd = " ; ".join(networking_cmds)
+    full_cmd = " && ".join(networking_cmds)
+
     if not run_command(["bash", "-c", full_cmd], "Restarting Networking service..."):
         return False
 
@@ -165,8 +173,8 @@ def conf_neutron_ovs(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    tenant_network_type = get(config, "neutron.tenant_network.TYPE")
-    tenant_network_vni_range = get(config, "neutron.tenant_network.VNI_RANGE")
+    tenant_network_type = (get(config, "neutron.tenant_network.TYPE") or "").lower()
+    tenant_network_vni_range = (get(config, "neutron.tenant_network.VNI_RANGE") or "")
 
     provider_networks = get(config, "neutron.provider_networks", [])
 
@@ -456,7 +464,7 @@ def run_setup_ovs_neutron(config, env):
     if not install_pkgs(): return False
     
     if create_ovs_bridges:
-        if not conf_openvswitch_bridges(config) : return False
+        if not conf_ovs_bridges(config) : return False
     
     if not conf_neutron_ovs(config) : return False
     if not finalize(config) : return False   
