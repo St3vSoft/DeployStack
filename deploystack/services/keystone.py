@@ -2,8 +2,9 @@
 
 import os
 import json
+import subprocess
 
-from ..utils.core.commands import run_command, os_run, run_command_output, run_commands
+from ..utils.core.commands import run_command, os_run_output, run_command_output, run_commands
 from ..utils.core.system_utils import service_exists, is_debian 
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
@@ -229,6 +230,24 @@ def create_services_endpoints(config, env):
     os_region_name = get(config, "openstack.REGION_NAME")
 
     def ep(service, interface, url):
+
+        try:
+            result = os_run_output(["openstack", "endpoint", "list", "--service", service, "-f", "json"], env=env)
+
+            endpoints = json.loads(result)
+
+            for ep_data in endpoints:
+                if (ep_data["Interface"] == interface and 
+                    ep_data["Region"] == os_region_name and
+                    ep_data["URL"] == url):
+                    
+                    return None
+        except subprocess.CalledProcessError as e:
+            print(f"\n{colors.RED}Warning: could not list endpoints: {e}{colors.RESET}")
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON: {e}")
+            return None
+
         return [
             "openstack", "endpoint", "create", "--region", os_region_name, service, interface, url
         ]
@@ -258,6 +277,8 @@ def create_services_endpoints(config, env):
             ep("volumev3", "internal", cinder_url),
             ep("volumev3", "admin",    cinder_url),
         ]
+
+    endpoints_create_cmds = [cmd for cmd in endpoints_create_cmds if cmd is not None]
 
     if not run_commands(endpoints_create_cmds, "Creating services endpoints...", env=env) : return False
 
