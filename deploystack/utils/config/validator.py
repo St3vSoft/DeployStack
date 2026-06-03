@@ -189,9 +189,9 @@ def validate_neutron(config) -> bool:
 def validate_cinder(config) -> bool:
     ok = True
 
-    size_raw = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB" or "")
-    path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH" or "").lower()
-    pv = get(config, "cinder.lvm.PHYSICAL_VOLUME" or "").lower()
+    size_raw = (get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB") or "")
+    path = (get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH") or "").lower()
+    pv = (get(config, "cinder.lvm.PHYSICAL_VOLUME") or "").lower()
 
     if pv:
         if not os.path.exists(pv):
