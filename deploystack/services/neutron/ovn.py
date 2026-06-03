@@ -58,16 +58,20 @@ def conf_ovn_bridges(config):
             run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
+    print()
+
     run_command(["ovs-vsctl", "--if-exists", "del-port", public_bridge, public_iface],
-                f"Removing port {public_iface} from {public_bridge}", ignore_errors=True)
+                f"Removing port {public_iface} from {public_bridge} if exists", ignore_errors=True)
     run_command(["ovs-vsctl", "--if-exists", "del-br", public_bridge],
                 f"Deleting bridge {public_bridge} if exists", ignore_errors=True)
+    
+    print()
 
     if isinstance(subnet_dns, list):
         subnet_dns = " ".join(subnet_dns)
 
     template_file = OVN_DUAL_NIC_BRIDGES_INTERFACES if is_dual_nic else OVN_BRIDGES_INTERFACES
-    
+
     if not os.path.exists(template_file):
         print(f"{colors.RED}Error: template file '{template_file}' not found{colors.RESET}")
         return False
@@ -105,6 +109,8 @@ def conf_ovn_bridges(config):
     if not run_command(["ovs-vsctl", "--may-exist", "add-port", public_bridge, public_iface],
                        f"Adding port {public_iface} to {public_bridge}"):
         return False
+
+    print()
 
     if not run_command(["ip", "link", "set", public_iface, "up"], f"Bringing {public_iface} up"):
         return False
