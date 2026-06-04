@@ -178,8 +178,7 @@ def validate_neutron(config) -> bool:
                 print(f"{colors.RED}Error: Invalid network type '{net.get('type')}' in provider_networks[{i}]{colors.RESET}")
                 ok = False
 
-    # Controllo tenant_type
-    if tenant_type not in ["geneve", "flat", "vxlan"]:
+    if tenant_type not in ["geneve", "vxlan"]:
         print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
         ok = False
 
