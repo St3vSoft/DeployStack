@@ -485,8 +485,6 @@ def create_ovn_networks(config, env):
             ):
                 return False     
 
-    print()
-
     sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
     default_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
     if not default_sg:
@@ -503,6 +501,9 @@ def create_ovn_networks(config, env):
     )
 
     if create_ovn_bridges and not ssh_rule_exists:
+        
+        print()
+
         if not os_run(
             ["openstack", "security", "group", "rule", "create",
              "--proto", "tcp", "--dst-port", "22", "--remote-ip", public_subnet_cidr, sg_id],
