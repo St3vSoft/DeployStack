@@ -50,7 +50,7 @@ def ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
 
 def get_cirros_image_checksum(image_name="cirros") -> str | None:
     try:
-        out = _os("image", "show", image_name, "-f", "value", "checksum")
+        out = _os("image", "show", image_name, "-f", "value", "-c", "checksum")
         return out.strip()
     except Exception:
         logger.error(f"{colors.RED}Unable to find checksum for CirrOS image{colors.RESET}")
