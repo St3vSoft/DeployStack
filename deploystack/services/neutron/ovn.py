@@ -461,23 +461,29 @@ def create_ovn_networks(config, env):
     if not router_exists:
         if not os_run(["openstack", "router", "create", "internal_router"], "Creating internal router...", env=env):
             return False
+    else:
+        print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
 
-        if create_ovn_bridges:
+    if create_ovn_bridges:
+
+        external_gateways_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "external_gateways"], env=env))
+        interfaces_info_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "interfaces_info"], env=env))
+
+        if not external_gateways_list.get("external_gateways"):
             if not os_run(
                 ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
                 "Setting external gateway for internal router...", env=env
             ):
                 return False
-            
+        
         print()
 
-        if not os_run(
-            ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
-            "Adding internal subnet to router...", env=env
-        ):
-            return False
-    else:
-        print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
+        if not interfaces_info_list.get("interfaces_info"):
+            if not os_run(
+                ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
+                "Adding internal subnet to router...", env=env
+            ):
+                return False     
 
     print()
 
@@ -495,6 +501,7 @@ def create_ovn_networks(config, env):
         rule.get("Direction") == "ingress"
         for rule in rules
     )
+
     if create_ovn_bridges and not ssh_rule_exists:
         if not os_run(
             ["openstack", "security", "group", "rule", "create",
@@ -521,7 +528,9 @@ def create_ovn_networks(config, env):
     print()
 
     if create_ovn_bridges:
+    
         router_gw_ip = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json"], env=env))
+
         gw_ip = router_gw_ip["external_gateway_info"]["external_fixed_ips"][0]["ip_address"]
         #run_command_sync(["ip", "route", "replace", "10.0.0.0/24", "via", gw_ip, "dev", ovn_public_bridge])
 
