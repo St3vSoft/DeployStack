@@ -501,7 +501,7 @@ def create_ovn_networks(config, env):
     )
 
     if create_ovn_bridges and not ssh_rule_exists:
-        
+
         print()
 
         if not os_run(
@@ -513,10 +513,10 @@ def create_ovn_networks(config, env):
     else:
         print(f"{colors.YELLOW}SSH rule already exists or skipped.{colors.RESET}")
 
-    print()
-
     icmp_rule_exists = any(rule.get("IP Protocol") == "icmp" for rule in rules)
     if create_ovn_bridges and not icmp_rule_exists:
+        print()
+
         if not os_run(
             ["openstack", "security", "group", "rule", "create",
              "--proto", "icmp", sg_id],

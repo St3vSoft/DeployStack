@@ -406,24 +406,29 @@ def create_ovs_networks(config, env):
             ["openstack", "router", "create", "internal_router"],
             "Creating internal router...", env=env
         ): return False
+    else:
+        print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
 
-        if create_ovs_bridges:
+    if create_ovs_bridges:
+        external_gateways_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "external_gateways"], env=env))
+        interfaces_info_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "interfaces_info"], env=env))
+
+        if not external_gateways_list.get("external_gateways"):
             if not os_run(
                 ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
                 "Setting external gateway for internal router...", env=env
-            ): return False
-
+            ):
+                return False
+        
         print()
 
-        if not os_run(
-            ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
-            "Adding internal subnet to router...", env=env
-        ): return False
-    else:
-        print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
+        if not interfaces_info_list.get("interfaces_info"):
+            if not os_run(
+                ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
+                "Adding internal subnet to router...", env=env
+            ):
+                return False    
     
-    print()
-
     sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env)
     sg_list = json.loads(sg_list_json)
 
@@ -444,16 +449,17 @@ def create_ovs_networks(config, env):
     )
 
     if create_ovs_bridges and not ssh_rule_exists:
+
+        print()
+
         if not os_run(
             ["openstack", "security", "group", "rule", "create",
-            "--proto", "tcp",
-            "--dst-port", "22",
-            "--remote-ip", public_subnet_cidr,
-            sg_id],
-            "Allowing SSH access...", env=env): 
+             "--proto", "tcp", "--dst-port", "22", "--remote-ip", public_subnet_cidr, sg_id],
+            "Allowing SSH access...", env=env
+        ):
             return False
     else:
-        print(f"{colors.YELLOW}SSH rule skipped (no OVS bridge or already exists).{colors.RESET}")
+       print(f"{colors.YELLOW}SSH rule skipped (no OVS bridge or already exists){colors.RESET}")
 
     return True
 
