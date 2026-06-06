@@ -464,8 +464,6 @@ def launch(
     fip: str = None
     instance_ip_address: str = None
 
-    cirros_checksum = get_cirros_image_checksum()
-
     if " " in password:
         logger.error(f"{colors.RED}Cloud-init password invalid: contains spaces{colors.RESET}")
         sys.exit(1)
@@ -482,7 +480,7 @@ def launch(
         key_path = None
         public_key = None
 
-    if "cirros" in image_name and cirros_checksum is not None and cirros_checksum == CIRROS_IMAGE_CHECKSUM and password not in (None, ""):
+    if "cirros" in image_name and get_cirros_image_checksum() is not None and get_cirros_image_checksum() == CIRROS_IMAGE_CHECKSUM and password not in (None, ""):
         password_enabled = False
         logger.info(f"{colors.YELLOW}CirrOS detected. Skipping password configuration (unsupported image).{colors.RESET}\n")
 
@@ -530,7 +528,7 @@ def launch(
     
     if password_enabled and password:
         print_summary(name, fip, key_path, True, os_admin_user, password, os_type, instance_ip_address)
-    elif "cirros" in image_name and cirros_checksum is not None and cirros_checksum == CIRROS_IMAGE_CHECKSUM:
+    elif "cirros" in image_name and get_cirros_image_checksum() is not None and get_cirros_image_checksum() == CIRROS_IMAGE_CHECKSUM:
         print_summary(name, fip, key_path, False, "cirros", None, "linux", instance_ip_address)
     else:
         print_summary(name, fip, key_path, False, os_admin_user, None, os_type, instance_ip_address)
