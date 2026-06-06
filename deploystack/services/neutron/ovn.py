@@ -58,10 +58,14 @@ def conf_ovn_bridges(config):
             run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
-    print()
+    line_printed = False
 
     for bridge, port in [(public_bridge, public_iface)]:
         if iface_exists(bridge):
+            if not line_printed : 
+                print()
+                line_printed = True
+
             if port:
                 run_command(["ovs-vsctl", "--if-exists", "del-port", bridge, port], f"Deleting port {port} from {bridge}", ignore_errors=True)
             run_command(["ovs-vsctl", "--if-exists", "del-br", bridge], f"Deleting bridge {bridge}", ignore_errors=True)
@@ -129,8 +133,7 @@ def conf_ovn_bridges(config):
 
     full_cmd = " && ".join(networking_cmds)
 
-    if not run_command(["bash", "-c", full_cmd], "Restarting Networking service..."):
-        return False
+    if not run_command(["bash", "-c", full_cmd], "Restarting Networking service..."): return False
 
     return True
 

@@ -32,7 +32,7 @@ def install_pkgs():
         "neutron-l3-agent", 
         "openvswitch-switch"]
 
-    if not apt_install(ovs_packages, ux_text=f"Installing OVS packages...") : return False
+    if not apt_install(ovs_packages, ux_text=f"Installing Neutron OVS packages...") : return False
 
     return True
 
