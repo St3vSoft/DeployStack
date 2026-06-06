@@ -6,6 +6,7 @@ import uuid
 import shutil
 import base64
 import json
+import json
 from passlib.hash import sha512_crypt
 
 from ...utils.core import colors
@@ -14,6 +15,8 @@ from ...templates import CLOUD_CONFIG_LINUX, CLOUD_CONFIG_LINUX_NO_ROOT
 from ...utils.core.system_utils import is_debian
 
 from ..shell import _run, _os, _os_value, logger
+
+CIRROS_IMAGE_CHECKSUM = "87617e24a5e30cb3b87fda8c0764838f"
 
 SSH_KEY_PATH = os.path.expanduser("~/.ssh/")
 DEFAULT_FLAVOR  = "m1.tiny"
@@ -45,9 +48,15 @@ def ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
 
     return keypair_name
 
+def get_cirros_image_checksum(image_name="cirros") -> str | None:
+    try:
+        out = _os("image", "show", image_name, "-f", "value", "checksum")
+        return out.strip()
+    except Exception:
+        logger.error(f"{colors.RED}Unable to find checksum for CirrOS image{colors.RESET}")
+        sys.exit(1)
 
 def get_image_properties(image_id: str) -> dict:
-    import json
 
     out = _os("image", "show", image_id, "-f", "json")
     data = json.loads(out)
@@ -455,6 +464,8 @@ def launch(
     fip: str = None
     instance_ip_address: str = None
 
+    cirros_checksum = get_cirros_image_checksum()
+
     if " " in password:
         logger.error(f"{colors.RED}Cloud-init password invalid: contains spaces{colors.RESET}")
         sys.exit(1)
@@ -471,7 +482,7 @@ def launch(
         key_path = None
         public_key = None
 
-    if "cirros" in image_name and password not in (None, ""):
+    if "cirros" in image_name and cirros_checksum is not None and cirros_checksum == CIRROS_IMAGE_CHECKSUM and password not in (None, ""):
         password_enabled = False
         logger.info(f"{colors.YELLOW}CirrOS detected. Skipping password configuration (unsupported image).{colors.RESET}\n")
 
@@ -519,7 +530,7 @@ def launch(
     
     if password_enabled and password:
         print_summary(name, fip, key_path, True, os_admin_user, password, os_type, instance_ip_address)
-    elif "cirros" in image_name:
+    elif "cirros" in image_name and cirros_checksum is not None and cirros_checksum == CIRROS_IMAGE_CHECKSUM:
         print_summary(name, fip, key_path, False, "cirros", None, "linux", instance_ip_address)
     else:
         print_summary(name, fip, key_path, False, os_admin_user, None, os_type, instance_ip_address)
