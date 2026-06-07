@@ -158,8 +158,9 @@ def conf_lvm(config):
     
     os.makedirs(os.path.dirname(tgt_conf_path), exist_ok=True)
 
-    with open(tgt_conf_path, "w") as f:
-        f.write("""include /var/lib/cinder/volumes/*""")
+    if not os.path.exists(tgt_conf_path):
+        with open(tgt_conf_path, "w") as f:
+            f.write("include /var/lib/cinder/volumes/*")
 
     return True
 
