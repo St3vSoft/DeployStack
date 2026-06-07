@@ -86,9 +86,9 @@ def conf_lvm(config):
     else:
         lvm_dev = lvm_loop_dev
 
-        print()  # separatore visivo
-
         if not os.path.exists(lvm_image_file_path):
+
+            print() 
 
             fallocate_cmd = [
                 "fallocate",
@@ -126,11 +126,11 @@ def conf_lvm(config):
             ):
                 return False
             
-    print()  # separatore prima di controllare il VG
-
     vg = get_vg_for_pv(lvm_dev)
 
     if vg is None:
+
+        print() 
 
         if not run_command(
             ["pvcreate", lvm_dev],
