@@ -86,7 +86,7 @@ def conf_lvm(config):
     else:
         lvm_dev = lvm_loop_dev
 
-        print()
+        print()  # separatore visivo
 
         if not os.path.exists(lvm_image_file_path):
 
@@ -109,7 +109,7 @@ def conf_lvm(config):
             os.chown(lvm_image_file_path, uid, gid)
             os.chmod(lvm_image_file_path, 0o600)
 
-            print()
+            print()  # separatore dopo la creazione del file
 
         try:
             losetup_output = subprocess.check_output(
@@ -126,7 +126,7 @@ def conf_lvm(config):
             ):
                 return False
             
-    print()
+    print()  # separatore prima di controllare il VG
 
     vg = get_vg_for_pv(lvm_dev)
 
