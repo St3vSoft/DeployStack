@@ -98,6 +98,7 @@ def check_deployment(include_endpoints: bool = True):
         add_check("Packages", cinder_pkgs, is_package_installed)
         add_check("Config files", ["/etc/cinder/cinder.conf", "/etc/tgt/conf.d/cinder.conf"], os.path.isfile)
 
+
     if include_endpoints:
         checks.append(
             ("Endpoints", ["identity", "compute", "image", "network"], check_endpoint)
@@ -106,26 +107,14 @@ def check_deployment(include_endpoints: bool = True):
         if all(is_package_installed(pkg) for pkg in cinder_pkgs):
             add_check("Endpoints", ["volumev3"], check_endpoint)
 
-    # --- DEBUG: log dettagliati per capire cosa fallisce ---
-    print("\nDEBUG: Starting deployment checks...")
+
     for category, items, check_fn in checks:
         for item in items:
             label = f"[{category}] {item}"
-            try:
-                ok = check_fn(item)
-            except Exception as e:
-                ok = False
-                print(f"{colors.RED}EXCEPTION while checking {label}: {e}{colors.RESET}")
-
-            if ok:
+            if check_fn(item):
                 result.passed.append(label)
-                print(f"{colors.GREEN}PASSED: {label}{colors.RESET}")
             else:
                 result.failed.append(label)
-                print(f"{colors.RED}FAILED: {label}{colors.RESET}")
-
-    print("\nDEBUG: Deployment check complete")
-    print(f"Total passed: {len(result.passed)}, Total failed: {len(result.failed)}\n")
 
     return result
 

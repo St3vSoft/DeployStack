@@ -17,6 +17,7 @@ from ..utils.core.system_utils import service_exists, is_debian
 from ..templates import CINDER_LOOPBACK_SERVICE, CINDER_LOOPBACK_START_SCRIPT, CINDER_LOOPBACK_STOP_SCRIPT, CINDER_LVM_ENV_CONF
 
 cinder_conf = "/etc/cinder/cinder.conf"
+tgt_conf_path = "/etc/tgt/conf.d/cinder.conf"
 
 def get_vg_for_pv(device):
     try:
@@ -154,6 +155,11 @@ def conf_lvm(config):
             f"{colors.RESET}"
         )
         return False
+    
+    os.makedirs(os.path.dirname(tgt_conf_path), exist_ok=True)
+
+    with open(tgt_conf_path, "w") as f:
+        f.write("""include /var/lib/cinder/volumes/*""")
 
     return True
 
