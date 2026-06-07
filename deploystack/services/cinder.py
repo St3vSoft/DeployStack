@@ -109,7 +109,7 @@ def conf_lvm(config):
             os.chown(lvm_image_file_path, uid, gid)
             os.chmod(lvm_image_file_path, 0o600)
 
-        print()
+            print()
 
         try:
             losetup_output = subprocess.check_output(
