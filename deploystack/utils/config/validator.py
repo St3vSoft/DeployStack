@@ -197,14 +197,6 @@ def validate_cinder(config) -> bool:
             print(f"{colors.RED}Error: PHYSICAL_VOLUME '{pv}' does not exist{colors.RESET}")
             return False
 
-        try:
-            out = subprocess.check_output(["blkid", pv], text=True, stderr=subprocess.DEVNULL)
-            if "LVM2_member" in out:
-                print(f"{colors.RED}Error: '{pv}' is already an LVM PV{colors.RESET}")
-                return False
-        except Exception:
-            pass
-
         return True
 
     size = None

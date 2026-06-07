@@ -5,6 +5,7 @@ import grp
 import os
 import subprocess
 import shutil
+import json
 
 from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install
@@ -16,6 +17,25 @@ from ..utils.core.system_utils import service_exists, is_debian
 from ..templates import CINDER_LOOPBACK_SERVICE, CINDER_LOOPBACK_START_SCRIPT, CINDER_LOOPBACK_STOP_SCRIPT, CINDER_LVM_ENV_CONF
 
 cinder_conf = "/etc/cinder/cinder.conf"
+
+def get_vg_for_pv(device):
+    try:
+        result = subprocess.run(
+            ["pvs", "--reportformat", "json", "-o", "pv_name,vg_name"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        return None
+
+    data = json.loads(result.stdout)
+
+    for pv in data["report"][0]["pv"]:
+        if pv["pv_name"] == device:
+            return pv["vg_name"] or None
+
+    return None
 
 def ensure_system_user_with_run_command(username="cinder"):
     success = True
@@ -52,9 +72,7 @@ def install_pkgs():
 
 def conf_lvm(config):
 
-    cinder_conf_path = "/etc/tgt/conf.d/cinder.conf"
     os.makedirs("/var/lib/cinder/images", exist_ok=True)
-    line = "include /var/lib/cinder/volumes/*\n"
 
     lvm_physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME")
     lvm_image_file_path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
@@ -70,13 +88,18 @@ def conf_lvm(config):
 
         if not os.path.exists(lvm_image_file_path):
 
-            print()
+            fallocate_cmd = [
+                "fallocate",
+                "-l",
+                f"{lvm_image_size_in_gb}G",
+                lvm_image_file_path
+            ]
 
-            fallocate_cmd = ["fallocate", "-l", f"{lvm_image_size_in_gb}G", lvm_image_file_path]
+            if not run_command(fallocate_cmd, "Allocating LVM disk image"):
+                return False
 
-            if not run_command(fallocate_cmd, "Allocating LVM Disk Image..."): return False
-
-            if not ensure_system_user_with_run_command("cinder"): return False
+            if not ensure_system_user_with_run_command("cinder"):
+                return False
 
             uid = pwd.getpwnam("cinder").pw_uid
             gid = grp.getgrnam("cinder").gr_gid
@@ -85,40 +108,47 @@ def conf_lvm(config):
             os.chmod(lvm_image_file_path, 0o600)
 
         try:
-            losetup_output = subprocess.check_output(["losetup", "-j", lvm_image_file_path], text=True)
+            losetup_output = subprocess.check_output(
+                ["losetup", "-j", lvm_image_file_path],
+                text=True
+            )
         except subprocess.CalledProcessError:
             losetup_output = ""
 
         if lvm_loop_dev not in losetup_output:
-            if not run_command(["losetup", lvm_loop_dev, lvm_image_file_path],
-                               f"Associating {lvm_image_file_path} to {lvm_loop_dev}... "): return False
+            if not run_command(
+                ["losetup", lvm_loop_dev, lvm_image_file_path],
+                f"Associating {lvm_image_file_path} → {lvm_loop_dev}"
+            ):
+                return False
 
-    try:
-        pvs_output = subprocess.check_output(["pvs", "--noheadings", "-o", "pv_name"], text=True)
-    except subprocess.CalledProcessError:
-        pvs_output = ""
+    vg = get_vg_for_pv(lvm_dev)
 
-    if lvm_dev not in pvs_output.split():
+    if vg is None:
 
-        print()
+        if not run_command(
+            ["pvcreate", lvm_dev],
+            f"Creating physical volume on {lvm_dev}..."
+        ):
+            return False
 
-        if not run_command(["pvcreate", lvm_dev], f"Creating physical volume on {lvm_dev}"): return False
+        if not run_command(
+            ["vgcreate", VG_NAME, lvm_dev],
+            f"Creating volume group {VG_NAME}..."
+        ):
+            return False
 
-    try:
-        vgs_output = subprocess.check_output(["vgs", "--noheadings", "-o", "vg_name"], text=True)
-    except subprocess.CalledProcessError:
-        vgs_output = ""
+    elif vg == VG_NAME:
+        pass
 
-    if VG_NAME not in vgs_output.split():
-        if not run_command(["vgcreate", VG_NAME, lvm_dev], f"Creating volume group {VG_NAME}"): return False
-
-    try:
-        with open(cinder_conf_path, "w") as fconf:
-            fconf.write(line)
-    except Exception as e:
-        print(f"{colors.RED}Failed to write {cinder_conf_path}: {e}{colors.RESET}")
+    else:
+        print(
+            f"{colors.RED}"
+            f"{lvm_dev} already belongs to VG '{vg}', expected '{VG_NAME}'"
+            f"{colors.RESET}"
+        )
         return False
-    
+
     return True
 
 def write_cinder_lvm_env(config):
@@ -262,8 +292,6 @@ def finalize(config):
 
     if service_exists("cinder-api.service") and is_debian():
         cinder_services.append("cinder-api")
-    else:
-        cinder_services.append("apache2")
 
     if not run_command(["systemctl", "restart"] + cinder_services, "Restarting Cinder services...", False, None, 3, 5): return False
     
