@@ -97,7 +97,7 @@ def conf_lvm(config):
                 lvm_image_file_path
             ]
 
-            if not run_command(fallocate_cmd, "Allocating LVM disk image"):
+            if not run_command(fallocate_cmd, "Allocating LVM disk image..."):
                 return False
 
             if not ensure_system_user_with_run_command("cinder"):
