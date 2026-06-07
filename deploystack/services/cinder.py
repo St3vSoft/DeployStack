@@ -86,6 +86,8 @@ def conf_lvm(config):
     else:
         lvm_dev = lvm_loop_dev
 
+        print()
+
         if not os.path.exists(lvm_image_file_path):
 
             fallocate_cmd = [
@@ -107,6 +109,8 @@ def conf_lvm(config):
             os.chown(lvm_image_file_path, uid, gid)
             os.chmod(lvm_image_file_path, 0o600)
 
+        print()
+
         try:
             losetup_output = subprocess.check_output(
                 ["losetup", "-j", lvm_image_file_path],
@@ -118,9 +122,11 @@ def conf_lvm(config):
         if lvm_loop_dev not in losetup_output:
             if not run_command(
                 ["losetup", lvm_loop_dev, lvm_image_file_path],
-                f"Associating {lvm_image_file_path} → {lvm_loop_dev}"
+                f"Associating {lvm_image_file_path} to {lvm_loop_dev}"
             ):
                 return False
+            
+    print()
 
     vg = get_vg_for_pv(lvm_dev)
 
