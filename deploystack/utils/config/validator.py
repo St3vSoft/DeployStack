@@ -198,6 +198,10 @@ def validate_cinder(config) -> bool:
             return False
 
         return True
+    
+    if pv.startswith("/dev/loop") and is_loop_device(pv):
+        print(f"{colors.RED}Error: loop devices are not allowed as Physical Volume ({pv}){colors.RESET}")
+        ok = False
 
     size = None
     if size_raw:
@@ -218,10 +222,7 @@ def validate_cinder(config) -> bool:
             print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
             ok = False
 
-    
-    if pv.startswith("/dev/loop") and is_loop_device(pv):
-        print(f"{colors.RED}Error: loop devices are not allowed as Physical Volume ({pv}){colors.RESET}")
-        ok = False
+
 
     if path:
         directory = os.path.dirname(path) or "/"
