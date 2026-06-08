@@ -202,52 +202,52 @@ def validate_cinder(config) -> bool:
             print(f"{colors.RED}Error: loop devices are not allowed as Physical Volume ({pv}){colors.RESET}")
             ok = False
             return False
-
-    size = None
-    if size_raw:
-        try:
-            size = int(size_raw)
-        except ValueError:
-            print(f"{colors.RED}Error: invalid integer for CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB{colors.RESET}")
-            ok = False
-
-    required_fields = [
-        "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
-        "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",
-        "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",
-    ]
-
-    for field in required_fields:
-        if not get(config, field) :
-            print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
-            ok = False
-
-
-
-    if path:
-        directory = os.path.dirname(path) or "/"
-
-        while not os.path.exists(directory):
-            parent = os.path.dirname(directory)
-            if parent == directory:
-                directory = "/"
-                break
-            directory = parent
-
-        try:
-            _, _, free = shutil.disk_usage(directory)
-            free_gb = free / (1024**3)
-
-            if size is not None and size > free_gb:
-                print(
-                    f"{colors.RED}Error: insufficient disk space. "
-                    f"Required: {size} GB, available: {free_gb:.2f} GB{colors.RESET}"
-                )
+    else:
+        size = None
+        if size_raw:
+            try:
+                size = int(size_raw)
+            except ValueError:
+                print(f"{colors.RED}Error: invalid integer for CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB{colors.RESET}")
                 ok = False
 
-        except FileNotFoundError:
-            print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
-            ok = False
+        required_fields = [
+            "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
+            "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",
+            "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",
+        ]
+
+        for field in required_fields:
+            if not get(config, field) :
+                print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
+                ok = False
+
+
+
+        if path:
+            directory = os.path.dirname(path) or "/"
+
+            while not os.path.exists(directory):
+                parent = os.path.dirname(directory)
+                if parent == directory:
+                    directory = "/"
+                    break
+                directory = parent
+
+            try:
+                _, _, free = shutil.disk_usage(directory)
+                free_gb = free / (1024**3)
+
+                if size is not None and size > free_gb:
+                    print(
+                        f"{colors.RED}Error: insufficient disk space. "
+                        f"Required: {size} GB, available: {free_gb:.2f} GB{colors.RESET}"
+                    )
+                    ok = False
+
+            except FileNotFoundError:
+                print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
+                ok = False
 
     return ok
 
