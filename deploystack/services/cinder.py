@@ -123,7 +123,7 @@ def conf_lvm(config):
         if lvm_loop_dev not in losetup_output:
             if not run_command(
                 ["losetup", lvm_loop_dev, lvm_image_file_path],
-                f"Associating {lvm_image_file_path} to {lvm_loop_dev}"
+                f"Associating {lvm_image_file_path} to {lvm_loop_dev}..."
             ):
                 return False
             
