@@ -1,5 +1,6 @@
 import ipaddress
 import psutil
+import subprocess
 
 from .parser import get
 from ..core import colors
@@ -36,4 +37,16 @@ def validate_cidr(value: str, field_name: str) -> bool:
         return True
     except ValueError:
         print(f"{colors.RED}Error: '{field_name}' contains an invalid network CIDR: {value}{colors.RESET}")
+        return False
+
+def is_loop_device(path: str) -> bool:
+    try:
+        result = subprocess.run(
+            ["lsblk", "-no", "TYPE", path],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip() == "loop"
+    except Exception:
         return False

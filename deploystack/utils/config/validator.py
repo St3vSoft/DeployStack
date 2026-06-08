@@ -2,7 +2,7 @@ import shutil
 import subprocess
 import os
 
-from .helpers import get_provider_networks, interface_exists, validate_ip, validate_cidr
+from .helpers import get_provider_networks, interface_exists, validate_ip, validate_cidr, is_loop_device
 from ..core import colors
 from .parser import get
 
@@ -214,7 +214,7 @@ def validate_cinder(config) -> bool:
     ]
 
     for field in required_fields:
-        if not get(config, field):
+        if not get(config, field) :
             print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
             ok = False
 
@@ -242,6 +242,10 @@ def validate_cinder(config) -> bool:
         except FileNotFoundError:
             print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
             ok = False
+
+    if pv.startswith("/dev/loop") and is_loop_device(pv):
+        print(f"{colors.RED}Error: loop devices are not allowed as Physical Volume ({pv}){colors.RESET}")
+        ok = False
 
     return ok
 
