@@ -218,6 +218,11 @@ def validate_cinder(config) -> bool:
             print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
             ok = False
 
+    
+    if pv.startswith("/dev/loop") and is_loop_device(pv):
+        print(f"{colors.RED}Error: loop devices are not allowed as Physical Volume ({pv}){colors.RESET}")
+        ok = False
+
     if path:
         directory = os.path.dirname(path) or "/"
 
@@ -242,10 +247,6 @@ def validate_cinder(config) -> bool:
         except FileNotFoundError:
             print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
             ok = False
-
-    if pv.startswith("/dev/loop") and is_loop_device(pv):
-        print(f"{colors.RED}Error: loop devices are not allowed as Physical Volume ({pv}){colors.RESET}")
-        ok = False
 
     return ok
 
