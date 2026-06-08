@@ -198,10 +198,8 @@ def validate_cinder(config) -> bool:
             return False
 
         return True
-    
-    print(pv)
-    
-    if pv.startswith("/dev/loop") and is_loop_device(pv):
+
+    if not pv.startswith("/dev/") or pv.startswith("/dev/loop"):
         print(f"{colors.RED}Error: loop devices are not allowed as Physical Volume ({pv}){colors.RESET}")
         ok = False
 
