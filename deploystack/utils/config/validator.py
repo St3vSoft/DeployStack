@@ -55,11 +55,11 @@ def validate_public_network(config) -> bool:
     ok = True
 
     ip_fields = [
-        "public_network.PUBLIC_SUBNET_GATEWAY",
-        "public_network.PUBLIC_SUBNET_RANGE_START",
-        "public_network.PUBLIC_SUBNET_RANGE_END",
+        "neutron.public_network.PUBLIC_SUBNET_GATEWAY",
+        "neutron.public_network.PUBLIC_SUBNET_RANGE_START",
+        "neutron.public_network.PUBLIC_SUBNET_RANGE_END",
     ]
-    cidr_fields = ["public_network.PUBLIC_SUBNET_CIDR"]
+    cidr_fields = ["neutron.public_network.PUBLIC_SUBNET_CIDR"]
 
     # Validate CIDR fields
     for field in cidr_fields:
@@ -82,9 +82,9 @@ def validate_public_network(config) -> bool:
             print(f"{colors.RED}Error: Field '{field}' has invalid IP: {value}{colors.RESET}")
 
     # Validate DNS servers
-    dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS", [])
+    dns_servers = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS", [])
     for i, dns in enumerate(dns_servers):
-        if not validate_ip(dns, f"public_network.PUBLIC_SUBNET_DNS_SERVERS[{i}]"):
+        if not validate_ip(dns, f"neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS[{i}]"):
             ok = False
             print(f"{colors.RED}Error: DNS server at index {i} is invalid: {dns}{colors.RESET}")
 
