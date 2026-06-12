@@ -80,11 +80,10 @@ def conf_nova(config):
 
     set_conf_option(nova_conf, "os_brick", "lock_path", "/var/lib/cinder/os_brick")
 
-    set_conf_option(nova_conf, "memcache_servers", "127.0.0.1:11211")
-    set_conf_option(nova_conf, "memcache_servers", "127.0.0.1:11211")
-    set_conf_option(nova_conf, "memcache_servers", "127.0.0.1:11211")
+    set_conf_option(nova_conf, "oslo_policy", "enforce_scope", "True")
+    set_conf_option(nova_conf, "oslo_policy", "enforce_new_defaults", "True")
 
-    set_conf_option(nova_conf, "cache", "oslo_policy", "enforce_scope", "True")
+    set_conf_option(nova_conf, "cache", "memcache_servers", "127.0.0.1:11211")
     set_conf_option(nova_conf, "cache", "backend", "dogpile.cache.memcached")
     set_conf_option(nova_conf, "cache", "enabled", "True")
 
