@@ -107,13 +107,13 @@ def detach(
 
     detach_instance_volume(volume_id, instance_id)
 
-    print(f"Resetting volume '{volume}' status ...\n")
+    #print(f"Resetting volume '{volume}' status ...\n")
 
-    reset_volume_state(volume_id)
+    #reset_volume_state(volume_id)
 
-    print(f"Marking volume '{volume}' as removed ...\n")
+    #print(f"Marking volume '{volume}' as removed ...\n")
 
-    mark_volume_deleted(volume_id, instance_id)
+    #mark_volume_deleted(volume_id, instance_id)
 
     print(f"{colors.GREEN}Volume '{volume}' "
           f"(ID: {volume_id}) successfully detached from '{instance}' (ID: {instance_id}) instance{colors.RESET}")
