@@ -313,7 +313,7 @@ def conf_cinder(config):
 
     set_conf_option(cinder_conf, "oslo_concurrency", "lock_path", "/var/lib/cinder/tmp")
 
-    set_conf_option(cinder_conf, "os_brick", "lock_path", "/var/lib/cinder/os_brick")
+    set_conf_option(cinder_conf, "os_brick", "lock_path", "/var/lib/cinder/os-brick")
 
     db_migration_cmd = [
     "sudo", "-u", "cinder",
