@@ -89,6 +89,8 @@ def config_openstack(
     else:
         dns_list = dns 
 
+    config_dict["neutron"].setdefault("public_network", {})
+
     config_dict["neutron"]["public_network"].update({
         "PUBLIC_SUBNET_CIDR": network,
         "PUBLIC_SUBNET_RANGE_START": start_ip,
