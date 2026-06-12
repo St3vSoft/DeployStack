@@ -174,6 +174,7 @@ def config_openstack(
     config_dict["openstack"].setdefault("REGION_NAME", "RegionOne")
 
     with open(config_file_path, "w") as f:
+
         yaml.dump(_remove_empty(config_dict), f, default_flow_style=False, allow_unicode=True)
 
     

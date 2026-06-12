@@ -13,15 +13,15 @@ network:
   HOST_DNS_SERVERS: 
   HOST_MGMT_INTERFACE: ""
 
-public_network:
-  PUBLIC_SUBNET_CIDR: ""
-  PUBLIC_SUBNET_RANGE_START: ""
-  PUBLIC_SUBNET_RANGE_END: ""
-  PUBLIC_SUBNET_GATEWAY: ""
-  PUBLIC_SUBNET_DNS_SERVERS: ""
-
 neutron:
   DRIVER: "ovs"           # ovs | ovn
+
+  public_network:
+    PUBLIC_SUBNET_CIDR: ""
+    PUBLIC_SUBNET_RANGE_START: ""
+    PUBLIC_SUBNET_RANGE_END: ""
+    PUBLIC_SUBNET_GATEWAY: ""
+    PUBLIC_SUBNET_DNS_SERVERS: ""
 
   # OVS-specific
   ovs:
