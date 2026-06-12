@@ -41,14 +41,13 @@ def config_openstack(
     neutron_driver: str = "ovs",   # "ovs" | "ovn"
     os_release: str = "caracal"
 ):
-    # Carica template YAML
+    
     try:
         with open(config_file_path, "r") as f:
             config_dict = yaml.safe_load(f) or {}
     except FileNotFoundError:
         config_dict = {}
 
-    # Informazioni di rete
     info = get_network_info()
     iface = info["interface"]
     ip = info["ip"]
@@ -85,18 +84,18 @@ def config_openstack(
         dns_list = [ip.strip() for ip in dns.split(",") if ip.strip()]
         config_dict["network"]["HOST_DNS_SERVERS"] = dns_list
 
-    # Public network
-    #config_dict["neutron"].setdefault("public_network", {})
-    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_CIDR"] = network
-
-    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_RANGE_START"] = start_ip
-    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_RANGE_END"] = last_ip
-    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_GATEWAY"] = gateway
-    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = "8.8.8.8,8.8.4.4"
-
     if isinstance(dns, str):
         dns_list = [ip.strip() for ip in dns.split(",") if ip.strip()]
-        config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = dns_list
+    else:
+        dns_list = dns 
+
+    config_dict["neutron"]["public_network"].update({
+        "PUBLIC_SUBNET_CIDR": network,
+        "PUBLIC_SUBNET_RANGE_START": start_ip,
+        "PUBLIC_SUBNET_RANGE_END": last_ip,
+        "PUBLIC_SUBNET_GATEWAY": gateway,
+        "PUBLIC_SUBNET_DNS_SERVERS": dns_list
+    })
 
     # Neutron
     config_dict.setdefault("neutron", {})
