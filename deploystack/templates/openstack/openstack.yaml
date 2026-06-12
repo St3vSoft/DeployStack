@@ -10,7 +10,7 @@ network:
   HOST_IP_NETMASK: ""
   HOST_IP_CIDR: ""
   HOST_IP_GATEWAY: ""
-
+  HOST_DNS_SERVERS: 
   HOST_MGMT_INTERFACE: ""
 
 public_network:

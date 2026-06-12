@@ -76,7 +76,14 @@ def config_openstack(
     config_dict["network"]["HOST_IP_NETMASK"] = netmask
     config_dict["network"]["HOST_IP_CIDR"] = ip_cidr
     config_dict["network"]["HOST_IP_GATEWAY"] = gateway
+    config_dict["network"]["HOST_DNS_SERVERS"] = "8.8.8.8,8.8.4.4"
     config_dict["network"]["HOST_MGMT_INTERFACE"] = iface
+
+    dns = config_dict["network"]["HOST_DNS_SERVERS"]
+
+    if isinstance(dns, str):
+        dns_list = [ip.strip() for ip in dns.split(",") if ip.strip()]
+        config_dict["network"]["HOST_DNS_SERVERS"] = dns_list
 
     # Public network
     config_dict["neutron"].setdefault("public_network", {})
@@ -86,8 +93,6 @@ def config_openstack(
     config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_RANGE_END"] = last_ip
     config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_GATEWAY"] = gateway
     config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = "8.8.8.8,8.8.4.4"
-
-    dns = config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"]
 
     if isinstance(dns, str):
         dns_list = [ip.strip() for ip in dns.split(",") if ip.strip()]

@@ -40,7 +40,7 @@ def set_memcached(settings_file="/etc/openstack-dashboard/local_settings.py", ho
         f.write(content)
 
 def write_resolv_conf(config):
-    public_subnet_dns_servers = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS")
+    dns_servers = get(config, "network.HOST_DNS_SERVERS")
 
     try:
         with open(resolv_conf, "r") as f:
@@ -49,7 +49,7 @@ def write_resolv_conf(config):
         existing = ""
 
     with open(resolv_conf, "a") as f:
-        for dns in public_subnet_dns_servers:
+        for dns in dns_servers:
             line = f"nameserver {dns}\n"
             if line not in existing:
                 f.write(line)
