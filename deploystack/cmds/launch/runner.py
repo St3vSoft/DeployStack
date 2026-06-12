@@ -24,6 +24,27 @@ DEFAULT_IMAGE   = "cirros"
 DEFAULT_NETWORK = "internal"
 EXTERNAL_NET    = "public"
 
+def is_external_network(network: str) -> bool:
+
+    try:
+        result = subprocess.run(
+            ["openstack", "network", "show", network, "-f", "json", "-c", "router:external"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        external_info = json.loads(result.stdout)
+
+        return external_info.get("router:external", False)
+    
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to retrieve network information for '{network}': {e}")
+        sys.exit(1)
+    
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse JSON output for network '{network}': {e}")
+        sys.exit(1)
+
 def ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
 
     keypair_name = f"{name}-keypair"
@@ -509,20 +530,24 @@ def launch(
 
     wait_for_active(server_id, timeout)
 
-    if network != EXTERNAL_NET:
+    if not is_external_network(network):
 
         if internal_router_has_gateway():
             fip = allocate_floating_ip(external_net)
-
             attach_floating_ip(server_id, fip)
+
+            instance_ip_address = fip
+
         else:
             instance_ip_address = get_instance_ip(name, network)
 
             logger.warning(
-            f"{colors.YELLOW}The internal router does not have a gateway connected to the external network. "
-            f"Floating IP creation will be skipped, and the '{network}' network will be directly associated "
-            f"with the instance '{server_id}'.{colors.RESET}\n"
-        )
+                f"{colors.YELLOW}"
+                "The internal router is not connected to an external gateway. "
+                "Floating IP allocation will be skipped and the instance will "
+                f"be reachable only through the '{network}' network."
+                f"{colors.RESET}\n"
+            )
     else:
         instance_ip_address = get_instance_ip(name, network)
     
