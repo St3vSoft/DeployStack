@@ -79,19 +79,19 @@ def config_openstack(
     config_dict["network"]["HOST_MGMT_INTERFACE"] = iface
 
     # Public network
-    config_dict.setdefault("public_network", {})
-    config_dict["public_network"]["PUBLIC_SUBNET_CIDR"] = network
+    config_dict["neutron"].setdefault("public_network", {})
+    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_CIDR"] = network
 
-    config_dict["public_network"]["PUBLIC_SUBNET_RANGE_START"] = start_ip
-    config_dict["public_network"]["PUBLIC_SUBNET_RANGE_END"] = last_ip
-    config_dict["public_network"]["PUBLIC_SUBNET_GATEWAY"] = gateway
-    config_dict["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = "8.8.8.8,8.8.4.4"
+    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_RANGE_START"] = start_ip
+    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_RANGE_END"] = last_ip
+    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_GATEWAY"] = gateway
+    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = "8.8.8.8,8.8.4.4"
 
-    dns = config_dict["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"]
+    dns = config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"]
 
     if isinstance(dns, str):
         dns_list = [ip.strip() for ip in dns.split(",") if ip.strip()]
-        config_dict["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = dns_list
+        config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = dns_list
 
     # Neutron
     config_dict.setdefault("neutron", {})

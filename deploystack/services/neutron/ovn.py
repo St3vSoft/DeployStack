@@ -47,8 +47,8 @@ def conf_ovn_bridges(config):
     ip_address = get(config, "network.HOST_IP")
     ip_address_netmask = get(config, "network.HOST_IP_NETMASK")
     ip_address_gateway = get(config, "network.HOST_IP_GATEWAY")
-    subnet_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
-    subnet_dns = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
+    subnet_gateway = get(config, "neutron.public_network.PUBLIC_SUBNET_GATEWAY")
+    subnet_dns = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS")
     management_iface = get(config, "network.HOST_MGMT_INTERFACE")
 
     is_dual_nic = (public_iface != management_iface)
@@ -353,11 +353,11 @@ def finalize(config):
 def create_ovn_networks(config, env):
     print()
 
-    public_subnet_range_start = get(config, "public_network.PUBLIC_SUBNET_RANGE_START")
-    public_subnet_range_end = get(config, "public_network.PUBLIC_SUBNET_RANGE_END")
-    public_subnet_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
-    public_subnet_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
-    public_subnet_cidr = get(config, "public_network.PUBLIC_SUBNET_CIDR")
+    public_subnet_range_start = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_START")
+    public_subnet_range_end = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_END")
+    public_subnet_gateway = get(config, "neutron.public_network.PUBLIC_SUBNET_GATEWAY")
+    public_subnet_dns_servers = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS")
+    public_subnet_cidr = get(config, "neutron.public_network.PUBLIC_SUBNET_CIDR")
 
     ovn_public_bridge = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")
     ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE").lower()
