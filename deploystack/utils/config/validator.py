@@ -19,13 +19,11 @@ def validate_passwords(config) -> bool:
 
 # --- Public network ---
 def validate_host_network(config) -> bool:
-
     ok = True
 
     host_network_fields = [
         "network.HOST_IP",
         "network.HOST_IP_NETMASK",
-        "network.HOST_DNS_SERVERS",
     ]
 
     cidr_fields = ["network.HOST_IP_CIDR"]
@@ -39,7 +37,7 @@ def validate_host_network(config) -> bool:
             ok = False
             print(f"{colors.RED}Error: Field '{field}' has invalid CIDR: {value}{colors.RESET}")
 
-    # Validate IP fields
+    # Validazione IP singoli
     for field in host_network_fields:
         value = get(config, field)
         if not value:
@@ -47,6 +45,15 @@ def validate_host_network(config) -> bool:
             print(f"{colors.RED}Error: Field '{field}' is missing.{colors.RESET}")
         elif not validate_ip(value, field):
             ok = False
+
+    dns_list = get(config, "network.HOST_DNS_SERVERS")
+    if not dns_list:
+        ok = False
+        print(f"{colors.RED}Error: Field 'network.HOST_DNS_SERVERS' is missing.{colors.RESET}")
+    else:
+        for dns in dns_list:
+            if not validate_ip(dns, "network.HOST_DNS_SERVERS"):
+                ok = False
 
     return ok
 
