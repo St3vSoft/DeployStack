@@ -85,6 +85,8 @@ def config_openstack(
     else:
         dns_list = dns
 
+    config_dict["network"]["HOST_MGMT_INTERFACE"] = dns_list
+
     # Neutron
 
     config_dict.setdefault("neutron", {})
