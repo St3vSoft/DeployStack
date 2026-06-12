@@ -40,7 +40,7 @@ def set_memcached(settings_file="/etc/openstack-dashboard/local_settings.py", ho
         f.write(content)
 
 def write_resolv_conf(config):
-    public_subnet_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
+    public_subnet_dns_servers = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
     try:
         with open(resolv_conf, "r") as f:
