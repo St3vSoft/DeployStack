@@ -86,7 +86,7 @@ def config_openstack(
         config_dict["network"]["HOST_DNS_SERVERS"] = dns_list
 
     # Public network
-    config_dict["neutron"].setdefault("public_network", {})
+    #config_dict["neutron"].setdefault("public_network", {})
     config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_CIDR"] = network
 
     config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_RANGE_START"] = start_ip
