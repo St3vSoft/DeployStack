@@ -25,6 +25,7 @@ def validate_host_network(config) -> bool:
     host_network_fields = [
         "network.HOST_IP",
         "network.HOST_IP_NETMASK",
+        "network.HOST_DNS_SERVERS",
     ]
 
     cidr_fields = ["network.HOST_IP_CIDR"]
