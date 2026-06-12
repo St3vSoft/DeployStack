@@ -81,14 +81,13 @@ def config_openstack(
     dns = config_dict["network"]["HOST_DNS_SERVERS"]
 
     if isinstance(dns, str):
-        dns_list = [ip.strip() for ip in dns.split(",") if ip.strip()]
-        config_dict["network"]["HOST_DNS_SERVERS"] = dns_list
-
-    if isinstance(dns, str):
-        dns_list = [ip.strip() for ip in dns.split(",") if ip.strip()]
+        dns_list = [x.strip() for x in dns.split(",") if x.strip()]
     else:
-        dns_list = dns 
+        dns_list = dns
 
+    # Neutron
+
+    config_dict.setdefault("neutron", {})
     config_dict["neutron"].setdefault("public_network", {})
 
     config_dict["neutron"]["public_network"].update({
@@ -99,8 +98,6 @@ def config_openstack(
         "PUBLIC_SUBNET_DNS_SERVERS": dns_list
     })
 
-    # Neutron
-    config_dict.setdefault("neutron", {})
     config_dict["neutron"]["DRIVER"] = neutron_driver
 
     # Neutron OVS / OVN
