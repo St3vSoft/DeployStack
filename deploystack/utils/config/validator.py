@@ -195,10 +195,12 @@ def validate_cinder(config) -> bool:
     if pv:
         if not os.path.exists(pv):
             print(f"{colors.RED}Error: PHYSICAL_VOLUME '{pv}' does not exist{colors.RESET}")
+            ok = False
             return False
 
         if not pv.startswith("/dev/") or pv.startswith("/dev/loop") or is_loop_device(pv):
             print(f"{colors.RED}Error: loop devices are not allowed as Physical Volume ({pv}){colors.RESET}")
+            ok = False
             return False
     else:
         size = None
@@ -219,6 +221,8 @@ def validate_cinder(config) -> bool:
             if not get(config, field) :
                 print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
                 ok = False
+
+
 
         if path:
             directory = os.path.dirname(path) or "/"
