@@ -12,7 +12,7 @@ from ...utils.config.setter import set_conf_option
 from ...utils.core.system_utils import nc_wait, iface_exists
 from ...utils.core import colors
 from ...utils.core.system_utils import service_exists, is_debian
-from ...templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
+from ...templates import OVS_PERMISSIONS_SERVICE
 
 neutron_conf="/etc/neutron/neutron.conf"
 conf_ml2="/etc/neutron/plugins/ml2/ml2_conf.ini"
@@ -86,7 +86,7 @@ def conf_ovs_bridges(config):
     if isinstance(subnet_dns, list):
         subnet_dns = " ".join(subnet_dns)
 
-    template_file = OVS_DUAL_NIC_BRIDGES_INTERFACES if is_dual_nic else OVS_BRIDGES_INTERFACES
+    '''template_file = OVS_DUAL_NIC_BRIDGES_INTERFACES if is_dual_nic else OVS_BRIDGES_INTERFACES
 
     if os.path.exists(template_file):
         with open(template_file, "r") as f:
@@ -113,7 +113,7 @@ def conf_ovs_bridges(config):
     )
 
     with open(INTERFACES_FILE, "w") as f:
-        f.write(bridges_interfaces_content)
+        f.write(bridges_interfaces_content)'''
 
     interfaces_dir = "/etc/network/interfaces.d/"
     backup_dir = "/root/net-backup"
