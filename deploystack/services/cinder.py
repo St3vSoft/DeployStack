@@ -248,6 +248,7 @@ def conf_cinder(config):
      
     db_password = get(config, "passwords.DATABASE_PASSWORD")
     rabbitmq_password = get(config, "passwords.RABBITMQ_PASSWORD")
+    os_region_name = get(config, "openstack.REGION_NAME")
 
     service_password = get(config, "passwords.SERVICE_PASSWORD")
 
@@ -260,6 +261,7 @@ def conf_cinder(config):
     set_conf_option(cinder_conf, "DEFAULT", "my_ip", ip_address)
     set_conf_option(cinder_conf, "DEFAULT", "target_ip_address", ip_address)
 
+    set_conf_option(cinder_conf, "keystone_authtoken", "memcached_servers", "127.0.0.1:11211")
     set_conf_option(cinder_conf, "keystone_authtoken", "www_authenticate_uri", f"http://{ip_address}:5000/")
     set_conf_option(cinder_conf, "keystone_authtoken", "auth_url", f"http://{ip_address}:5000/")
     set_conf_option(cinder_conf, "keystone_authtoken", "memcached_servers", "127.0.0.1:11211")
@@ -278,9 +280,40 @@ def conf_cinder(config):
     set_conf_option(cinder_conf, "lvm", "volume_clear", "zero")
     set_conf_option(cinder_conf, "lvm", "volume_clear_size", "1")
 
+    set_conf_option(cinder_conf, "service_user", "project_domain_name", "Default")
+    set_conf_option(cinder_conf, "service_user", "project_name", "service")
+    set_conf_option(cinder_conf, "service_user", "user_domain_name", "Default")
+    set_conf_option(cinder_conf, "service_user", "password", service_password)
+    set_conf_option(cinder_conf, "service_user", "username", "cinder")
+    set_conf_option(cinder_conf, "service_user", "auth_url", f"http://{ip_address}:5000/v3")
+    set_conf_option(cinder_conf, "service_user", "auth_type", "password")
+    set_conf_option(cinder_conf, "service_user", "send_service_user_token", "True")
+
+    set_conf_option(cinder_conf, "glance", "memcached_servers", "127.0.0.1:11211")
+    set_conf_option(cinder_conf, "glance", "region_name", os_region_name)
+    set_conf_option(cinder_conf, "glance", "project_domain_name", "Default")
+    set_conf_option(cinder_conf, "glance", "project_name", "service")
+    set_conf_option(cinder_conf, "glance", "www_authenticate_uri", f"http://{ip_address}:5000/v3")
+    set_conf_option(cinder_conf, "glance", "user_domain_name", "Default")
+    set_conf_option(cinder_conf, "glance", "password", service_password)
+    set_conf_option(cinder_conf, "glance", "username", "glance")
+    set_conf_option(cinder_conf, "glance", "auth_url", f"http://{ip_address}:5000/v3")
+    set_conf_option(cinder_conf, "glance", "auth_type", "password")
+
+    set_conf_option(cinder_conf, "nova", "region_name", os_region_name)
+    set_conf_option(cinder_conf, "nova", "project_domain_name", "Default")
+    set_conf_option(cinder_conf, "nova", "project_name", "service")
+    set_conf_option(cinder_conf, "nova", "user_domain_name", "Default")
+    set_conf_option(cinder_conf, "nova", "password", service_password)
+    set_conf_option(cinder_conf, "nova", "username", "nova")
+    set_conf_option(cinder_conf, "nova", "auth_url", f"http://{ip_address}:5000/v3")
+    set_conf_option(cinder_conf, "nova", "auth_type", "password")
+
     set_conf_option(cinder_conf, "database", "connection", f"mysql+pymysql://cinder:{db_password}@{ip_address}/cinder")
 
     set_conf_option(cinder_conf, "oslo_concurrency", "lock_path", "/var/lib/cinder/tmp")
+
+    set_conf_option(cinder_conf, "os_brick", "lock_path", "/var/lib/cinder/os-brick")
 
     db_migration_cmd = [
     "sudo", "-u", "cinder",

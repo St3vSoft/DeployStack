@@ -64,7 +64,6 @@ def detach(
 
     detach_instance_volume(volume_id, instance_id)
 
-
     print(f"{colors.GREEN}Volume '{volume}' "
           f"(ID: {volume_id}) successfully detached from '{instance}' (ID: {instance_id}) instance{colors.RESET}")
 

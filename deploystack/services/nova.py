@@ -45,6 +45,7 @@ def conf_nova(config):
 
     set_conf_option(nova_conf, "api", "auth_strategy", "keystone")
 
+    set_conf_option(nova_conf, "keystone_authtoken", "memcached_servers", "127.0.0.1:11211")
     set_conf_option(nova_conf, "keystone_authtoken", "www_authenticate_uri", f"http://{ip_address}:5000/")
     set_conf_option(nova_conf, "keystone_authtoken", "region_name", os_region_name)
     set_conf_option(nova_conf, "keystone_authtoken", "auth_url", f"http://{ip_address}:5000/")
@@ -61,6 +62,8 @@ def conf_nova(config):
     set_conf_option(nova_conf, "vnc", "server_proxyclient_address", ip_address)
     set_conf_option(nova_conf, "vnc", "novncproxy_base_url", f"http://{ip_address}:6080/vnc_auto.html")
 
+    set_conf_option(nova_conf, "scheduler", "workers", "2")
+
     set_conf_option(nova_conf, "glance", "api_servers", f"http://{ip_address}:9292")
 
     if install_cinder:
@@ -75,6 +78,15 @@ def conf_nova(config):
 
     set_conf_option(nova_conf, "oslo_concurrency", "lock_path", "/var/lib/nova/tmp")
 
+    set_conf_option(nova_conf, "os_brick", "lock_path", "/var/lib/nova/os-brick")
+
+    set_conf_option(nova_conf, "oslo_policy", "enforce_scope", "True")
+    set_conf_option(nova_conf, "oslo_policy", "enforce_new_defaults", "True")
+
+    set_conf_option(nova_conf, "cache", "memcache_servers", "127.0.0.1:11211")
+    set_conf_option(nova_conf, "cache", "backend", "dogpile.cache.memcached")
+    set_conf_option(nova_conf, "cache", "enabled", "True")
+
     set_conf_option(nova_conf, "placement", "region_name", os_region_name)
     set_conf_option(nova_conf, "placement", "project_domain_name", "Default")
     set_conf_option(nova_conf, "placement", "project_name", "service")
@@ -83,6 +95,15 @@ def conf_nova(config):
     set_conf_option(nova_conf, "placement", "auth_url", f"http://{ip_address}:5000/v3")
     set_conf_option(nova_conf, "placement", "username", "placement")
     set_conf_option(nova_conf, "placement", "password", service_password)
+
+    set_conf_option(nova_conf, "service_user", "project_domain_name", "Default")
+    set_conf_option(nova_conf, "service_user", "project_name", "service")
+    set_conf_option(nova_conf, "service_user", "user_domain_name", "Default")
+    set_conf_option(nova_conf, "service_user", "password", service_password)
+    set_conf_option(nova_conf, "service_user", "username", "nova")
+    set_conf_option(nova_conf, "service_user", "auth_url", f"http://{ip_address}:5000/v3")
+    set_conf_option(nova_conf, "service_user", "auth_type", "password")
+    set_conf_option(nova_conf, "service_user", "send_service_user_token", "True")
 
     api_db_migration_cmd = [
     "sudo", "-u", "nova",
