@@ -436,7 +436,7 @@ def create_ovn_networks(config, env):
     public_subnet_dns_servers = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS")
     public_subnet_cidr = get(config, "neutron.public_network.PUBLIC_SUBNET_CIDR")
 
-    ovn_public_bridge = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")
+    public_bridge = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")
     ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE").lower()
 
     provider_networks = get(config, "neutron.provider_networks", [])
@@ -536,7 +536,7 @@ def create_ovn_networks(config, env):
     if provider_networks:
         for pn in provider_networks:
 
-            if pn.get("bridge") in ("br-ex", "br-int"):
+            if pn.get("bridge") in (public_bridge, "br-int"):
                 continue
 
             bridge = pn.get("bridge")
@@ -545,7 +545,7 @@ def create_ovn_networks(config, env):
 
             subnet = pn.get("subnet", {})
 
-            vlan_vni_range = pn.get("vni_range")
+            vlan_range = pn.get("vni_range")
 
             allow_dhcp  = parse_bool(subnet.get("allow_dhcp", False))
             is_external = parse_bool(subnet.get("external", False))
@@ -583,10 +583,10 @@ def create_ovn_networks(config, env):
                 ]
 
             elif net_type == "vlan":
-                if not vlan_vni_range:
+                if not vlan_range:
                     continue
 
-                start, _ = map(int, vlan_vni_range.split(":"))
+                start, _ = map(int, vlan_range.split(":"))
                 vlan_id = start
 
                 network_cmd = [
@@ -636,7 +636,7 @@ def create_ovn_networks(config, env):
                 subnet_cmd.append(subnet_name)
 
                 if not subnet_exists:
-                    if not run_command(subnet_cmd, f"Creating '{subnet_name}' network subnet...", env=env) : return False
+                    if not run_command(subnet_cmd, f"Creating '{network_name}' network subnet...", env=env) : return False
                 else:
                     print(f"{colors.YELLOW}'{network_name}' network subnet already exists, skipping creation.{colors.RESET}")
 
