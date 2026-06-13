@@ -5,6 +5,11 @@ import subprocess
 from .parser import get
 from ..core import colors
 
+def parse_bool(value, default=False):
+    if isinstance(value, bool):
+        return value
+    return str(value).lower() in ("yes", "true", "1")
+
 def get_provider_networks(config):
 
     networks_list = get(config, "neutron.provider_networks", [])

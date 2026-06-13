@@ -54,8 +54,8 @@ def conf_ovs_bridges(config):
     ip_address_netmask = get(config, "network.HOST_IP_NETMASK")
     ip_address_gateway = get(config, "network.HOST_IP_GATEWAY")
 
-    subnet_gateway = get(config, "neutron.public_network.PUBLIC_SUBNET_GATEWAY")
-    subnet_dns = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS")
+    subnet_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
+    subnet_dns = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
     management_iface = get(config, "network.HOST_MGMT_INTERFACE")
 
@@ -288,14 +288,14 @@ def create_ovs_networks(config, env):
      
     print()
 
-    public_subnet_range_start = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_START")
-    public_subnet_range_end = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_END")
+    public_subnet_range_start = get(config, "public_network.PUBLIC_SUBNET_RANGE_START")
+    public_subnet_range_end = get(config, "public_network.PUBLIC_SUBNET_RANGE_END")
 
-    public_subnet_gateway = get(config, "neutron.public_network.PUBLIC_SUBNET_GATEWAY")
+    public_subnet_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
      
-    public_subnet_dns_servers = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS")
+    public_subnet_dns_servers = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
-    public_subnet_cidr = get(config, "neutron.public_network.PUBLIC_SUBNET_CIDR")   
+    public_subnet_cidr = get(config, "public_network.PUBLIC_SUBNET_CIDR")   
 
     provider_networks = get(config, "neutron.provider_networks", [])
     public_network = next((n for n in provider_networks if n["name"] == "public"), None)

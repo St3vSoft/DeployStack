@@ -1,1 +1,2 @@
 recursive-include deploystack/templates *
+recursive-include deploystack/services/neutron/templates *

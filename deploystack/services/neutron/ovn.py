@@ -12,7 +12,11 @@ from ...utils.config.setter import set_conf_option
 from ...utils.core.system_utils import nc_wait, iface_exists
 from ...utils.core import colors
 from ...utils.core.system_utils import service_exists, is_debian
+
 from ...templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
+from .templates import INTERFACE_BRIDGE_TEMPLATE
+
+from ...utils.config.helpers import parse_bool
 
 neutron_conf = "/etc/neutron/neutron.conf"
 conf_ml2 = "/etc/neutron/plugins/ml2/ml2_conf.ini"
@@ -51,20 +55,50 @@ def conf_ovn_bridges(config):
     subnet_dns = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS")
     management_iface = get(config, "network.HOST_MGMT_INTERFACE")
 
+    bridges = get(config, "neutron.bridges", [])
+
     is_dual_nic = (public_iface != management_iface)
+
+    line1 = False
+    custom_bridges = bool(bridges)
 
     for iface in [public_iface, public_bridge]:
         if iface_exists(iface):
             run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
-    line_printed = False
+    for b in bridges:
+        bridge = b.get("name")
+        port = b.get("port")
+
+        if not bridge or not port:
+            continue
+
+        if iface_exists(bridge):
+
+            if not line1:
+                print()
+                line1 = True
+
+            run_command(["ip", "addr", "flush", "dev", port],
+                        f"Flushing IPs on {port}", ignore_errors=True)
+
+            run_command(["ip", "link", "set", port, "down"],
+                        f"Bringing {port} down", ignore_errors=True)
+
+            run_command(["ovs-vsctl", "--if-exists", "del-port", bridge, port],
+                        f"Deleting port {port} from {bridge}", ignore_errors=True)
+
+        run_command(["ovs-vsctl", "--if-exists", "del-br", bridge],
+                    f"Deleting bridge {bridge}", ignore_errors=True)
+
+    line2 = False
 
     for bridge, port in [(public_bridge, public_iface)]:
         if iface_exists(bridge):
-            if not line_printed : 
+            if not line2 : 
                 print()
-                line_printed = True
+                line2 = True
 
             if port:
                 run_command(["ovs-vsctl", "--if-exists", "del-port", bridge, port], f"Deleting port {port} from {bridge}", ignore_errors=True)
@@ -80,6 +114,7 @@ def conf_ovn_bridges(config):
     if not os.path.exists(template_file):
         print(f"{colors.RED}Error: template file '{template_file}' not found{colors.RESET}")
         return False
+    
     with open(template_file, "r") as f:
         template = f.read()
 
@@ -93,6 +128,27 @@ def conf_ovn_bridges(config):
         public_bridge=public_bridge,
     )
 
+    if custom_bridges:
+        with open(INTERFACE_BRIDGE_TEMPLATE, "r") as f:
+            ifaces_br_template = f.read()
+
+        blocks = []
+
+        for b in bridges:
+            port = b.get("port")
+            bridge = b.get("name")
+
+            if not bridge or not port:
+                continue
+
+            blocks.append(ifaces_br_template.format(
+                iface=port,
+                bridge=bridge,
+            ))
+
+        if blocks:
+            bridges_interfaces_content += "\n" + "\n".join(blocks)
+        
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)
 
@@ -114,6 +170,17 @@ def conf_ovn_bridges(config):
     if not run_command(["ovs-vsctl", "--may-exist", "add-port", public_bridge, public_iface],
                        f"Adding port {public_iface} to {public_bridge}"):
         return False
+    
+    if custom_bridges:
+        for b in bridges:
+            port = b.get("port")
+            bridge = b.get("name")
+
+            if not bridge or not port:
+                continue
+
+            if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {bridge}"): return False
+            if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {bridge}"): return False
 
     print()
 
@@ -121,6 +188,16 @@ def conf_ovn_bridges(config):
         return False
     if not run_command(["ip", "link", "set", public_bridge, "up"], f"Bringing {public_bridge} up"):
         return False
+    
+    if custom_bridges:
+        for b in bridges:
+            iface = b.get("port")
+            bridge = b.get("name")
+
+            if not run_command(["ip", "link", "set", iface, "up"], f"Bringing {iface} up"):
+                return False
+            if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing {bridge} up"):
+                return False
 
     print()
 
@@ -367,7 +444,6 @@ def create_ovn_networks(config, env):
 
     create_ovn_bridges = get(config, "neutron.ovn.CREATE_BRIDGES", "no") == "yes"
 
-    # DNS args
     dns_args = []
     for dns in public_subnet_dns_servers:
         dns_args.extend(["--dns-nameserver", dns])
@@ -454,6 +530,115 @@ def create_ovn_networks(config, env):
             return False
     else:
         print(f"{colors.YELLOW}Internal subnet already exists, skipping creation.{colors.RESET}")
+
+    print()
+
+    if provider_networks:
+        for pn in provider_networks:
+
+            if pn.get("bridge") in ("br-ex", "br-int"):
+                continue
+
+            bridge = pn.get("bridge")
+            net_type = pn.get("type")
+            network_name = pn.get("name")
+
+            subnet = pn.get("subnet", {})
+
+            vlan_vni_range = pn.get("vni_range")
+
+            allow_dhcp  = parse_bool(subnet.get("allow_dhcp", False))
+            is_external = parse_bool(subnet.get("external", False))
+            #attach_external_router = subnet.get("attach_external_router", "no") == "yes"
+
+            subnet_cidr = subnet.get("cidr")
+            subnet_range_start = subnet.get("range", {}).get("start")
+            subnet_range_end = subnet.get("range", {}).get("end")
+            subnet_gateway = subnet.get("gateway")
+
+            subnet_dns = subnet.get("dns") or []
+
+            network_cmd = []
+
+            subnet_name = f"{network_name}_subnet"
+
+            network_exists = any(
+                (net.get("Name") or net.get("name")) == network_name
+                for net in networks_list
+            )
+
+            subnet_exists = any(
+                (sub.get("Network") or sub.get("network")) == network_name
+                and (sub.get("CIDR") or sub.get("cidr")) == subnet_cidr
+                for sub in subnets_list
+            )
+
+            if net_type == "flat":
+
+                network_cmd = [
+                    "openstack", "network", "create",
+                    "--share",
+                    "--provider-physical-network", network_name,
+                    "--provider-network-type", "flat"
+                ]
+
+            elif net_type == "vlan":
+                if not vlan_vni_range:
+                    continue
+
+                start, _ = map(int, vlan_vni_range.split(":"))
+                vlan_id = start
+
+                network_cmd = [
+                    "openstack", "network", "create",
+                    "--share",
+                    "--provider-physical-network", network_name,
+                    "--provider-network-type", "vlan",
+                    "--provider-segment", str(vlan_id),
+                ]
+
+            else:
+                continue 
+
+            if is_external:
+                network_cmd.append("--external")
+
+            network_cmd.append(network_name)
+
+            if not network_exists:
+                if not run_command(network_cmd, f"Creating '{network_name}' network...", env=env) : return False
+            else:
+                print(f"{colors.YELLOW}'{network_name}' network already exists, skipping creation.{colors.RESET}")
+
+            if subnet_cidr:
+
+                subnet_cmd = [
+                    "openstack", "subnet", "create",
+                    "--network", network_name,
+                    "--subnet-range", subnet_cidr
+                ]
+
+                if subnet_gateway:
+                    subnet_cmd += ["--gateway", subnet_gateway]
+
+                if allow_dhcp:
+                    subnet_cmd.append("--dhcp")
+
+                for dns in subnet_dns:
+                    subnet_cmd += ["--dns-nameserver", dns]
+
+                if subnet_range_start is not None and subnet_range_end is not None:
+                    subnet_cmd += [
+                        "--allocation-pool",
+                        f"start={subnet_range_start},end={subnet_range_end}"
+                    ]
+
+                subnet_cmd.append(subnet_name)
+
+                if not subnet_exists:
+                    if not run_command(subnet_cmd, f"Creating '{subnet_name}' network subnet...", env=env) : return False
+                else:
+                    print(f"{colors.YELLOW}'{network_name}' network subnet already exists, skipping creation.{colors.RESET}")
 
     print()
 

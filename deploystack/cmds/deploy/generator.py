@@ -9,6 +9,8 @@ from ...utils.core.system_utils import has_hw_virtualization, get_free_loop, gen
 
 from ...templates import OPENSTACK_CONFIG_TEMPLATE
 
+from ...utils.config.helpers import parse_bool
+
 config_file_path = ""
 
 def _remove_empty(d):
@@ -17,11 +19,6 @@ def _remove_empty(d):
     if isinstance(d, list):
         return [_remove_empty(i) for i in d if i != "" and i is not None]
     return d
-
-def _to_yes_no(val) -> str:
-    if isinstance(val, bool):
-        return "yes" if val else "no"
-    return "yes" if str(val).strip().lower() == "yes" else "no"
 
 def generate_config_file() -> str:
 
@@ -41,13 +38,14 @@ def config_openstack(
     neutron_driver: str = "ovs",   # "ovs" | "ovn"
     os_release: str = "caracal"
 ):
-    
+    # Carica template YAML
     try:
         with open(config_file_path, "r") as f:
             config_dict = yaml.safe_load(f) or {}
     except FileNotFoundError:
         config_dict = {}
 
+    # Informazioni di rete
     info = get_network_info()
     iface = info["interface"]
     ip = info["ip"]
@@ -75,31 +73,25 @@ def config_openstack(
     config_dict["network"]["HOST_IP_NETMASK"] = netmask
     config_dict["network"]["HOST_IP_CIDR"] = ip_cidr
     config_dict["network"]["HOST_IP_GATEWAY"] = gateway
-    config_dict["network"]["HOST_DNS_SERVERS"] = "8.8.8.8,8.8.4.4"
     config_dict["network"]["HOST_MGMT_INTERFACE"] = iface
 
-    dns = config_dict["network"]["HOST_DNS_SERVERS"]
+    # Public network
+    config_dict.setdefault("public_network", {})
+    config_dict["public_network"]["PUBLIC_SUBNET_CIDR"] = network
+
+    config_dict["public_network"]["PUBLIC_SUBNET_RANGE_START"] = start_ip
+    config_dict["public_network"]["PUBLIC_SUBNET_RANGE_END"] = last_ip
+    config_dict["public_network"]["PUBLIC_SUBNET_GATEWAY"] = gateway
+    config_dict["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = "8.8.8.8,8.8.4.4"
+
+    dns = config_dict["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"]
 
     if isinstance(dns, str):
-        dns_list = [x.strip() for x in dns.split(",") if x.strip()]
-    else:
-        dns_list = dns
-
-    config_dict["network"]["HOST_DNS_SERVERS"] = dns_list
+        dns_list = [ip.strip() for ip in dns.split(",") if ip.strip()]
+        config_dict["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = dns_list
 
     # Neutron
-
     config_dict.setdefault("neutron", {})
-    config_dict["neutron"].setdefault("public_network", {})
-
-    config_dict["neutron"]["public_network"].update({
-        "PUBLIC_SUBNET_CIDR": network,
-        "PUBLIC_SUBNET_RANGE_START": start_ip,
-        "PUBLIC_SUBNET_RANGE_END": last_ip,
-        "PUBLIC_SUBNET_GATEWAY": gateway,
-        "PUBLIC_SUBNET_DNS_SERVERS": dns_list
-    })
-
     config_dict["neutron"]["DRIVER"] = neutron_driver
 
     # Neutron OVS / OVN
@@ -154,8 +146,8 @@ def config_openstack(
     config_dict.setdefault("cinder", {})
     config_dict.setdefault("optional_services", {})
 
-    config_dict["optional_services"]["INSTALL_CINDER"] = _to_yes_no(install_cinder)
-    config_dict["optional_services"]["INSTALL_HORIZON"] = _to_yes_no(install_horizon)
+    config_dict["optional_services"]["INSTALL_CINDER"] = parse_bool(install_cinder, False)
+    config_dict["optional_services"]["INSTALL_HORIZON"] = parse_bool(install_horizon, False)
 
     config_dict["cinder"]["lvm"] = {
         "CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH": get_free_loop(),
@@ -176,7 +168,6 @@ def config_openstack(
     config_dict["openstack"].setdefault("REGION_NAME", "RegionOne")
 
     with open(config_file_path, "w") as f:
-
         yaml.dump(_remove_empty(config_dict), f, default_flow_style=False, allow_unicode=True)
 
     
