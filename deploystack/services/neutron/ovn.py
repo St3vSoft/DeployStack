@@ -416,11 +416,6 @@ def finalize(config):
             run_command(["systemctl", "disable", "--now", svc],
             f"Disabling legacy agent {svc}", ignore_errors=True)
 
-    udev_rule = 'SUBSYSTEM=="unix", ACTION=="add", DEVPATH=="/var/run/openvswitch/db.sock", MODE="0666"\n'
-
-    with open("/etc/udev/rules.d/99-openvswitch.rules", "w") as f:
-        f.write(udev_rule)
-
     run_command_sync(["udevadm", "control", "--reload-rules"])
 
     if not nc_wait(ip_address, 9696) : return False
@@ -545,11 +540,10 @@ def create_ovn_networks(config, env):
 
             subnet = pn.get("subnet", {})
 
-            vlan_range = pn.get("vni_range")
+            vlan_range = pn.get("vlan_range")
 
             allow_dhcp  = parse_bool(subnet.get("allow_dhcp", False))
             is_external = parse_bool(subnet.get("external", False))
-            #attach_external_router = subnet.get("attach_external_router", "no") == "yes"
 
             subnet_cidr = subnet.get("cidr")
             subnet_range_start = subnet.get("range", {}).get("start")
@@ -668,7 +662,55 @@ def create_ovn_networks(config, env):
                 ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
                 "Adding internal subnet to router...", env=env
             ):
-                return False     
+                return False
+            
+        if provider_networks:
+            for pn in provider_networks:
+
+                if pn.get("bridge") in (public_bridge, "br-int"):
+                    continue
+
+                network_name = pn.get("name")
+
+                subnet = pn.get("subnet", {})
+                attach_external_router = parse_bool(subnet.get("attach_external_router", False))
+
+                if not attach_external_router:
+                    continue
+
+                router_name = f"{network_name}_router"
+                subnet_name = f"{network_name}_subnet"
+
+                router_exists = any(r.get("Name") == router_name for r in routers_list)
+                subnet_exists = any(
+                    (sub.get("Name") or sub.get("name")) == subnet_name
+                    for sub in subnets_list
+                )
+
+                if not router_exists:
+                    if not os_run(["openstack", "router", "create", router_name], f"Creating '{router_name}' router...", env=env):
+                        return False
+                else:
+                    print(f"{colors.YELLOW}'{router_name}' Router already exists, skipping creation.{colors.RESET}")
+
+                external_gateways_list = json.loads(os_run_output(["openstack", "router", "show", router_name, "-f", "json", "-c", "external_gateways"], env=env))
+                interfaces_info_list = json.loads(os_run_output(["openstack", "router", "show", router_name, "-f", "json", "-c", "interfaces_info"], env=env))
+
+                if not external_gateways_list.get("external_gateways"):
+                    if not os_run (
+                        ["openstack", "router", "set", router_name, "--external-gateway", "public"],
+                        f"Setting external gateway for {router_name} router...", env=env
+                    ):
+                        return False
+                
+                print()
+
+                if not interfaces_info_list.get("interfaces_info"):
+                    if not os_run(
+                        ["openstack", "router", "add", "subnet", router_name, subnet_name],
+                        f"Adding '{subnet_name}' subnet to router...", env=env
+                    ):
+                        return False
 
     sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
     default_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
@@ -713,11 +755,11 @@ def create_ovn_networks(config, env):
 
     print()
 
-    if create_ovn_bridges:
+    #if create_ovn_bridges:
     
-        router_gw_ip = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json"], env=env))
+     #   router_gw_ip = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json"], env=env))
 
-        gw_ip = router_gw_ip["external_gateway_info"]["external_fixed_ips"][0]["ip_address"]
+      #  gw_ip = router_gw_ip["external_gateway_info"]["external_fixed_ips"][0]["ip_address"]
         #run_command_sync(["ip", "route", "replace", "10.0.0.0/24", "via", gw_ip, "dev", ovn_public_bridge])
 
     if not run_command([
