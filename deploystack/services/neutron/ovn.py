@@ -225,7 +225,11 @@ def conf_ovn_controller(config):
     
     provider_networks = get(config, "neutron.provider_networks", [])
 
-    bridge_mappings = ",".join(f'{n["name"]}:{n["bridge"]}' for n in provider_networks)
+    bridge_mappings = ",".join(
+        f'{n["name"]}:{n["bridge"]}'
+        for n in provider_networks
+        if n.get("type") != "local" and n.get("bridge")
+    )
 
     if not run_command(
         ["ovs-vsctl", "set", "open", ".",
