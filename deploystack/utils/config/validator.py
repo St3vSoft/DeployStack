@@ -6,6 +6,8 @@ from .helpers import get_provider_networks, interface_exists, validate_ip, valid
 from ..core import colors
 from .parser import get
 
+from ...utils.config.helpers import parse_bool
+
 # --- Passwords ---
 def validate_passwords(config) -> bool:
     ok = True
@@ -347,7 +349,7 @@ def validate_openstack(config) -> bool:
     return ok
 
 def validate_all(config) -> bool:
-    install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
+    install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
 
     ok = True
     ok &= validate_passwords(config)
