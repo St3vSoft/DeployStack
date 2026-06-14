@@ -531,7 +531,7 @@ def create_ovn_networks(config, env):
     if provider_networks:
         for pn in provider_networks:
 
-            if pn.get("bridge") in (public_bridge, "br-int"):
+            if net_type != "local" and bridge in (public_bridge, "br-int"):
                 continue
 
             bridge = pn.get("bridge")
@@ -589,6 +589,12 @@ def create_ovn_networks(config, env):
                     "--provider-physical-network", network_name,
                     "--provider-network-type", "vlan",
                     "--provider-segment", str(vlan_id),
+                ]
+            elif net_type == "local":
+                network_cmd = [
+                    "openstack", "network", "create",
+                    "--share",
+                    "--provider-network-type", "local"
                 ]
 
             else:
@@ -667,7 +673,7 @@ def create_ovn_networks(config, env):
         if provider_networks:
 
             print()
-            
+
             for pn in provider_networks:
 
                 if pn.get("bridge") in (public_bridge, "br-int"):
