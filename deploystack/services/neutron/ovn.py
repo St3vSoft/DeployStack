@@ -535,11 +535,12 @@ def create_ovn_networks(config, env):
     if provider_networks:
         for pn in provider_networks:
 
+            bridge = pn.get("bridge")
+            net_type = pn.get("type")
+
             if net_type != "local" and bridge in (public_bridge, "br-int"):
                 continue
 
-            bridge = pn.get("bridge")
-            net_type = pn.get("type")
             network_name = pn.get("name")
 
             subnet = pn.get("subnet", {})
