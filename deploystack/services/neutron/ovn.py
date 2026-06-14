@@ -530,9 +530,10 @@ def create_ovn_networks(config, env):
     else:
         print(f"{colors.YELLOW}Internal subnet already exists, skipping creation.{colors.RESET}")
 
-    print()
-
     if provider_networks:
+        
+        print()
+
         for pn in provider_networks:
 
             bridge = pn.get("bridge")
