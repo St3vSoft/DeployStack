@@ -179,7 +179,7 @@ def validate_neutron(config) -> bool:
         ok = False
     else:
         for i, net in enumerate(provider_networks):
-            if not net.get("name") or not net.get("bridge") or not net.get("type"):
+            if not net.get("name") or not net.get("bridge") or not net.get("type") and not net.get("type") == "local":
                 print(f"{colors.RED}Error: neutron.provider_networks[{i}] missing required keys{colors.RESET}")
                 ok = False
             elif net.get("type") not in ["flat", "vlan"]:
