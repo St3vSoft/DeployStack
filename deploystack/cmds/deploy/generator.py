@@ -55,6 +55,8 @@ def config_openstack(
     network = info["network"]
     last_ip = str(ipaddress.IPv4Address(ipaddress.IPv4Network(ip_cidr, strict=False).broadcast_address - 1))
 
+    dns_list = []
+
     if lvm_image_size_in_gb is None:
         lvm_image_size_in_gb = 5
 
@@ -89,7 +91,7 @@ def config_openstack(
     config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_RANGE_START"] = start_ip
     config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_RANGE_END"] = last_ip
     config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_GATEWAY"] = gateway
-    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = dns
+    config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = dns_list
     
     config_dict["neutron"]["DRIVER"] = neutron_driver
 
