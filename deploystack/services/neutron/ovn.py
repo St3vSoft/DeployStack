@@ -665,6 +665,9 @@ def create_ovn_networks(config, env):
                 return False
             
         if provider_networks:
+
+            print()
+            
             for pn in provider_networks:
 
                 if pn.get("bridge") in (public_bridge, "br-int"):
