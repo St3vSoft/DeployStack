@@ -24,6 +24,8 @@ from ...services.nova_compute import run_setup_nova_compute
 from ...services.neutron import run_setup_neutron
 from ...services.horizon import run_setup_horizon
 
+from ...utils.config.helpers import parse_bool
+
 def deploy(config_file):
 
     config = parse_config(config_file)
@@ -51,8 +53,8 @@ def deploy(config_file):
     if not has_hw_virtualization():
         print(f"{colors.YELLOW}Warning: No hardware virtualization detected – QEMU hypervisor will be used and Nova instances will be emulated with lower performance{colors.RESET}\n")
 
-    install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
-    install_horizon = get(config, "optional_services.INSTALL_HORIZON", "no").lower() == "yes"
+    install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", "no")) == "yes"
+    install_horizon = parse_bool(get(config, "optional_services.INSTALL_HORIZON", "no")) == "yes"
 
     ip_address = get(config, "network.HOST_IP")
 

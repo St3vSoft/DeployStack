@@ -680,7 +680,7 @@ def create_ovn_networks(config, env):
             print()
 
             for pn in provider_networks:
-
+                
                 if pn.get("bridge") in (public_bridge, "br-int"):
                     continue
 
