@@ -248,7 +248,7 @@ def validate_neutron(config) -> bool:
         ok = False
 
     ok_bridges, defined_bridges = validate_bridges(bridges, colors)
-    ok_networks = validate_provider_networks(provider_networks, defined_bridges, colors)
+    ok_networks = validate_provider_networks(config, provider_networks, defined_bridges, colors)
 
     ok &= ok_bridges
     ok &= ok_networks
