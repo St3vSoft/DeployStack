@@ -139,10 +139,10 @@ def validate_provider_networks(config, provider_networks, defined_bridges, color
     if neutron_driver == "ovs":
         internal_bridge = get(config, "neutron.ovs.INTERNAL_BRIDGE")
         tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE")
+        subnet = net.get("subnet")
 
         IGNORED_BRIDGES.append(tunnel_bridge)
         IGNORED_BRIDGES.append(internal_bridge)
-
 
     for i, net in enumerate(provider_networks):
         net_name = net.get("name")
@@ -167,6 +167,56 @@ def validate_provider_networks(config, provider_networks, defined_bridges, color
             if b not in IGNORED_BRIDGES and b not in defined_bridges:
                 print(f"{colors.RED}Error: {prefix} references undefined bridge '{b}'{colors.RESET}")
                 ok = False
+        
+        if subnet:
+            cidr = subnet.get("cidr")
+
+            if not cidr:
+                print(f"{colors.RED}Error: {prefix} subnet missing 'cidr'{colors.RESET}")
+                ok = False
+            else:
+                if not validate_cidr(cidr, f"{prefix} subnet.cidr"):
+                    ok = False
+                else:
+                    net_obj = ipaddress.ip_network(cidr, strict=False)
+
+                    gateway = subnet.get("gateway")
+                    if gateway:
+                        if not validate_ip(gateway, f"{prefix} subnet.gateway"):
+                            ok = False
+                        elif ipaddress.ip_address(gateway) not in net_obj:
+                            print(f"{colors.RED}Error: {prefix} subnet.gateway '{gateway}' is not within '{cidr}'{colors.RESET}")
+                            ok = False
+
+                    net_range = subnet.get("range", {})
+                    start = net_range.get("start")
+                    end = net_range.get("end")
+
+                    if start:
+                        if not validate_ip(start, f"{prefix} subnet.range.start"):
+                            ok = False
+                        elif ipaddress.ip_address(start) not in net_obj:
+                            print(f"{colors.RED}Error: {prefix} subnet.range.start '{start}' is not within '{cidr}'{colors.RESET}")
+                            ok = False
+
+                    if end:
+                        if not validate_ip(end, f"{prefix} subnet.range.end"):
+                            ok = False
+                        elif ipaddress.ip_address(end) not in net_obj:
+                            print(f"{colors.RED}Error: {prefix} subnet.range.end '{end}' is not within '{cidr}'{colors.RESET}")
+                            ok = False
+
+                    if start and end:
+                        try:
+                            if ipaddress.ip_address(start) >= ipaddress.ip_address(end):
+                                print(f"{colors.RED}Error: {prefix} subnet.range.start must be less than range.end{colors.RESET}")
+                                ok = False
+                        except ValueError:
+                            pass  # già catturato sopra
+
+                    for j, dns in enumerate(subnet.get("dns", [])):
+                        if not validate_ip(dns, f"{prefix} subnet.dns[{j}]"):
+                            ok = False
 
     return ok
 
