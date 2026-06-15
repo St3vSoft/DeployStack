@@ -718,8 +718,6 @@ def create_ovn_networks(config, env):
                         f"Setting external gateway for {router_name} router...", env=env
                     ):
                         return False
-                
-                print()
 
                 if not interfaces_info_list.get("interfaces_info"):
                     if not os_run(
