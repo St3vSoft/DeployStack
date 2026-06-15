@@ -100,6 +100,57 @@ def validate_public_network(config) -> bool:
 
     return ok
 
+def validate_bridges(bridges, colors):
+    ok = True
+    defined_bridges = set()
+
+    for i, bridge in enumerate(bridges):
+        name = bridge.get("name")
+        port = bridge.get("port")
+
+        if not name:
+            print(f"{colors.RED}Error: bridge[{i}] missing 'name'{colors.RESET}")
+            ok = False
+            continue
+
+        if not port:
+            print(f"{colors.RED}Error: bridge '{name}' missing 'port'{colors.RESET}")
+            ok = False
+            continue
+
+        defined_bridges.add(name)
+
+    return ok, defined_bridges
+
+def validate_provider_networks(provider_networks, defined_bridges, colors):
+    ok = True
+
+    for i, net in enumerate(provider_networks):
+        net_name = net.get("name")
+        net_type = net.get("type")
+        prefix = f"provider_networks[{i}] ('{net_name}')"
+
+        if not net_name:
+            print(f"{colors.RED}Error: missing network name at index {i}{colors.RESET}")
+            ok = False
+            continue
+
+        if net_type not in ["flat", "vlan", "local"]:
+            print(f"{colors.RED}Error: invalid type '{net_type}' in {prefix}{colors.RESET}")
+            ok = False
+            continue
+
+        net_bridges = net.get("bridge", [])
+        if isinstance(net_bridges, str):
+            net_bridges = [net_bridges]
+
+        for b in net_bridges:
+            if b not in defined_bridges:
+                print(f"{colors.RED}Error: {prefix} references undefined bridge '{b}'{colors.RESET}")
+                ok = False
+
+    return ok
+
 # --- Neutron ---
 def validate_neutron(config) -> bool:
     ok = True
@@ -109,6 +160,9 @@ def validate_neutron(config) -> bool:
     ovs_create_bridges = get(config, "neutron.ovs.CREATE_BRIDGES")
     public_bridge_interface_ovs = get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
     ovn_encap_type = (get(config, "neutron.ovn.OVN_ENCAP_TYPE") or "").lower()
+
+    provider_networks = get(config, "neutron.provider_networks", [])
+    bridges = get(config, "neutron.bridges", [])
 
     if neutron_driver not in ("ovs", "ovn"):
         print(f"{colors.RED}Error: neutron.DRIVER must be 'ovs' or 'ovn' (got '{neutron_driver}'){colors.RESET}")
@@ -170,105 +224,15 @@ def validate_neutron(config) -> bool:
             print(f"{colors.RED}Error: OVN_ENCAP_TYPE ({ovn_encap_type}) does not match tenant network type ({tenant_type}).{colors.RESET}")
             ok = False
 
-    # ==========================
-    # Provider networks
-    # ==========================
-    provider_networks = get(config, "neutron.provider_networks", [])
-    bridges = get(config, "neutron.bridges", [])
-
-    if not provider_networks:
-        print(f"{colors.RED}Error: neutron.provider_networks is empty{colors.RESET}")
-        ok = False
-    else:
-        for i, net in enumerate(provider_networks):
-            net_type = net.get("type")
-            net_name = net.get("name")
-            prefix = f"provider_networks[{i}] ('{net_name}')"
-
-            if not net_name:
-                print(f"{colors.RED}Error: neutron.provider_networks[{i}] missing required key 'name'{colors.RESET}")
-                ok = False
-                continue
-
-            if net_type not in ["flat", "vlan", "local"]:
-                print(f"{colors.RED}Error: Invalid network type '{net_type}' in {prefix}{colors.RESET}")
-                ok = False
-                continue
-
-            if net_type != "local" and not net.get("bridge"):
-                print(f"{colors.RED}Error: {prefix} requires 'bridge' for type '{net_type}'{colors.RESET}")
-                ok = False
-
-            for i, bridge in enumerate(bridges):
-                name = bridge.get("name")
-                port = bridge.get("port")
-
-                if not port:
-                    print(f"{colors.RED}Error: missing port for bridge '{bridge}'{colors.RESET}")
-                    ok = False
-            
-                if not name:
-                    print(f"{colors.RED}Error: missing name for bridge '{bridge}'{colors.RESET}")
-                    ok = False
-
-                if bridge.get("name") not in net.get("bridge", []):
-                    print(f"{colors.RED}Error: bridge '{bridge.get('name')}' is not allowed for provider network '{net_name}'{colors.RESET}")
-                    ok = False
-
-            subnet = net.get("subnet")
-            if subnet:
-                cidr = subnet.get("cidr")
-
-                if not cidr:
-                    print(f"{colors.RED}Error: {prefix} subnet missing 'cidr'{colors.RESET}")
-                    ok = False
-                else:
-                    if not validate_cidr(cidr, f"{prefix} subnet.cidr"):
-                        ok = False
-                    else:
-                        net_obj = ipaddress.ip_network(cidr, strict=False)
-
-                        gateway = subnet.get("gateway")
-                        if gateway:
-                            if not validate_ip(gateway, f"{prefix} subnet.gateway"):
-                                ok = False
-                            elif ipaddress.ip_address(gateway) not in net_obj:
-                                print(f"{colors.RED}Error: {prefix} subnet.gateway '{gateway}' is not within '{cidr}'{colors.RESET}")
-                                ok = False
-
-                        net_range = subnet.get("range", {})
-                        start = net_range.get("start")
-                        end = net_range.get("end")
-
-                        if start:
-                            if not validate_ip(start, f"{prefix} subnet.range.start"):
-                                ok = False
-                            elif ipaddress.ip_address(start) not in net_obj:
-                                print(f"{colors.RED}Error: {prefix} subnet.range.start '{start}' is not within '{cidr}'{colors.RESET}")
-                                ok = False
-
-                        if end:
-                            if not validate_ip(end, f"{prefix} subnet.range.end"):
-                                ok = False
-                            elif ipaddress.ip_address(end) not in net_obj:
-                                print(f"{colors.RED}Error: {prefix} subnet.range.end '{end}' is not within '{cidr}'{colors.RESET}")
-                                ok = False
-
-                        if start and end:
-                            try:
-                                if ipaddress.ip_address(start) >= ipaddress.ip_address(end):
-                                    print(f"{colors.RED}Error: {prefix} subnet.range.start must be less than range.end{colors.RESET}")
-                                    ok = False
-                            except ValueError:
-                                pass
-
-                        for j, dns in enumerate(subnet.get("dns", [])):
-                            if not validate_ip(dns, f"{prefix} subnet.dns[{j}]"):
-                                ok = False
-
     if tenant_type not in ["geneve", "vxlan"]:
         print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
         ok = False
+
+    ok_bridges, defined_bridges = validate_bridges(bridges, colors)
+    ok_networks = validate_provider_networks(provider_networks, defined_bridges, colors)
+
+    ok &= ok_bridges
+    ok &= ok_networks
 
     return ok
 
