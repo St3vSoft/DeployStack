@@ -61,7 +61,6 @@ def validate_host_network(config) -> bool:
     return ok
 
 def validate_public_network(config) -> bool:
-
     ok = True
 
     ip_fields = [
@@ -122,8 +121,28 @@ def validate_bridges(bridges, colors):
 
     return ok, defined_bridges
 
-def validate_provider_networks(provider_networks, defined_bridges, colors):
+def validate_provider_networks(config, provider_networks, defined_bridges, colors):
     ok = True
+
+    IGNORED_BRIDGES = []
+
+    neutron_driver = (get(config, "neutron.DRIVER") or "").lower()
+
+    public_bridge = (
+        get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")
+        or get(config, "neutron.ovs.PUBLIC_BRIDGE")
+        or ""
+    ).lower()
+
+    IGNORED_BRIDGES.append(public_bridge)
+
+    if neutron_driver == "ovs":
+        internal_bridge = get(config, "neutron.ovs.INTERNAL_BRIDGE")
+        tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE")
+
+        IGNORED_BRIDGES.append(tunnel_bridge)
+        IGNORED_BRIDGES.append(internal_bridge)
+
 
     for i, net in enumerate(provider_networks):
         net_name = net.get("name")
