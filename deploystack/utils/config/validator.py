@@ -110,7 +110,6 @@ def validate_neutron(config) -> bool:
     public_bridge_interface_ovs = get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
     ovn_encap_type = (get(config, "neutron.ovn.OVN_ENCAP_TYPE") or "").lower()
 
-    # Validazione driver
     if neutron_driver not in ("ovs", "ovn"):
         print(f"{colors.RED}Error: neutron.DRIVER must be 'ovs' or 'ovn' (got '{neutron_driver}'){colors.RESET}")
         ok = False
@@ -175,6 +174,8 @@ def validate_neutron(config) -> bool:
     # Provider networks
     # ==========================
     provider_networks = get(config, "neutron.provider_networks", [])
+    bridges = get(config, "neutron.bridges", [])
+
     if not provider_networks:
         print(f"{colors.RED}Error: neutron.provider_networks is empty{colors.RESET}")
         ok = False
@@ -197,6 +198,22 @@ def validate_neutron(config) -> bool:
             if net_type != "local" and not net.get("bridge"):
                 print(f"{colors.RED}Error: {prefix} requires 'bridge' for type '{net_type}'{colors.RESET}")
                 ok = False
+
+            for i, bridge in enumerate(bridges):
+                name = bridge.get("name")
+                port = bridge.get("port")
+
+                if not port:
+                    print(f"{colors.RED}Error: missing port for bridge '{bridge}'{colors.RESET}")
+                    ok = False
+            
+                if not name:
+                    print(f"{colors.RED}Error: missing name for bridge '{bridge}'{colors.RESET}")
+                    ok = False
+
+                if bridge.get("name") not in net.get("bridge", []):
+                    print(f"{colors.RED}Error: bridge '{bridge.get('name')}' is not allowed for provider network '{net_name}'{colors.RESET}")
+                    ok = False
 
             subnet = net.get("subnet")
             if subnet:
