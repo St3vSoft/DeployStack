@@ -55,3 +55,13 @@ def is_loop_device(path: str) -> bool:
         return result.stdout.strip() == "loop"
     except Exception:
         return False
+    
+def validate_ip_in_network(ip, network_cidr, label, colors):
+    try:
+        net = ipaddress.ip_network(network_cidr, strict=False)
+        if ipaddress.ip_address(ip) not in net:
+            print(f"{colors.RED}Error: {label} '{ip}' is not within network '{network_cidr}'{colors.RESET}")
+            return False
+        return True
+    except ValueError:
+        return False 

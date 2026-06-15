@@ -1,8 +1,9 @@
 import shutil
 import subprocess
 import os
+import ipaddress
 
-from .helpers import get_provider_networks, interface_exists, validate_ip, validate_cidr, is_loop_device
+from .helpers import get_provider_networks, interface_exists, validate_ip, validate_cidr, is_loop_device, validate_ip_in_network
 from ..core import colors
 from .parser import get
 
@@ -104,7 +105,6 @@ def validate_public_network(config) -> bool:
 def validate_neutron(config) -> bool:
     ok = True
 
-    # Prendi le variabili principali con fallback
     neutron_driver = (get(config, "neutron.DRIVER") or "").lower()
     tenant_type = (get(config, "neutron.tenant_network.TYPE") or "").lower()
     ovs_create_bridges = get(config, "neutron.ovs.CREATE_BRIDGES")
@@ -181,21 +181,81 @@ def validate_neutron(config) -> bool:
         ok = False
     else:
         for i, net in enumerate(provider_networks):
-            if not net.get("name") or (
-                    net.get("type") != "local" and not net.get("bridge")
-                ):
-                print(f"{colors.RED}Error: neutron.provider_networks[{i}] missing required keys{colors.RESET}")
+            net_type = net.get("type")
+            net_name = net.get("name")
+            prefix = f"provider_networks[{i}] ('{net_name}')"
+
+            if not net_name:
+                print(f"{colors.RED}Error: neutron.provider_networks[{i}] missing required key 'name'{colors.RESET}")
                 ok = False
-            #elif net.get("type") == "local" and net.get("bridge") :
-            elif net.get("type") not in ["flat", "vlan", "local"]:
-                print(f"{colors.RED}Error: Invalid network type '{net.get('type')}' in provider_networks[{i}]{colors.RESET}")
+                continue
+
+            if net_type not in ["flat", "vlan", "local"]:
+                print(f"{colors.RED}Error: Invalid network type '{net_type}' in {prefix}{colors.RESET}")
+                ok = False
+                continue
+
+            if net_type != "local" and not net.get("bridge"):
+                print(f"{colors.RED}Error: {prefix} requires 'bridge' for type '{net_type}'{colors.RESET}")
                 ok = False
 
-    if tenant_type not in ["geneve", "vxlan"]:
-        print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
-        ok = False
+            subnet = net.get("subnet")
+            if subnet:
+                cidr = subnet.get("cidr")
 
-    return ok
+                # cidr
+                if not cidr:
+                    print(f"{colors.RED}Error: {prefix} subnet missing 'cidr'{colors.RESET}")
+                    ok = False
+                else:
+                    if not validate_cidr(cidr, f"{prefix} subnet.cidr", colors):
+                        ok = False
+
+                    # gateway
+                    gateway = subnet.get("gateway")
+                    if gateway:
+                        if not validate_ip(gateway, f"{prefix} subnet.gateway", colors):
+                            ok = False
+                        elif not validate_ip_in_network(gateway, cidr, f"{prefix} subnet.gateway", colors):
+                            ok = False
+
+                    # range start/end
+                    net_range = subnet.get("range", {})
+                    start = net_range.get("start")
+                    end = net_range.get("end")
+
+                    if start:
+                        if not validate_ip(start, f"{prefix} subnet.range.start", colors):
+                            ok = False
+                        elif not validate_ip_in_network(start, cidr, f"{prefix} subnet.range.start", colors):
+                            ok = False
+
+                    if end:
+                        if not validate_ip(end, f"{prefix} subnet.range.end", colors):
+                            ok = False
+                        elif not validate_ip_in_network(end, cidr, f"{prefix} subnet.range.end", colors):
+                            ok = False
+
+                    # coerenza start < end
+                    if start and end:
+                        try:
+                            if ipaddress.ip_address(start) >= ipaddress.ip_address(end):
+                                print(f"{colors.RED}Error: {prefix} subnet.range.start must be less than range.end{colors.RESET}")
+                                ok = False
+                        except ValueError:
+                            pass  # già catturato sopra
+
+                    # dns
+                    dns_list = subnet.get("dns", [])
+                    for j, dns in enumerate(dns_list):
+                        if not validate_ip(dns, f"{prefix} subnet.dns[{j}]", colors):
+                            ok = False
+
+        if tenant_type not in ["geneve", "vxlan"]:
+            print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
+            ok = False
+
+        return ok
 
 # --- Cinder ---
 def validate_cinder(config) -> bool:
@@ -234,8 +294,6 @@ def validate_cinder(config) -> bool:
             if not get(config, field) :
                 print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
                 ok = False
-
-
 
         if path:
             directory = os.path.dirname(path) or "/"
