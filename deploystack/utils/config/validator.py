@@ -139,7 +139,6 @@ def validate_provider_networks(config, provider_networks, defined_bridges, color
     if neutron_driver == "ovs":
         internal_bridge = get(config, "neutron.ovs.INTERNAL_BRIDGE")
         tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE")
-        subnet = net.get("subnet")
 
         IGNORED_BRIDGES.append(tunnel_bridge)
         IGNORED_BRIDGES.append(internal_bridge)
@@ -148,6 +147,8 @@ def validate_provider_networks(config, provider_networks, defined_bridges, color
         net_name = net.get("name")
         net_type = net.get("type")
         prefix = f"provider_networks[{i}] ('{net_name}')"
+
+        subnet = net.get("subnet")
 
         if not net_name:
             print(f"{colors.RED}Error: missing network name at index {i}{colors.RESET}")
