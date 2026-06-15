@@ -623,6 +623,9 @@ def create_ovn_networks(config, env):
                     "--network", network_name,
                     "--subnet-range", subnet_cidr
                 ]
+        
+                if subnet_gateway is not None:
+                    subnet_gateway = str(subnet_gateway).strip()
 
                 if subnet_gateway:
                     subnet_cmd += ["--gateway", subnet_gateway]
@@ -666,8 +669,6 @@ def create_ovn_networks(config, env):
                 "Setting external gateway for internal router...", env=env
             ):
                 return False
-        
-        print()
 
         if not interfaces_info_list.get("interfaces_info"):
             if not os_run(
