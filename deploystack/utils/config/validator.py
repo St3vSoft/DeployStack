@@ -164,7 +164,7 @@ def validate_provider_networks(config, provider_networks, defined_bridges, color
             net_bridges = [net_bridges]
 
         for b in net_bridges:
-            if b not in defined_bridges:
+            if b not in IGNORED_BRIDGES and b not in defined_bridges:
                 print(f"{colors.RED}Error: {prefix} references undefined bridge '{b}'{colors.RESET}")
                 ok = False
 
