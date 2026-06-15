@@ -156,7 +156,7 @@ def get_default_network(preferred: str | None = None) -> str:
     if preferred:
         for net_id, net_name in lines:
             if preferred.lower() in net_name.lower():
-                if not DEFAULT_NETWORK in net_name.lower():
+                if not DEFAULT_NETWORK in net_name.lower() and is_external_network(net_name.lower()):
                     logger.warning(f"{colors.YELLOW}The '{net_name}' network will be used, the floating IP assignment will be skipped{colors.RESET}\n")
                 return net_id
 
