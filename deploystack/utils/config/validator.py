@@ -60,7 +60,6 @@ def validate_host_network(config) -> bool:
 
     return ok
 
-
 def validate_public_network(config) -> bool:
 
     ok = True
@@ -203,57 +202,58 @@ def validate_neutron(config) -> bool:
             if subnet:
                 cidr = subnet.get("cidr")
 
-                # cidr
                 if not cidr:
                     print(f"{colors.RED}Error: {prefix} subnet missing 'cidr'{colors.RESET}")
                     ok = False
                 else:
-                    if not validate_cidr(cidr, f"{prefix} subnet.cidr", colors):
+                    if not validate_cidr(cidr, f"{prefix} subnet.cidr"):
                         ok = False
+                    else:
+                        net_obj = ipaddress.ip_network(cidr, strict=False)
 
-                    # gateway
-                    gateway = subnet.get("gateway")
-                    if gateway:
-                        if not validate_ip(gateway, f"{prefix} subnet.gateway", colors):
-                            ok = False
-                        elif not validate_ip_in_network(gateway, cidr, f"{prefix} subnet.gateway", colors):
-                            ok = False
-
-                    # range start/end
-                    net_range = subnet.get("range", {})
-                    start = net_range.get("start")
-                    end = net_range.get("end")
-
-                    if start:
-                        if not validate_ip(start, f"{prefix} subnet.range.start", colors):
-                            ok = False
-                        elif not validate_ip_in_network(start, cidr, f"{prefix} subnet.range.start", colors):
-                            ok = False
-
-                    if end:
-                        if not validate_ip(end, f"{prefix} subnet.range.end", colors):
-                            ok = False
-                        elif not validate_ip_in_network(end, cidr, f"{prefix} subnet.range.end", colors):
-                            ok = False
-
-                    # coerenza start < end
-                    if start and end:
-                        try:
-                            if ipaddress.ip_address(start) >= ipaddress.ip_address(end):
-                                print(f"{colors.RED}Error: {prefix} subnet.range.start must be less than range.end{colors.RESET}")
+                        gateway = subnet.get("gateway")
+                        if gateway:
+                            if not validate_ip(gateway, f"{prefix} subnet.gateway"):
                                 ok = False
-                        except ValueError:
-                            pass  # già catturato sopra
+                            elif ipaddress.ip_address(gateway) not in net_obj:
+                                print(f"{colors.RED}Error: {prefix} subnet.gateway '{gateway}' is not within '{cidr}'{colors.RESET}")
+                                ok = False
 
-                    # dns
-                    dns_list = subnet.get("dns", [])
-                    for j, dns in enumerate(dns_list):
-                        if not validate_ip(dns, f"{prefix} subnet.dns[{j}]", colors):
-                            ok = False
+                        net_range = subnet.get("range", {})
+                        start = net_range.get("start")
+                        end = net_range.get("end")
 
-        if tenant_type not in ["geneve", "vxlan"]:
-            print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
-            ok = False
+                        if start:
+                            if not validate_ip(start, f"{prefix} subnet.range.start"):
+                                ok = False
+                            elif ipaddress.ip_address(start) not in net_obj:
+                                print(f"{colors.RED}Error: {prefix} subnet.range.start '{start}' is not within '{cidr}'{colors.RESET}")
+                                ok = False
+
+                        if end:
+                            if not validate_ip(end, f"{prefix} subnet.range.end"):
+                                ok = False
+                            elif ipaddress.ip_address(end) not in net_obj:
+                                print(f"{colors.RED}Error: {prefix} subnet.range.end '{end}' is not within '{cidr}'{colors.RESET}")
+                                ok = False
+
+                        if start and end:
+                            try:
+                                if ipaddress.ip_address(start) >= ipaddress.ip_address(end):
+                                    print(f"{colors.RED}Error: {prefix} subnet.range.start must be less than range.end{colors.RESET}")
+                                    ok = False
+                            except ValueError:
+                                pass
+
+                        for j, dns in enumerate(subnet.get("dns", [])):
+                            if not validate_ip(dns, f"{prefix} subnet.dns[{j}]"):
+                                ok = False
+
+    if tenant_type not in ["geneve", "vxlan"]:
+        print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
+        ok = False
+
+    return ok
 
         return ok
 
