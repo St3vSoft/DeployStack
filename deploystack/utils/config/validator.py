@@ -255,8 +255,6 @@ def validate_neutron(config) -> bool:
 
     return ok
 
-        return ok
-
 # --- Cinder ---
 def validate_cinder(config) -> bool:
     ok = True
