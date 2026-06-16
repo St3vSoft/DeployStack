@@ -19,6 +19,8 @@ from ..templates import CINDER_LOOPBACK_SERVICE, CINDER_LOOPBACK_START_SCRIPT, C
 cinder_conf = "/etc/cinder/cinder.conf"
 tgt_conf_path = "/etc/tgt/conf.d/cinder.conf"
 
+lvm_loop: str
+
 def is_loop_busy(loop_dev) -> bool:
     result = subprocess.run(
         ["losetup", loop_dev],
@@ -120,23 +122,14 @@ def conf_lvm(config):
 
             print()
 
-        try:
-            losetup_output = subprocess.check_output(
-                ["losetup", "-j", lvm_image_file_path],
-                text=True
-            )
-        except subprocess.CalledProcessError:
-            losetup_output = ""
-
         losetup_cmd = []
-        lvm_loop: str
 
         if is_loop_busy(lvm_loop_dev):
             available_loop = run_command_output(["losetup", "-f"], False)
 
             losetup_cmd = ["losetup", available_loop, lvm_image_file_path]
             lvm_loop = available_loop
-            print(f"{colors.YELLOW}WARNING:{colors.RESET} Loop device '{lvm_loop_dev}' is already in use, falling back to '{lvm_loop}'")
+            print(f"{colors.WARNING}WARNING: Loop device '{lvm_loop_dev}' is already in use, falling back to '{lvm_loop}'{colors.RESET}")
         else:
             losetup_cmd = ["losetup", lvm_loop_dev, lvm_image_file_path]
             lvm_loop = lvm_loop_dev
@@ -146,20 +139,20 @@ def conf_lvm(config):
             ):
                 return False
             
-    vg = get_vg_for_pv(lvm_dev)
+    vg = get_vg_for_pv(lvm_loop)
 
     if vg is None:
 
         print() 
 
         if not run_command(
-            ["pvcreate", lvm_dev],
-            f"Creating physical volume on {lvm_dev}..."
+            ["pvcreate", lvm_loop],
+            f"Creating physical volume on {lvm_loop}..."
         ):
             return False
 
         if not run_command(
-            ["vgcreate", VG_NAME, lvm_dev],
+            ["vgcreate", VG_NAME, lvm_loop],
             f"Creating volume group {VG_NAME}..."
         ):
             return False
@@ -170,7 +163,7 @@ def conf_lvm(config):
     else:
         print(
             f"{colors.RED}"
-            f"{lvm_dev} already belongs to VG '{vg}', expected '{VG_NAME}'"
+            f"{lvm_loop} already belongs to VG '{vg}', expected '{VG_NAME}'"
             f"{colors.RESET}"
         )
         return False
@@ -181,6 +174,8 @@ def conf_lvm(config):
         with open(tgt_conf_path, "w") as f:
             f.write("include /var/lib/cinder/volumes/*")
 
+    config["cinder"]["CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH"] = lvm_loop
+
     return True
 
 def write_cinder_lvm_env(config):
@@ -188,7 +183,7 @@ def write_cinder_lvm_env(config):
     env_path = "/etc/default/cinder-lvm"
 
     physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME", default="")
-    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_NAME")
+    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
     lvm_image_file = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
     vg_name = "cinder-volumes"
 
