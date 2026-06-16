@@ -19,16 +19,6 @@ from ..templates import CINDER_LOOPBACK_SERVICE, CINDER_LOOPBACK_START_SCRIPT, C
 cinder_conf = "/etc/cinder/cinder.conf"
 tgt_conf_path = "/etc/tgt/conf.d/cinder.conf"
 
-lvm_loop: str
-
-def is_loop_busy(loop_dev) -> bool:
-    result = subprocess.run(
-        ["losetup", loop_dev],
-        capture_output=True,
-        text=True
-    )
-    return result.returncode == 0
-
 def get_vg_for_pv(device):
     try:
         result = subprocess.run(
@@ -124,15 +114,8 @@ def conf_lvm(config):
 
         losetup_cmd = []
 
-        if is_loop_busy(lvm_loop_dev):
-            available_loop = run_command_output(["losetup", "-f"], False)
-
-            losetup_cmd = ["losetup", available_loop, lvm_image_file_path]
-            lvm_loop = available_loop
-            print(f"{colors.YELLOW}WARNING: Loop device '{lvm_loop_dev}' is already in use, falling back to '{lvm_loop}'{colors.RESET}\n")
-        else:
-            losetup_cmd = ["losetup", lvm_loop_dev, lvm_image_file_path]
-            lvm_loop = lvm_loop_dev
+        losetup_cmd = ["losetup", lvm_loop_dev, lvm_image_file_path]
+        lvm_loop = lvm_loop_dev
 
         if not run_command(losetup_cmd,
                 f"Associating {lvm_image_file_path} to {lvm_loop}..."

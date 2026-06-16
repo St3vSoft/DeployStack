@@ -28,6 +28,14 @@ def get_provider_networks(config):
 def interface_exists(if_name: str) -> bool:
     return if_name in psutil.net_if_addrs()
 
+def is_loop_busy(loop_dev) -> bool:
+    result = subprocess.run(
+        ["losetup", loop_dev],
+        capture_output=True,
+        text=True
+    )
+    return result.returncode == 0
+
 def validate_ip(value: str, field_name: str) -> bool:
     try:
         ipaddress.ip_address(value)
