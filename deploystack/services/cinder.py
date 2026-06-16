@@ -136,7 +136,7 @@ def conf_lvm(config):
 
             losetup_cmd = ["losetup", available_loop, lvm_image_file_path]
             lvm_loop = available_loop
-            print(f"{colors.WARNING}WARNING:{colors.RESET} Loop device '{lvm_loop_dev}' is already in use, falling back to '{lvm_loop}'")
+            print(f"{colors.YELLOW}WARNING:{colors.RESET} Loop device '{lvm_loop_dev}' is already in use, falling back to '{lvm_loop}'")
         else:
             losetup_cmd = ["losetup", lvm_loop_dev, lvm_image_file_path]
             lvm_loop = lvm_loop_dev
