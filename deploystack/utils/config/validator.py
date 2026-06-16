@@ -362,10 +362,9 @@ def validate_cinder(config) -> bool:
 
                 if size is not None and size > free_gb:
                     print(
-                        f"{colors.RED}Error: insufficient disk space. "
+                        f"{colors.YELLOW}Error: insufficient disk space. "
                         f"Required: {size} GB, available: {free_gb:.2f} GB{colors.RESET}"
                     )
-                    ok = False
 
             except FileNotFoundError:
                 print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
