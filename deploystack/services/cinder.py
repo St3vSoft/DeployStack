@@ -91,14 +91,14 @@ def conf_lvm(config):
 
             print() 
 
-            fallocate_cmd = [
-                "fallocate",
-                "-l",
+            truncate_cmd = [
+                "truncate",
+                "-s",
                 f"{lvm_image_size_in_gb}G",
                 lvm_image_file_path
             ]
 
-            if not run_command(fallocate_cmd, "Allocating LVM disk image..."):
+            if not run_command(truncate_cmd, "Allocating LVM disk image..."):
                 return False
 
             if not ensure_system_user_with_run_command("cinder"):
