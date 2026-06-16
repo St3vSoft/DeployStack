@@ -28,6 +28,26 @@ def get_provider_networks(config):
 def interface_exists(if_name: str) -> bool:
     return if_name in psutil.net_if_addrs()
 
+def get_loop_vg(loop_dev: str):
+    result = subprocess.run(
+        ["pvs", "--noheadings", "-o", "pv_name,vg_name"],
+        capture_output=True,
+        text=True
+    )
+
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if len(parts) >= 2:
+            pv, vg = parts[0], parts[1]
+            if pv == loop_dev:
+                return vg
+    return None
+
+
+def is_used_by_cinder(loop_dev: str) -> bool:
+    vg = get_loop_vg(loop_dev)
+    return vg == "cinder-volumes"
+
 def is_loop_busy(loop_dev) -> bool:
     result = subprocess.run(
         ["losetup", loop_dev],

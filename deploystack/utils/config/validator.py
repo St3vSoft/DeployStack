@@ -3,7 +3,7 @@ import subprocess
 import os
 import ipaddress
 
-from .helpers import get_provider_networks, interface_exists, validate_ip, validate_cidr, is_loop_device, is_loop_busy 
+from .helpers import get_provider_networks, interface_exists, validate_ip, validate_cidr, is_loop_device, is_loop_busy, is_used_by_cinder
 from ..core import colors
 from .parser import get
 
@@ -346,7 +346,7 @@ def validate_cinder(config) -> bool:
                 print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
                 ok = False
 
-        if is_loop_busy(loop_dev):
+        if is_loop_busy(loop_dev) and not is_used_by_cinder(loop_dev):
             print(
                     f"{colors.RED}Error: requested loop device '{loop_dev}' is busy (already mapped to a file){colors.RESET}"
                 )
