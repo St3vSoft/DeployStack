@@ -7,7 +7,7 @@ import subprocess
 import shutil
 import json
 
-from ..utils.core.commands import run_command
+from ..utils.core.commands import run_command, run_command_output
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
@@ -91,14 +91,14 @@ def conf_lvm(config):
 
             print() 
 
-            fallocate_cmd = [
-                "fallocate",
-                "-l",
+            truncate_cmd = [
+                "truncate",
+                "-s",
                 f"{lvm_image_size_in_gb}G",
                 lvm_image_file_path
             ]
 
-            if not run_command(fallocate_cmd, "Allocating LVM disk image..."):
+            if not run_command(truncate_cmd, "Allocating LVM disk image..."):
                 return False
 
             if not ensure_system_user_with_run_command("cinder"):
@@ -110,7 +110,7 @@ def conf_lvm(config):
             os.chown(lvm_image_file_path, uid, gid)
             os.chmod(lvm_image_file_path, 0o600)
 
-            print()  # separatore dopo la creazione del file
+            print()
 
         try:
             losetup_output = subprocess.check_output(
@@ -120,10 +120,20 @@ def conf_lvm(config):
         except subprocess.CalledProcessError:
             losetup_output = ""
 
+        losetup_cmd = []
+        lvm_loop: str
+
         if lvm_loop_dev not in losetup_output:
-            if not run_command(
-                ["losetup", lvm_loop_dev, lvm_image_file_path],
-                f"Associating {lvm_image_file_path} to {lvm_loop_dev}..."
+            losetup_cmd = ["losetup", lvm_loop_dev, lvm_image_file_path]
+            lvm_loop = lvm_loop_dev
+        else:
+            available_loop = run_command_output(["losetup", "-f"], False)
+
+            losetup_cmd = ["losetup", available_loop, lvm_image_file_path]
+            lvm_loop = available_loop
+
+        if not run_command(losetup_cmd,
+                f"Associating {lvm_image_file_path} to {lvm_loop}..."
             ):
                 return False
             
