@@ -7,7 +7,7 @@ import subprocess
 import shutil
 import json
 
-from ..utils.core.commands import run_command, run_command_output
+from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
@@ -91,14 +91,14 @@ def conf_lvm(config):
 
             print() 
 
-            truncate_cmd = [
-                "truncate",
-                "-s",
+            fallocate_cmd = [
+                "fallocate",
+                "-l",
                 f"{lvm_image_size_in_gb}G",
                 lvm_image_file_path
             ]
 
-            if not run_command(truncate_cmd, "Allocating LVM disk image..."):
+            if not run_command(fallocate_cmd, "Allocating LVM disk image..."):
                 return False
 
             if not ensure_system_user_with_run_command("cinder"):
@@ -127,20 +127,20 @@ def conf_lvm(config):
             ):
                 return False
             
-    vg = get_vg_for_pv(lvm_loop_dev)
+    vg = get_vg_for_pv(lvm_dev)
 
     if vg is None:
 
         print() 
 
         if not run_command(
-            ["pvcreate", lvm_loop_dev],
-            f"Creating physical volume on {lvm_loop_dev}..."
+            ["pvcreate", lvm_dev],
+            f"Creating physical volume on {lvm_dev}..."
         ):
             return False
 
         if not run_command(
-            ["vgcreate", VG_NAME, lvm_loop_dev],
+            ["vgcreate", VG_NAME, lvm_dev],
             f"Creating volume group {VG_NAME}..."
         ):
             return False
@@ -151,7 +151,7 @@ def conf_lvm(config):
     else:
         print(
             f"{colors.RED}"
-            f"{lvm_loop_dev} already belongs to VG '{vg}', expected '{VG_NAME}'"
+            f"{lvm_dev} already belongs to VG '{vg}', expected '{VG_NAME}'"
             f"{colors.RESET}"
         )
         return False
@@ -161,7 +161,7 @@ def conf_lvm(config):
     if not os.path.exists(tgt_conf_path):
         with open(tgt_conf_path, "w") as f:
             f.write("include /var/lib/cinder/volumes/*")
-            
+
     return True
 
 def write_cinder_lvm_env(config):
@@ -169,7 +169,7 @@ def write_cinder_lvm_env(config):
     env_path = "/etc/default/cinder-lvm"
 
     physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME", default="")
-    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
+    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_NAME")
     lvm_image_file = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
     vg_name = "cinder-volumes"
 
