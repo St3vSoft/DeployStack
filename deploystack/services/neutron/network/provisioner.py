@@ -62,7 +62,7 @@ def add_custom_bridges(bridges: list):
     return True
 
 
-def clean_custom_bridges(bridges: list):
+def clean_custom_bridges(bridges: list, line1: bool = False):
 
     for b in bridges:
         bridge = b.get("name")
@@ -89,7 +89,7 @@ def clean_custom_bridges(bridges: list):
         run_command(["ovs-vsctl", "--if-exists", "del-br", bridge],
                     f"Deleting bridge {bridge}", ignore_errors=True)
         
-    return True
+    return True, line1
 
 def create_custom_networks(
         networks_list: list,

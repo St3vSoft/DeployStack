@@ -69,7 +69,10 @@ def conf_ovn_bridges(config):
             run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
-    if not clean_custom_bridges(bridges=bridges) : return False
+    ok, line1 = clean_custom_bridges(bridges=bridges, line1=line1)
+
+    if not ok:
+        return False
 
     line2 = False
 
