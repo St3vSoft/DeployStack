@@ -9,8 +9,8 @@ from ....utils.core import colors
 
 from ..templates import INTERFACE_BRIDGE_TEMPLATE
 
-def subnet_overlaps(cidr: str) -> bool:
-    out = run_command_output("openstack", "subnet", "list", "-f", "json")
+def subnet_overlaps(cidr: str, env) -> bool:
+    out = run_command_output("openstack", "subnet", "list", "-f", "json", False, env=env)
     subnets = json.loads(out)
 
     for s in subnets:
@@ -224,7 +224,7 @@ def create_custom_networks(
 
             subnet_cmd.append(subnet_name)
 
-            if not subnet_overlaps(cidr=subnet_cidr):
+            if not subnet_overlaps(cidr=subnet_cidr, env=env):
                 if not run_command(subnet_cmd, f"Creating '{network_name}' network subnet...", env=env) : return False
             else:
                 print(f"{colors.YELLOW}'{network_name}' network subnet already exists, skipping creation.{colors.RESET}")
