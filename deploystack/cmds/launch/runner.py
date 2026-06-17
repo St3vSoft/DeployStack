@@ -7,6 +7,7 @@ import shutil
 import base64
 import json
 import json
+import ipaddress
 from passlib.hash import sha512_crypt
 
 from ...utils.core import colors
@@ -24,26 +25,30 @@ DEFAULT_IMAGE   = "cirros"
 DEFAULT_NETWORK = "internal"
 EXTERNAL_NET    = "public"
 
-def is_external_network(network: str) -> bool:
+def is_private_tenant_network(network_id: str) -> bool:
+    result = _os("network", "show", network_id, "-f", "json")
+    net = json.loads(result)
 
-    try:
-        result = subprocess.run(
-            ["openstack", "network", "show", network, "-f", "json", "-c", "router:external"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        external_info = json.loads(result.stdout)
+    if net.get("router:external", False):
+        return False
 
-        return external_info.get("router:external", False)
-    
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to retrieve network information for '{network}': {e}")
-        sys.exit(1)
-    
-    except json.JSONDecodeError as e:
-        print(f"Failed to parse JSON output for network '{network}': {e}")
-        sys.exit(1)
+    subnets = net.get("subnets", [])
+
+    for subnet_id in subnets:
+        s = json.loads(_os("subnet", "show", subnet_id, "-f", "json"))
+        cidr = s.get("cidr")
+
+        if not cidr:
+            continue
+
+        if not ipaddress.ip_network(cidr).is_private:
+            return False
+
+    return True
+
+def is_external_network_by_id(network_id: str) -> bool:
+    net = json.loads(_os("network", "show", network_id, "-f", "json"))
+    return net.get("router:external", False)
 
 def ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
 
@@ -90,7 +95,6 @@ def get_image_properties(image_id: str) -> dict:
         "os_version":   props.get("os_version"),
         "os_admin_user": props.get("os_admin_user")
     }
-
 
 def get_default_image(preferred: str) -> str:
     out = _os("image", "list", "--status", "active", "-f", "value", "-c", "ID", "-c", "Name")
@@ -155,9 +159,18 @@ def get_default_network(preferred: str | None = None) -> str:
 
     if preferred:
         for net_id, net_name in lines:
-            if preferred.lower() in net_name.lower():
-                if not DEFAULT_NETWORK in net_name.lower() and is_external_network(net_name.lower()):
-                    logger.warning(f"{colors.YELLOW}The '{net_name}' network will be used, the floating IP assignment will be skipped{colors.RESET}\n")
+            if preferred.lower() in net_name.lower() or net_name.lower() in preferred.lower():
+
+                is_external = is_external_network_by_id(net_id)
+
+                if is_external:
+                    logger.warning(
+                        f"{colors.YELLOW}"
+                        f"The '{net_name}' network is external. "
+                        f"Floating IP assignment will be skipped."
+                        f"{colors.RESET}\n"
+                    )
+
                 return net_id
 
     for net_id, net_name in lines:
@@ -472,6 +485,7 @@ def launch(
     image_id   = get_default_image(image)
     flavor_id  = get_default_flavor(flavor)
     network_id = get_default_network(network)
+    is_private = is_private_tenant_network(network_id)
 
     props = get_image_properties(image_id) or {}
 
@@ -530,7 +544,7 @@ def launch(
 
     wait_for_active(server_id, timeout)
 
-    if not is_external_network(network):
+    if is_private:
 
         if internal_router_has_gateway():
             fip = allocate_floating_ip(external_net)
