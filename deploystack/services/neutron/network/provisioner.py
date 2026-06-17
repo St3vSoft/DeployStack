@@ -185,9 +185,13 @@ def create_custom_networks(
 
             if subnet_gateway:
                 subnet_cmd += ["--gateway", subnet_gateway]
+            else:
+                subnet_cmd += ["--gateway", "none"]
 
             if allow_dhcp:
                 subnet_cmd.append("--dhcp")
+            else:
+                subnet_cmd.append("--no-dhcp")
 
             for dns in subnet_dns:
                 subnet_cmd += ["--dns-nameserver", dns]
