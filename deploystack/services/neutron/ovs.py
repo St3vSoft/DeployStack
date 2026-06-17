@@ -317,6 +317,8 @@ def create_ovs_networks(config, env):
      
     print()
 
+    public_bridge = get(config, "neutron.ovs.PUBLIC_BRIDGE")
+
     public_subnet_range_start = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_START")
     public_subnet_range_end = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_END")
 
