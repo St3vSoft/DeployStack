@@ -45,9 +45,10 @@ def bring_up_custom_bridges_ifaces(bridges: list):
             if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing {bridge} up"):
                 return False
             
-            return True
+    return True
 
 def add_custom_bridges(bridges: list):
+
     for b in bridges:
         port = b.get("port")
         bridge = b.get("name")
@@ -58,7 +59,7 @@ def add_custom_bridges(bridges: list):
         if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {bridge}"): return False
         if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {bridge}"): return False
 
-        return True
+    return True
 
 
 def clean_custom_bridges(bridges: list):
@@ -216,4 +217,4 @@ def create_custom_networks(
             else:
                 print(f"{colors.YELLOW}'{network_name}' network subnet already exists, skipping creation.{colors.RESET}")
         
-        return True
+    return True
