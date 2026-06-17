@@ -1,6 +1,6 @@
 import json
 
-from ....utils.core.commands import os_run, os_run_output
+from ....utils.core.commands import os_run, os_run_output, run_command
 from ....utils.config.helpers import parse_bool
 
 from ....utils.core import colors
@@ -31,13 +31,11 @@ def create_custom_network_router(
         router_name = f"{network_name}_router"
         subnet_name = f"{network_name}_subnet"
 
-        # router exists?
         router_exists = any(
             r.get("Name") == router_name or r.get("name") == router_name
             for r in routers_list
         )
 
-        # subnet exists?
         subnet_exists = any(
             (s.get("Name") or s.get("name")) == subnet_name
             for s in subnets_list
@@ -54,7 +52,6 @@ def create_custom_network_router(
         else:
             print(f"{colors.YELLOW}'{router_name}' already exists{colors.RESET}")
 
-        # 2. GET ROUTER INFO (CORRECT FIELD)
         router_data = json.loads(
             os_run_output(
                 ["openstack", "router", "show", router_name, "-f", "json"],
@@ -76,24 +73,34 @@ def create_custom_network_router(
             ):
                 return False
 
-        # 4. ADD SUBNET TO ROUTER (SAFE CHECK)
         if subnet_exists:
-
-            ports = json.loads(
+            subnet_os = json.loads(
                 os_run_output([
-                    "openstack", "port", "list",
-                    "--device-owner", "network:router_interface",
+                    "openstack", "subnet", "show",
+                    subnet_name,
                     "-f", "json"
                 ], env=env)
             )
 
+            subnet_id = subnet_os["id"]
+
+            router_ifaces = json.loads(
+                os_run_output([
+                    "openstack", "router", "show",
+                    router_name,
+                    "-f", "json"
+                ], env=env)
+            )
+
+            interfaces = router_ifaces.get("interfaces_info") or []
+
             already_attached = any(
-                subnet_name in (p.get("Fixed IP Addresses") or "")
-                for p in ports
+                i.get("subnet_id") == subnet_id
+                for i in interfaces
             )
 
             if not already_attached:
-                if not os_run(
+                if not run_command(
                     [
                         "openstack", "router", "add",
                         "subnet", router_name, subnet_name
