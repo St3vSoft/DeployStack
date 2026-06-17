@@ -14,6 +14,9 @@ from ...utils.core import colors
 from ...utils.core.system_utils import service_exists, is_debian
 from ...templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 
+from .network.provisioner import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
+from .network.routers import create_custom_network_router
+
 neutron_conf="/etc/neutron/neutron.conf"
 conf_ml2="/etc/neutron/plugins/ml2/ml2_conf.ini"
 conf_openvswitch="/etc/neutron/plugins/ml2/openvswitch_agent.ini"
@@ -58,11 +61,15 @@ def conf_ovs_bridges(config):
     subnet_dns = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
     management_iface = get(config, "network.HOST_MGMT_INTERFACE")
+    bridges = get(config, "neutron.bridges", [])
 
     start_tag = "IF_INTERNAL_BRIDGE_BEGIN"
     end_tag = "IF_INTERNAL_BRIDGE_END"
 
     is_dual_nic = (public_iface != management_iface)
+
+    line1 = False
+    custom_bridges = bool(bridges)
 
     bridges_to_manage = [public_bridge]
 
@@ -74,6 +81,13 @@ def conf_ovs_bridges(config):
             if iface != management_iface:
                 run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
+
+    ok, line1 = clean_custom_bridges(bridges=bridges, line1=line1)
+
+    if not ok:
+        return False
+
+    line2 = False
 
     for bridge, port in [(public_bridge, public_iface)] + ([(internal_bridge, None)] if tenant_network_type != "vxlan" else []):
         if iface_exists(bridge):
@@ -111,6 +125,12 @@ def conf_ovs_bridges(config):
         public_bridge=public_bridge,
         internal_bridge=internal_bridge if use_internal_bridge else ""
     )
+
+    if custom_bridges:
+        bridges_interfaces_content = append_custom_bridges_ifaces_config(
+            bridges,
+            bridges_interfaces_content
+        )
 
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)
@@ -153,6 +173,13 @@ def conf_ovs_bridges(config):
 
         if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing bridge {bridge} up"):
             return False
+    
+    if custom_bridges:
+        if not add_custom_bridges(bridges=bridges) : return False
+
+        print()
+
+        if not bring_up_custom_bridges_ifaces(bridges=bridges) : return False
 
     print()
 
@@ -397,7 +424,14 @@ def create_ovs_networks(config, env):
             ) : return False
     else:
         print(f"{colors.YELLOW}Internal subnet already exists, skipping creation.{colors.RESET}")
+    
+    if provider_networks:
         
+        print()
+
+        if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, env=env) :
+            return False
+
     print()
 
     router_exists = any(r.get("Name") == "internal_router" for r in routers_list)
@@ -428,6 +462,12 @@ def create_ovs_networks(config, env):
                 "Adding internal subnet to router...", env=env
             ):
                 return False    
+            
+        if provider_networks:
+
+            print()
+
+            if not create_custom_network_router(subnets_list=subnets_list, routers_list=routers_list, provider_networks=provider_networks, public_bridge=public_bridge, env=env) : return False
     
     sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env)
     sg_list = json.loads(sg_list_json)
