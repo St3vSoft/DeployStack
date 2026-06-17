@@ -448,7 +448,7 @@ def create_ovs_networks(config, env):
         print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
 
     if create_ovs_bridges:
-        external_gateways_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "external_gateways"], env=env))
+        external_gateways_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "external_gateway_info"], env=env))
         interfaces_info_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "interfaces_info"], env=env))
 
         if not external_gateways_list.get("external_gateways"):
