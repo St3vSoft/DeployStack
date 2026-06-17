@@ -105,7 +105,7 @@ def create_custom_network_router(
                         "openstack", "router", "add",
                         "subnet", router_name, subnet_name
                     ],
-                    f"Attaching subnet '{subnet_name}' to router...",
+                    f"Adding '{subnet_name}' subnet to router...",
                     env=env
                 ):
                     return False
