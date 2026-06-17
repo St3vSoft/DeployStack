@@ -1,5 +1,6 @@
+import json
 
-from ....utils.core.commands import run_command
+from ....utils.core.commands import run_command, run_command_output
 from ....utils.config.helpers import parse_bool
 
 from ....utils.core.system_utils import iface_exists
@@ -7,6 +8,23 @@ from ....utils.core.system_utils import iface_exists
 from ....utils.core import colors
 
 from ..templates import INTERFACE_BRIDGE_TEMPLATE
+
+def subnet_overlaps(cidr: str) -> bool:
+    out = run_command_output("openstack", "subnet", "list", "-f", "json")
+    subnets = json.loads(out)
+
+    for s in subnets:
+        existing_cidr = s.get("Subnet", {}).get("cidr") or s.get("cidr")
+
+        if not existing_cidr:
+            continue
+
+        import ipaddress
+
+        if ipaddress.ip_network(cidr).overlaps(ipaddress.ip_network(existing_cidr)):
+            return True
+
+    return False
 
 def append_custom_bridges_ifaces_config(
     bridges: list,
@@ -131,12 +149,6 @@ def create_custom_networks(
             for net in networks_list
         )
 
-        subnet_exists = any(
-            (sub.get("Network") or sub.get("network")) == network_name
-            and (sub.get("CIDR") or sub.get("cidr")) == subnet_cidr
-            for sub in subnets_list
-        )
-
         if net_type == "flat":
 
             network_cmd = [
@@ -212,7 +224,7 @@ def create_custom_networks(
 
             subnet_cmd.append(subnet_name)
 
-            if not subnet_exists:
+            if not subnet_overlaps(cidr=subnet_cidr):
                 if not run_command(subnet_cmd, f"Creating '{network_name}' network subnet...", env=env) : return False
             else:
                 print(f"{colors.YELLOW}'{network_name}' network subnet already exists, skipping creation.{colors.RESET}")
