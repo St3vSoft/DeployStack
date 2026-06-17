@@ -10,7 +10,7 @@ from ....utils.core import colors
 from ..templates import INTERFACE_BRIDGE_TEMPLATE
 
 def subnet_overlaps(cidr: str, env) -> bool:
-    out = run_command_output("openstack", "subnet", "list", "-f", "json", False, env=env)
+    out = run_command_output(["openstack", "subnet", "list", "-f", "json"], False, env=env)
     subnets = json.loads(out)
 
     for s in subnets:
