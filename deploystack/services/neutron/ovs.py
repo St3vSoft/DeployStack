@@ -57,8 +57,8 @@ def conf_ovs_bridges(config):
     ip_address_netmask = get(config, "network.HOST_IP_NETMASK")
     ip_address_gateway = get(config, "network.HOST_IP_GATEWAY")
 
-    subnet_gateway = get(config, "public_network.PUBLIC_SUBNET_GATEWAY")
-    subnet_dns = get(config, "public_network.PUBLIC_SUBNET_DNS_SERVERS")
+    subnet_gateway = get(config, "neutron.public_network.PUBLIC_SUBNET_GATEWAY")
+    subnet_dns = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS")
 
     management_iface = get(config, "network.HOST_MGMT_INTERFACE")
     bridges = get(config, "neutron.bridges", [])
@@ -176,7 +176,7 @@ def conf_ovs_bridges(config):
     
     if custom_bridges:
         print()
-        
+
         if not add_custom_bridges(bridges=bridges) : return False
 
         print()
