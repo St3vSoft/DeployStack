@@ -294,9 +294,9 @@ def validate_neutron(config) -> bool:
             print(f"{colors.RED}Error: OVN_ENCAP_TYPE ({ovn_encap_type}) does not match tenant network type ({tenant_type}).{colors.RESET}")
             ok = False
 
-    if tenant_type not in ["geneve", "vxlan"]:
-        print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
-        ok = False
+        if tenant_type not in ["geneve", "vxlan"]:
+            print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
+            ok = False
 
     ok_bridges, defined_bridges = validate_bridges(bridges, colors)
     ok_networks = validate_provider_networks(config, provider_networks, defined_bridges, colors)
