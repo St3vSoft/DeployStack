@@ -18,6 +18,7 @@ from ...templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES
 from ...utils.config.helpers import parse_bool
 
 from .network.provisioner import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
+from .network.routers import create_custom_network_router
 
 neutron_conf = "/etc/neutron/neutron.conf"
 conf_ml2 = "/etc/neutron/plugins/ml2/ml2_conf.ini"
@@ -517,50 +518,7 @@ def create_ovn_networks(config, env):
 
             print()
 
-            for pn in provider_networks:
-                
-                if pn.get("bridge") in (public_bridge, "br-int"):
-                    continue
-
-                network_name = pn.get("name")
-
-                subnet = pn.get("subnet", {})
-                attach_external_router = parse_bool(subnet.get("attach_external_router", False))
-
-                if not attach_external_router:
-                    continue
-
-                router_name = f"{network_name}_router"
-                subnet_name = f"{network_name}_subnet"
-
-                router_exists = any(r.get("Name") == router_name for r in routers_list)
-                subnet_exists = any(
-                    (sub.get("Name") or sub.get("name")) == subnet_name
-                    for sub in subnets_list
-                )
-
-                if not router_exists:
-                    if not os_run(["openstack", "router", "create", router_name], f"Creating '{router_name}' router...", env=env):
-                        return False
-                else:
-                    print(f"{colors.YELLOW}'{router_name}' Router already exists, skipping creation.{colors.RESET}")
-
-                external_gateways_list = json.loads(os_run_output(["openstack", "router", "show", router_name, "-f", "json", "-c", "external_gateways"], env=env))
-                interfaces_info_list = json.loads(os_run_output(["openstack", "router", "show", router_name, "-f", "json", "-c", "interfaces_info"], env=env))
-
-                if not external_gateways_list.get("external_gateways"):
-                    if not os_run (
-                        ["openstack", "router", "set", router_name, "--external-gateway", "public"],
-                        f"Setting external gateway for {router_name} router...", env=env
-                    ):
-                        return False
-
-                if not interfaces_info_list.get("interfaces_info"):
-                    if not os_run(
-                        ["openstack", "router", "add", "subnet", router_name, subnet_name],
-                        f"Adding '{subnet_name}' subnet to router...", env=env
-                    ):
-                        return False
+            if not create_custom_network_router(subnets_list=subnets_list, routers_list=routers_list, provider_networks=provider_networks, provider_networks=provider_networks, public_bridge=public_bridge, env=env) : return False
 
     sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
     default_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
