@@ -14,7 +14,7 @@ def subnet_overlaps(cidr: str, env) -> bool:
     subnets = json.loads(out)
 
     for s in subnets:
-        existing_cidr = s.get("Subnet", {}).get("cidr") or s.get("cidr")
+        existing_cidr = s.get("Subnet") or s.get("CIDR") or s.get("cidr")
 
         if not existing_cidr:
             continue
