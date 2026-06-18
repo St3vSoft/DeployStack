@@ -100,6 +100,8 @@ def clean_custom_bridges(bridges: list, line1: bool = False):
 
             run_command(["ip", "link", "set", port, "down"],
                         f"Bringing {port} down", ignore_errors=True)
+            
+            print()
 
             run_command(["ovs-vsctl", "--if-exists", "del-port", bridge, port],
                         f"Deleting port {port} from {bridge}", ignore_errors=True)
