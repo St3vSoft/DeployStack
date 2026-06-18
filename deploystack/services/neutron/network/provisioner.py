@@ -132,7 +132,7 @@ def create_custom_networks(
         vlan_range = pn.get("vlan_range")
 
         allow_dhcp  = parse_bool(subnet.get("allow_dhcp", False))
-        is_external = parse_bool(subnet.get("external", False))
+        is_external = parse_bool(subnet.get("is_external", False))
 
         subnet_cidr = subnet.get("cidr")
         subnet_range_start = subnet.get("range", {}).get("start")
