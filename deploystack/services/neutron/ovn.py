@@ -486,7 +486,7 @@ def create_ovn_networks(config, env):
         
         print()
 
-        if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, env=env) :
+        if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, internal_flat_bridge="", env=env) :
             return False
 
     print()

@@ -318,6 +318,7 @@ def create_ovs_networks(config, env):
     print()
 
     public_bridge = get(config, "neutron.ovs.PUBLIC_BRIDGE")
+    internal_bridge = get(config, "neutron.ovs.INTERNAL_BRIDGE")
 
     public_subnet_range_start = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_START")
     public_subnet_range_end = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_END")
@@ -433,7 +434,7 @@ def create_ovs_networks(config, env):
         
         print()
 
-        if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, env=env) :
+        if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, internal_flat_bridge=internal_bridge, env=env) :
             return False
 
     print()

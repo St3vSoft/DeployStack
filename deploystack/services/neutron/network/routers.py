@@ -41,7 +41,6 @@ def create_custom_network_router(
             for s in subnets_list
         )
 
-        # 1. CREATE ROUTER
         if not router_exists:
             if not os_run(
                 ["openstack", "router", "create", router_name],
