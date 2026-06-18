@@ -472,7 +472,7 @@ def create_ovs_networks(config, env):
 
             print()
 
-            if not create_custom_network_router(subnets_list=subnets_list, routers_list=routers_list, provider_networks=provider_networks, public_bridge=public_bridge, env=env) : return False
+            if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, public_bridge=public_bridge, env=env) : return False
     
     sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env)
     sg_list = json.loads(sg_list_json)
