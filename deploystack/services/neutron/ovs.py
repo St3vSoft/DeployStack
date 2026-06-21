@@ -431,9 +431,6 @@ def create_ovs_networks(config, env):
         print(f"{colors.YELLOW}Internal subnet already exists, skipping creation.{colors.RESET}")
     
     if provider_networks:
-        
-        print()
-
         if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, internal_flat_bridge=internal_bridge, env=env) :
             return False
 
@@ -469,9 +466,6 @@ def create_ovs_networks(config, env):
                 return False    
             
         if provider_networks:
-
-            print()
-
             if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, public_bridge=public_bridge, env=env) : return False
     
     sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env)

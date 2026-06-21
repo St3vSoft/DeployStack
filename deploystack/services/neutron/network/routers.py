@@ -16,6 +16,8 @@ def create_custom_network_router(
 
         if pn.get("bridge") in (public_bridge, "br-int"):
             continue
+        else:
+            print()
 
         network_name = pn.get("name")
         subnet = pn.get("subnet", {}) or {}
