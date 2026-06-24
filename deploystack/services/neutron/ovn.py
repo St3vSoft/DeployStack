@@ -16,6 +16,7 @@ from ...utils.core.system_utils import service_exists, is_debian
 from ...templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 
 from ...utils.config.helpers import parse_bool
+from .helpers import rule_matches
 
 from .network.provisioner import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
 from .network.routers import create_custom_network_router
@@ -541,48 +542,27 @@ def create_ovn_networks(config, env):
         protocol = rule.get("protocol", "tcp")
         rule_type = name.upper()
 
-        if protocol == "icmp" and name == "icmp":
+        is_icmp = protocol == "icmp"
 
-            rule_exists = any(
-                r.get("IP Protocol") == "icmp" and
-                r.get("Direction") == "ingress" and
-                r.get("Remote IP Prefix") == services_rules_remote_ip_prefix
-                for r in rules
-            )
+        rule_exists = any(
+            rule_matches(r, protocol, port, services_rules_remote_ip_prefix)
+            for r in rules
+        )
 
-            if create_ovn_bridges and not rule_exists:
+        if create_ovn_bridges and not rule_exists:
 
-                if not os_run(
-                    ["openstack", "security", "group", "rule", "create",
-                    "--proto", "icmp",
-                    sg_id],
-                    f"Allowing {rule_type} access...",
-                    env=env
-                ):
-                    return False
+            cmd = [
+                "openstack", "security", "group", "rule", "create",
+                "--proto", protocol,
+            ]
 
-        else:
+            if not is_icmp:
+                cmd += ["--dst-port", str(port)]
 
-            rule_exists = any(
-                r.get("IP Protocol") == protocol and
-                r.get("Direction") == "ingress" and
-                r.get("Port Range") == f"{port}:{port}" and
-                r.get("Remote IP Prefix") == services_rules_remote_ip_prefix
-                for r in rules
-            )
+            cmd += ["--remote-ip", services_rules_remote_ip_prefix, sg_id]
 
-            if create_ovn_bridges and not rule_exists:
-
-                if not os_run(
-                    ["openstack", "security", "group", "rule", "create",
-                    "--proto", protocol,
-                    "--dst-port", str(port),
-                    "--remote-ip", services_rules_remote_ip_prefix,
-                    sg_id],
-                    f"Allowing {rule_type} access...",
-                    env=env
-                ):
-                    return False
+            if not os_run(cmd, f"Allowing {rule_type} access...", env=env):
+                return False
 
     print()
 
