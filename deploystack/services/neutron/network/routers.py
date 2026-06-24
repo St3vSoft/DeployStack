@@ -4,110 +4,110 @@ from ....utils.core.commands import os_run, os_run_output
 from ....utils.config.helpers import parse_bool
 from ....utils.core import colors
 
+def safe_json(cmd, env):
+    out = os_run_output(cmd, env=env)
+    return json.loads(out) if out else {}
+
+def router_exists(router_name, env):
+    data = safe_json(
+        ["openstack", "router", "list", "-f", "json"],
+        env
+    )
+
+    return any(r.get("Name") == router_name for r in data)
+
+def has_gateway(router_name, env):
+    data = safe_json(
+        ["openstack", "router", "show", router_name, "-f", "json"],
+        env
+    )
+
+    return bool(data.get("external_gateway_info"))
+
+def is_subnet_attached(router_name, subnet_id, env):
+
+    ports = safe_json(
+        ["openstack", "port", "list", "--router", router_name, "-f", "json"],
+        env
+    )
+
+    for p in ports:
+        fixed_ips = p.get("fixed_ips") or p.get("Fixed IP Addresses") or []
+
+        for ip in fixed_ips:
+            if isinstance(ip, dict) and ip.get("subnet_id") == subnet_id:
+                return True
+
+    return False
+
 def create_custom_network_router(
-    routers_list: list,
-    provider_networks: list,
-    public_bridge: str,
-    internal_flat_bridge: str,
-    tunnel_bridge: str,
+    routers_list,
+    provider_networks,
+    public_bridge,
+    internal_flat_bridge,
+    tunnel_bridge,
     env
 ) -> bool:
 
+    internal_bridges = {
+        public_bridge,
+        internal_flat_bridge,
+        tunnel_bridge,
+        "br-int"
+    }
+
     for pn in provider_networks:
 
-        subnet = pn.get("subnet", {}) or {}
+        subnet_cfg = pn.get("subnet") or {}
 
-        attach_external_router = parse_bool(
-            subnet.get("attach_external_router", False)
-        )
-
-        if pn.get("bridge") in (public_bridge, internal_flat_bridge, tunnel_bridge, "br-int") and not attach_external_router:
+        if not parse_bool(subnet_cfg.get("attach_external_router", False)):
             continue
-        elif attach_external_router == True:
-            print()
+
+        bridge = pn.get("bridge")
+
+        if bridge in internal_bridges:
+            continue
 
         network_name = pn.get("name")
-
         router_name = f"{network_name}_router"
         subnet_name = f"{network_name}_subnet"
 
-        subnet_info_raw = os_run_output(
-            ["openstack", "subnet", "list", "--name", subnet_name, "-f", "json"],
-            env=env
-        )
-        subnet_list = json.loads(subnet_info_raw) if subnet_info_raw else []
-        subnet_exists = len(subnet_list) > 0
-
-        router_exists = any(
-            r.get("Name") == router_name or r.get("name") == router_name
-            for r in routers_list
-        )
-
-        if not router_exists:
+        if not router_exists(router_name, env):
             if not os_run(
                 ["openstack", "router", "create", router_name],
-                f"Creating router '{router_name}'...",
+                f"Creating router {router_name}",
                 env=env
             ):
                 return False
-        else:
-            print(f"{colors.YELLOW}'{router_name}' already exists{colors.RESET}")
 
-        router_data = json.loads(
-            os_run_output(
-                ["openstack", "router", "show", router_name, "-f", "json"],
+        if not has_gateway(router_name, env):
+            if not os_run(
+                ["openstack", "router", "set", router_name,
+                 "--external-gateway", "public"],
+                f"Setting gateway for {router_name}",
                 env=env
-            )
+            ):
+                return False
+
+        subnet_list = safe_json(
+            ["openstack", "subnet", "list", "--name", subnet_name, "-f", "json"],
+            env
         )
 
-        has_gateway = bool(router_data.get("external_gateway_info"))
+        if not subnet_list:
+            print(f"Subnet {subnet_name} not found, skipping attach")
+            continue
 
-        if not has_gateway:
+        subnet_id = subnet_list[0].get("ID") or subnet_list[0].get("id")
+
+        if not is_subnet_attached(router_name, subnet_id, env):
+
             if not os_run(
-                [
-                    "openstack", "router", "set",
-                    router_name,
-                    "--external-gateway", "public"
-                ],
-                f"Setting external gateway for '{router_name}'...",
+                ["openstack", "router", "add", "subnet",
+                 router_name, subnet_name],
+                f"Attaching {subnet_name} to {router_name}",
                 env=env
             ):
                 return False
-
-        if subnet_exists:
-            subnet_id = subnet_list[0].get("ID") or subnet_list[0].get("id")
-
-            ports_raw = os_run_output(
-                [
-                    "openstack", "port", "list",
-                    "--router", router_name,
-                    "-f", "json"
-                ],
-                env=env
-            )
-            ports = json.loads(ports_raw) if ports_raw else []
-
-            already_attached = any(
-                subnet_id in [
-                    fip.get("subnet_id")
-                    for fip in (p.get("Fixed IP Addresses") or p.get("fixed_ips") or [])
-                ]
-                for p in ports
-            )
-
-            if not already_attached:
-                if not os_run(
-                    [
-                        "openstack", "router", "add",
-                        "subnet", router_name, subnet_name
-                    ],
-                    f"Adding '{subnet_name}' subnet to router...",
-                    env=env
-                ):
-                    return False
-            else:
-                print(
-                    f"{colors.YELLOW}'{subnet_name}' already attached to '{router_name}'{colors.RESET}"
-                )
 
     return True
