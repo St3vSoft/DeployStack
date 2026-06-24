@@ -464,27 +464,26 @@ def create_ovn_networks(config, env):
     if not internal_network_exists:
         if not os_run(create_internal_network_cmd, f"Creating internal ({ovn_encap_type}) network...", env=env):
             return False
+
+        internal_subnet_exists = any(sub.get("Name") == "internal_subnet" for sub in subnets_list)
+        if not internal_subnet_exists:
+            internal_subnet_cmd = [
+                "openstack", "subnet", "create",
+                "--network", "internal",
+                "--subnet-range", "10.0.0.0/24",
+                "--gateway", "10.0.0.1",
+                "--allocation-pool", "start=10.0.0.10,end=10.0.0.200",
+                "--dns-nameserver", "8.8.8.8",
+                "internal_subnet"
+            ]
+            
+            if not os_run(internal_subnet_cmd, "Creating internal subnet...", env=env):
+                return False
     else:
         print(f"{colors.YELLOW}Internal network already exists, skipping creation.{colors.RESET}")
 
-    internal_subnet_exists = any(sub.get("Name") == "internal_subnet" for sub in subnets_list)
-    if not internal_subnet_exists:
-        internal_subnet_cmd = [
-            "openstack", "subnet", "create",
-            "--network", "internal",
-            "--subnet-range", "10.0.0.0/24",
-            "--gateway", "10.0.0.1",
-            "--allocation-pool", "start=10.0.0.10,end=10.0.0.200",
-            "--dns-nameserver", "8.8.8.8",
-            "internal_subnet"
-        ]
-        if not os_run(internal_subnet_cmd, "Creating internal subnet...", env=env):
-            return False
-    else:
-        print(f"{colors.YELLOW}Internal subnet already exists, skipping creation.{colors.RESET}")
 
-    if provider_networks:
-        
+    if provider_networks: 
         if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, internal_flat_bridge="", env=env) :
             return False
 
@@ -565,7 +564,7 @@ def create_ovn_networks(config, env):
                 if not os_run(cmd, f"Allowing {rule_type} access...", env=env):
                     return False
             else:
-                print(f"{colors.YELLOW}'{rule_type}' already exists, skipping creation")
+                print(f"{colors.YELLOW}{rule_type} rule already exists, skipping creation{colors.RESET}")
 
     print()
 
