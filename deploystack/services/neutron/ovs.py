@@ -14,6 +14,8 @@ from ...utils.core import colors
 from ...utils.core.system_utils import service_exists, is_debian
 from ...templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 
+from .helpers import rule_matches
+
 from .network.provisioner import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
 from .network.routers import create_custom_network_router
 
@@ -383,26 +385,24 @@ def create_ovs_networks(config, env):
     public_network_exists = any(net.get("Name") == "public" for net in networks_list)
 
     if not public_network_exists:
+        if not os_run(
+            create_public_network_cmd,
+            "Creating public network...", env=env
+        ) : return False
+
+        public_subnet_exists = any(sub.get("Name") == "public_subnet" for sub in subnets_list)
+        if not public_subnet_exists:
             if not os_run(
-                create_public_network_cmd,
-                "Creating public network...", env=env
+                ["openstack", "subnet", "create",
+                "--network", "public",
+                "--allocation-pool", f"start={public_subnet_range_start},end={public_subnet_range_end}",
+                "--gateway", public_subnet_gateway,
+                "--subnet-range", public_subnet_cidr,
+                "public_subnet"] + dns_args,
+                "Creating public subnet...", env=env
             ) : return False
     else:
-            print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
-
-    public_subnet_exists = any(sub.get("Name") == "public_subnet" for sub in subnets_list)
-    if not public_subnet_exists:
-        if not os_run(
-            ["openstack", "subnet", "create",
-            "--network", "public",
-            "--allocation-pool", f"start={public_subnet_range_start},end={public_subnet_range_end}",
-            "--gateway", public_subnet_gateway,
-            "--subnet-range", public_subnet_cidr,
-            "public_subnet"] + dns_args,
-            "Creating public subnet...", env=env
-        ) : return False
-    else:
-        print(f"{colors.YELLOW}Public subnet already exists, skipping creation.{colors.RESET}")
+        print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
     
     print()
 
@@ -413,22 +413,20 @@ def create_ovs_networks(config, env):
             create_internal_network_cmd,
             "Creating internal network...", env=env
             ) : return False
+
+        internal_subnet_exists = any(sub.get("Name") == "internal_subnet" for sub in subnets_list)
+        if not internal_subnet_exists:
+            if not os_run(
+                ["openstack", "subnet", "create", "--network", "internal",
+                "--subnet-range", "10.0.0.0/24",
+                "--gateway", "10.0.0.1",
+                "--allocation-pool", "start=10.0.0.10,end=10.0.0.200",
+                "--dns-nameserver", "8.8.8.8",
+                "internal_subnet"],
+                "Creating internal subnet...", env=env
+                ) : return False
     else:
         print(f"{colors.YELLOW}Internal network already exists, skipping creation.{colors.RESET}")
-
-    internal_subnet_exists = any(sub.get("Name") == "internal_subnet" for sub in subnets_list)
-    if not internal_subnet_exists:
-        if not os_run(
-            ["openstack", "subnet", "create", "--network", "internal",
-            "--subnet-range", "10.0.0.0/24",
-            "--gateway", "10.0.0.1",
-            "--allocation-pool", "start=10.0.0.10,end=10.0.0.200",
-            "--dns-nameserver", "8.8.8.8",
-            "internal_subnet"],
-            "Creating internal subnet...", env=env
-            ) : return False
-    else:
-        print(f"{colors.YELLOW}Internal subnet already exists, skipping creation.{colors.RESET}")
     
     if provider_networks:
         if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, internal_flat_bridge=internal_bridge, env=env) :
@@ -479,26 +477,44 @@ def create_ovs_networks(config, env):
     rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env=env)
     rules = json.loads(rules_json)
 
-    ssh_rule_exists = any(
-        rule.get("IP Protocol") == "tcp" and
-        rule.get("Port Range") == "22:22" and
-        rule.get("IP Range") == public_subnet_cidr and
-        rule.get("Direction") == "ingress"
-        for rule in rules
-    )
+    services_rules = get(config, "neutron.default_security_group.services", {})
+    services_rules_remote_ip_prefix = get(config, "neutron.default_security_group.defaults.remote_ip_prefix")
 
-    if create_ovs_bridges and not ssh_rule_exists:
-
+    if services_rules:
         print()
 
-        if not os_run(
-            ["openstack", "security", "group", "rule", "create",
-             "--proto", "tcp", "--dst-port", "22", "--remote-ip", public_subnet_cidr, sg_id],
-            "Allowing SSH access...", env=env
-        ):
-            return False
-    else:
-       print(f"{colors.YELLOW}SSH rule skipped (no OVS bridge or already exists){colors.RESET}")
+        for name, rule in services_rules.items():
+
+            if not rule.get("enabled"):
+                continue
+
+            port = rule.get("port")
+            protocol = rule.get("protocol", "tcp")
+            rule_type = name.upper()
+
+            is_icmp = protocol == "icmp"
+
+            rule_exists = any(
+                rule_matches(r, protocol, port, services_rules_remote_ip_prefix)
+                for r in rules
+            )
+
+            if create_ovs_bridges and not rule_exists:
+
+                cmd = [
+                    "openstack", "security", "group", "rule", "create",
+                    "--proto", protocol,
+                ]
+
+                if not is_icmp:
+                    cmd += ["--dst-port", str(port)]
+
+                cmd += ["--remote-ip", services_rules_remote_ip_prefix, sg_id]
+
+                if not os_run(cmd, f"Allowing {rule_type} access...", env=env):
+                    return False
+            else:
+                print(f"{colors.YELLOW}{rule_type} rule already exists, skipping creation{colors.RESET}")
 
     return True
 
