@@ -70,7 +70,7 @@ def conf_ovn_bridges(config):
             run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
-    ok, line1 = clean_custom_bridges(bridges=bridges, line1=line1)
+    ok, line1 = clean_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=None, tunnel_bridge=None, line1=line1)
 
     if not ok:
         return False
@@ -140,7 +140,7 @@ def conf_ovn_bridges(config):
         return False
     
     if custom_bridges:
-        if not add_custom_bridges(bridges=bridges) : return False
+        if not add_custom_bridges(bridges=bridges, public_bridge=public_bridge, tunnel_bridge=None, internal_flat_bridge=None) : return False
 
     print()
 
@@ -517,7 +517,7 @@ def create_ovn_networks(config, env):
             
         if provider_networks:
 
-            if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, public_bridge=public_bridge, env=env) : return False
+            if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, public_bridge=public_bridge, internal_flat_bridge=None, env=env) : return False
 
     sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
     default_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
