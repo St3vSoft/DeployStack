@@ -325,6 +325,7 @@ def create_ovs_networks(config, env):
 
     public_bridge = get(config, "neutron.ovs.PUBLIC_BRIDGE")
     internal_bridge = get(config, "neutron.ovs.INTERNAL_BRIDGE")
+    tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE")
 
     public_subnet_range_start = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_START")
     public_subnet_range_end = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_END")
@@ -433,7 +434,7 @@ def create_ovs_networks(config, env):
         print(f"{colors.YELLOW}Internal network already exists, skipping creation.{colors.RESET}")
     
     if provider_networks:
-        if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, internal_flat_bridge=internal_bridge, env=env) :
+        if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, internal_flat_bridge=internal_bridge, tunnel_bridge=tunnel_bridge, env=env) :
             return False
 
     print()
@@ -466,7 +467,7 @@ def create_ovs_networks(config, env):
                 return False    
             
         if provider_networks:
-            if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, internal_flat_bridge=internal_bridge, public_bridge=public_bridge, env=env) : return False
+            if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, internal_flat_bridge=internal_bridge, public_bridge=public_bridge, tunnel_bridge=tunnel_bridge, env=env) : return False
     
     sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env)
     sg_list = json.loads(sg_list_json)
