@@ -530,6 +530,8 @@ def create_ovn_networks(config, env):
     services_rules = get(config, "neutron.default_security_group.services", {})
     services_rules_remote_ip_prefix = get(config, "neutron.default_security_group.defaults.remote_ip_prefix")
 
+    print()
+
     for name, rule in services_rules.items():
 
         if not rule.get("enabled"):
@@ -539,7 +541,7 @@ def create_ovn_networks(config, env):
         protocol = rule.get("protocol", "tcp")
         rule_type = name.upper()
 
-        if protocol == "icmp":
+        if protocol == "icmp" and name == "icmp":
 
             rule_exists = any(
                 r.get("IP Protocol") == "icmp" and

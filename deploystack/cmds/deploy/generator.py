@@ -132,6 +132,8 @@ def config_openstack(
     config_dict["neutron"]["tenant_network"]["TYPE"] = "geneve" if neutron_driver == "ovn" else "flat"
     config_dict["neutron"]["tenant_network"]["VNI_RANGE"] = "1:65536" if neutron_driver == "ovn" else ""
 
+    config_dict["neutron"]["default_security_group"]["defaults"]["remote_ip_prefix"] = network
+
     # Provider networks
     if neutron_driver == "ovs":
         config_dict["neutron"]["provider_networks"] = [

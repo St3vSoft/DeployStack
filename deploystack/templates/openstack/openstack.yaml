@@ -73,6 +73,7 @@ neutron:
         protocol: tcp
 
       icmp:
+        protocol: icmp
         enabled: true
 
       http:
