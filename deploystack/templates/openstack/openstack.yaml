@@ -62,6 +62,35 @@ neutron:
     # bridge: "br-internal"
     # type: "flat"
 
+  default_security_group:
+    defaults:
+      remote_ip_prefix: "0.0.0.0/0"
+
+    services:
+      ssh:
+        enabled: true
+        port: 22
+        protocol: tcp
+
+      icmp:
+        enabled: true
+
+      http:
+        enabled: false
+        port: 80
+        protocol: tcp
+
+      https:
+        enabled: false
+        port: 443
+        protocol: tcp
+
+    #rules:
+    #  - direction: ingress
+    #    protocol: tcp
+    #    port_range: [8080, 8080]
+    #    remote_ip_prefix: "0.0.0.0/0"
+
 cinder:
     lvm:
       # Use a real physical volume, or leave blank to use loopback
