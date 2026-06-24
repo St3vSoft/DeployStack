@@ -221,6 +221,49 @@ def validate_provider_networks(config, provider_networks, defined_bridges, color
 
     return ok
 
+def validate_default_security_group(config) -> bool:
+
+    services_rules = get(config, "neutron.default_security_group.services", {})
+
+    ALLOWED_PROTOCOLS = {"tcp", "udp", "icmp"}
+
+    for name, rule in services_rules.items():
+
+        if not rule.get("enabled"):
+            continue
+
+        protocol = (rule.get("protocol") or "tcp").lower()
+        port = rule.get("port")
+        rule_type = name.upper()
+
+        # 1. protocol validation
+        if protocol not in ALLOWED_PROTOCOLS:
+            print(f"{colors.RED}Error: Invalid protocol in {name}: {protocol}{colors.RESET}")
+            return False
+
+        # 2. ICMP rules
+        if protocol == "icmp":
+            if port is not None:
+                print(f"{colors.RED}Error: ICMP cannot have port: {name}{colors.RESET}")
+                return False
+            continue
+
+        # 3. TCP/UDP rules
+        if port is None:
+            print(f"[{colors.RED}Error: Missing port for {name}{colors.RESET}")
+            return False
+
+        if not isinstance(port, int) or not (1 <= port <= 65535):
+            print(f"{colors.RED}Error: Invalid port in {name}: {port}{colors.RESET}")
+            return False
+
+        # 4. enabled type safety
+        if not isinstance(rule.get("enabled"), bool):
+            print(f"{colors.RED}Error: enabled must be boolean in {name}{colors.RESET}")
+            return False
+
+    return True
+
 # --- Neutron ---
 def validate_neutron(config) -> bool:
     ok = True
@@ -300,9 +343,11 @@ def validate_neutron(config) -> bool:
 
     ok_bridges, defined_bridges = validate_bridges(bridges, colors)
     ok_networks = validate_provider_networks(config, provider_networks, defined_bridges, colors)
+    ok_default_security_group = validate_default_security_group(config)
 
     ok &= ok_bridges
     ok &= ok_networks
+    ok &= ok_default_security_group
 
     return ok
 
