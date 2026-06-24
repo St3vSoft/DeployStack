@@ -3,28 +3,28 @@ def norm(x):
     return (x or "").strip().lower()
 
 def rule_matches(r, protocol, port, cidr):
-    if norm(r.get("IP Protocol")) != norm(protocol):
+
+    if (r.get("IP Protocol") or "").lower() != protocol.lower():
         return False
 
-    if norm(r.get("Direction")) != "ingress":
+    if r.get("Direction") != "ingress":
         return False
 
-    if norm(protocol) == "icmp":
-        return True
+    if protocol != "icmp":
 
-    # TCP/UDP
-    port_range = r.get("Port Range") or ""
+        port_range = r.get("Port Range") or ""
 
-    # gestisce "80" e "80:80"
-    if ":" in port_range:
-        start, end = port_range.split(":")
-        if not (start == str(port) and end == str(port)):
-            return False
-    else:
-        if port_range != str(port):
-            return False
+        if ":" in port_range:
+            a, b = port_range.split(":")
+            if a != str(port) or b != str(port):
+                return False
+        else:
+            if port_range != str(port):
+                return False
 
-    if cidr and r.get("Remote IP Prefix") != cidr:
+    ip_range = r.get("IP Range") or ""
+
+    if ip_range != cidr:
         return False
 
     return True
