@@ -15,17 +15,17 @@ def create_custom_network_router(
 
     for pn in provider_networks:
 
+        attach_external_router = parse_bool(
+            subnet.get("attach_external_router", False)
+        )
+
         if pn.get("bridge") in (public_bridge, internal_flat_bridge, tunnel_bridge, "br-int"):
             continue
-        else:
+        elif attach_external_router == True:
             print()
 
         network_name = pn.get("name")
         subnet = pn.get("subnet", {}) or {}
-
-        attach_external_router = parse_bool(
-            subnet.get("attach_external_router", False)
-        )
 
         if not attach_external_router:
             continue
