@@ -531,38 +531,41 @@ def create_ovn_networks(config, env):
     services_rules = get(config, "neutron.default_security_group.services", {})
     services_rules_remote_ip_prefix = get(config, "neutron.default_security_group.defaults.remote_ip_prefix")
 
-    print()
+    if services_rules:
+        print()
 
-    for name, rule in services_rules.items():
+        for name, rule in services_rules.items():
 
-        if not rule.get("enabled"):
-            continue
+            if not rule.get("enabled"):
+                continue
 
-        port = rule.get("port")
-        protocol = rule.get("protocol", "tcp")
-        rule_type = name.upper()
+            port = rule.get("port")
+            protocol = rule.get("protocol", "tcp")
+            rule_type = name.upper()
 
-        is_icmp = protocol == "icmp"
+            is_icmp = protocol == "icmp"
 
-        rule_exists = any(
-            rule_matches(r, protocol, port, services_rules_remote_ip_prefix)
-            for r in rules
-        )
+            rule_exists = any(
+                rule_matches(r, protocol, port, services_rules_remote_ip_prefix)
+                for r in rules
+            )
 
-        if create_ovn_bridges and not rule_exists:
+            if create_ovn_bridges and not rule_exists:
 
-            cmd = [
-                "openstack", "security", "group", "rule", "create",
-                "--proto", protocol,
-            ]
+                cmd = [
+                    "openstack", "security", "group", "rule", "create",
+                    "--proto", protocol,
+                ]
 
-            if not is_icmp:
-                cmd += ["--dst-port", str(port)]
+                if not is_icmp:
+                    cmd += ["--dst-port", str(port)]
 
-            cmd += ["--remote-ip", services_rules_remote_ip_prefix, sg_id]
+                cmd += ["--remote-ip", services_rules_remote_ip_prefix, sg_id]
 
-            if not os_run(cmd, f"Allowing {rule_type} access...", env=env):
-                return False
+                if not os_run(cmd, f"Allowing {rule_type} access...", env=env):
+                    return False
+            else:
+                print(f"{colors.YELLOW}'{rule_type}' already exists, skipping creation")
 
     print()
 
