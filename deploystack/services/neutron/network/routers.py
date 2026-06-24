@@ -9,12 +9,13 @@ def create_custom_network_router(
     routers_list: list,
     provider_networks: list,
     public_bridge: str,
+    internal_flat_bridge: str,
     env
 ) -> bool:
 
     for pn in provider_networks:
 
-        if pn.get("bridge") in (public_bridge, "br-int"):
+        if pn.get("bridge") in (public_bridge, internal_flat_bridge, "br-int"):
             continue
         else:
             print()

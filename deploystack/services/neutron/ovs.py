@@ -453,8 +453,6 @@ def create_ovs_networks(config, env):
                 "Setting external gateway for internal router...", env=env
             ):
                 return False
-        
-        print()
 
         if not interfaces_info_list.get("interfaces_info"):
             if not os_run(
@@ -464,7 +462,7 @@ def create_ovs_networks(config, env):
                 return False    
             
         if provider_networks:
-            if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, public_bridge=public_bridge, env=env) : return False
+            if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, internal_flat_bridge=internal_bridge, public_bridge=public_bridge, env=env) : return False
     
     sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env)
     sg_list = json.loads(sg_list_json)
