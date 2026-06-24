@@ -4,7 +4,6 @@ from ....utils.core.commands import os_run, os_run_output
 from ....utils.config.helpers import parse_bool
 from ....utils.core import colors
 
-
 def create_custom_network_router(
     routers_list: list,
     provider_networks: list,

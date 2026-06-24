@@ -92,6 +92,10 @@ def conf_ovs_bridges(config):
     line2 = False
 
     for bridge, port in [(public_bridge, public_iface)] + ([(internal_bridge, None)] if tenant_network_type != "vxlan" else []):
+        if not line2:
+                print()
+                line2 = True
+
         if iface_exists(bridge):
             if port:
                 run_command(["ovs-vsctl", "--if-exists", "del-port", bridge, port], f"Deleting port {port} from {bridge}", ignore_errors=True)
