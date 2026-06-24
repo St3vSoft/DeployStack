@@ -451,7 +451,7 @@ def create_ovs_networks(config, env):
         external_gateways_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "external_gateway_info"], env=env))
         interfaces_info_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "interfaces_info"], env=env))
 
-        if not external_gateways_list.get("external_gateways"):
+        if not external_gateways_list.get("external_gateway_info"):
             if not os_run(
                 ["openstack", "router", "set", "internal_router", "--external-gateway", "public"],
                 "Setting external gateway for internal router...", env=env
