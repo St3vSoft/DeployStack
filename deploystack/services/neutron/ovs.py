@@ -84,7 +84,7 @@ def conf_ovs_bridges(config):
                 run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
-    ok, line1 = clean_custom_bridges(bridges=bridges, line1=line1)
+    ok, line1 = clean_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=internal_bridge, tunnel_bridge=tunnel_bridge, line1=line1)
 
     if not ok:
         return False
@@ -183,7 +183,7 @@ def conf_ovs_bridges(config):
     if custom_bridges:
         print()
 
-        if not add_custom_bridges(bridges=bridges) : return False
+        if not add_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=internal_bridge, tunnel_bridge=tunnel_bridge,) : return False
 
         print()
 

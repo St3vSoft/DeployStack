@@ -65,11 +65,16 @@ def bring_up_custom_bridges_ifaces(bridges: list):
             
     return True
 
-def add_custom_bridges(bridges: list):
+def add_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: str, tunnel_bridge: str):
 
     for b in bridges:
         port = b.get("port")
         bridge = b.get("name")
+
+        if bridge in (public_bridge, tunnel_bridge, "br-int", internal_flat_bridge):
+            continue
+        else:
+            print()
 
         if not bridge or not port:
             continue
@@ -80,11 +85,16 @@ def add_custom_bridges(bridges: list):
     return True
 
 
-def clean_custom_bridges(bridges: list, line1: bool = False):
+def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: str, tunnel_bridge: str, line1: bool = False):
 
     for b in bridges:
         bridge = b.get("name")
         port = b.get("port")
+
+        if bridge in (public_bridge, tunnel_bridge, "br-int", internal_flat_bridge):
+            continue
+        else:
+            print()
 
         if not bridge or not port:
             continue
