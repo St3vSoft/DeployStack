@@ -226,8 +226,13 @@ def validate_default_security_group(config) -> bool:
     ok = True
 
     services_rules = get(config, "neutron.default_security_group.services", {})
+    services_rules_remote_ip_prefix = get(config, "neutron.default_security_group.defaults.remote_ip_prefix")
 
     ALLOWED_PROTOCOLS = {"tcp", "udp", "icmp"}
+
+    if not validate_cidr(services_rules_remote_ip_prefix, "neutron.default_security_group.defaults.remote_ip_prefix"):
+        ok = False
+        print(f"{colors.RED}Error: Field 'neutron.default_security_group.defaults.remote_ip_prefix' has invalid CIDR: {str(services_rules_remote_ip_prefix)}{colors.RESET}")
 
     for name, rule in services_rules.items():
 
