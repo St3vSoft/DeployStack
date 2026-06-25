@@ -101,10 +101,6 @@ def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge
 
         if iface_exists(bridge):
 
-            if not line1:
-                print()
-                line1 = True
-
             run_command(["ip", "addr", "flush", "dev", port],
                         f"Flushing IPs on {port}", ignore_errors=True)
 
