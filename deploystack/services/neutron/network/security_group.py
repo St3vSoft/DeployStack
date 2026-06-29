@@ -3,7 +3,7 @@ from ..network.helpers import rule_matches
 from ....utils.core import colors
 from ....utils.core.commands import os_run
 
-def add_rules_to_default_sg(create_bridges: bool, rules_dict, ip_prefix, sg_id: str, rules, env) -> bool:
+def add_rules_to_default_sg(create_bridges: bool, rules_dict, ip_prefix, sg_id: str, env) -> bool:
     
     for name, rule in rules.items():
 
