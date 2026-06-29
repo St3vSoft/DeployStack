@@ -345,7 +345,7 @@ def validate_neutron(config) -> bool:
             print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
             ok = False
 
-    ok_bridges, defined_bridges = validate_bridges(bridges)
+    ok_bridges, defined_bridges = validate_bridges(config, bridges)
     ok_networks = validate_provider_networks(config, provider_networks, defined_bridges)
     ok_default_security_group = validate_default_security_group(config)
 
