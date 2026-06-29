@@ -480,7 +480,7 @@ def create_ovs_networks(config, env):
 
     if services_rules:
         print()
-        if not add_rules_to_default_sg(create_bridges=create_ovs_bridges, rules=services_rules, ip_prefix=services_rules_remote_ip_prefix, sg_id=sg_id, env=env) : return False
+        if not add_rules_to_default_sg(create_bridges=create_ovs_bridges, rules=services_rules, ip_prefix=services_rules_remote_ip_prefix, sg_id=sg_id, rules=rules, env=env) : return False
 
     return True
 

@@ -521,15 +521,15 @@ def create_ovn_networks(config, env):
         raise RuntimeError("No security group named 'default' found")
     sg_id = default_sg["ID"]
 
-    #rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env=env)
-    #rules = json.loads(rules_json)
+    rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env=env)
+    rules = json.loads(rules_json)
 
     services_rules = get(config, "neutron.default_security_group.services", {})
     services_rules_remote_ip_prefix = get(config, "neutron.default_security_group.defaults.remote_ip_prefix")
 
     if services_rules:
         print()
-        if not add_rules_to_default_sg(create_bridges=create_ovn_bridges, rules_dict=services_rules, ip_prefix=services_rules_remote_ip_prefix, sg_id=sg_id, env=env) : return False
+        if not add_rules_to_default_sg(create_bridges=create_ovn_bridges, rules_dict=services_rules, ip_prefix=services_rules_remote_ip_prefix, sg_id=sg_id, rules=rules, env=env) : return False
 
     print()
 
