@@ -5,7 +5,7 @@ from ....utils.core.commands import os_run
 
 def add_rules_to_default_sg(create_bridges: bool, rules_dict, ip_prefix, sg_id: str, rules, env) -> bool:
     
-    for name, rule in rules.items():
+    for name, rule in rules_dict.items():
 
         if not rule.get("enabled"):
             continue
@@ -18,7 +18,7 @@ def add_rules_to_default_sg(create_bridges: bool, rules_dict, ip_prefix, sg_id: 
 
         rule_exists = any(
             rule_matches(r, protocol, port, ip_prefix)
-            for r in rules_dict
+            for r in rules
         )
 
         if create_bridges and not rule_exists:
