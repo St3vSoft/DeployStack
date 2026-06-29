@@ -181,35 +181,23 @@ def set_lvm_filter(config):
 
     with open(lvm_conf_path, "r") as f:
         content = f.read()
+    pattern = r'(^\s*#?\s*filter\s*=\s*).*$'
 
-    pattern_active = r'^(\s*)filter\s*=\s*.*$'
-    pattern_commented = r'^(\s*#[^\n]*)filter\s*=\s*.*$'
-
-    if re.search(pattern_active, content, flags=re.MULTILINE):
+    if re.search(pattern, content, flags=re.MULTILINE):
         content = re.sub(
-            pattern_active,
-            r'\1filter = ' + filter_value,
+            pattern,
+            r'\1' + filter_value,
             content,
-            count=1,
             flags=re.MULTILINE
         )
     else:
-        matches = list(re.finditer(pattern_commented, content, flags=re.MULTILINE))
-        if matches:
-            last = matches[-1]
-            content = (
-                content[:last.end()] +
-                f"\n    filter = {filter_value}" +
-                content[last.end():]
-            )
-        else:
-            # Fallback: inserisci nel blocco devices {}
-            match = re.search(r'devices\s*{', content)
-            if not match:
-                print(f"{colors.RED}Error: No devices section found in lvm.conf{colors.RESET}")
-                return False
-            pos = match.end()
-            content = content[:pos] + f"\n    filter = {filter_value}\n" + content[pos:]
+        match = re.search(r'^\s*devices\s*{', content, flags=re.MULTILINE)
+        if not match:
+            print("No devices section found")
+            return False
+
+        pos = match.end()
+        content = content[:pos] + f"\n    filter = {filter_value}\n" + content[pos:]
 
     with open(lvm_conf_path, "w") as f:
         f.write(content)
