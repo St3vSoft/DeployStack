@@ -57,8 +57,6 @@ def conf_glance(config):
 
     db_migration_cmd = [
     "sudo", "-u", "glance",
-    "env",
-    "PATH=/usr/bin:/usr/local/bin",
     "glance-manage", "db_sync"
 ]
     if not run_command(db_migration_cmd, "Running Glance DB Migrations...") : return False

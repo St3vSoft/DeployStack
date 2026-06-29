@@ -3,7 +3,7 @@ import subprocess
 import os
 import ipaddress
 
-from .helpers import get_provider_networks, interface_exists, validate_ip, validate_cidr, is_loop_device
+from .helpers import get_provider_networks, interface_exists, validate_ip, validate_cidr, is_loop_device, is_safe_lvm_device
 from ..core import colors
 from .parser import get
 
@@ -373,6 +373,12 @@ def validate_cinder(config) -> bool:
             print(f"{colors.RED}Error: loop devices are not allowed as Physical Volume ({pv}){colors.RESET}")
             ok = False
             return False
+        
+        if not is_safe_lvm_device(pv):
+            print(f"{colors.RED}Error: Unsafe LVM device blocked for security: {pv}{colors.RESET}")
+            ok = False
+            return False
+    
     else:
         size = None
         if size_raw:

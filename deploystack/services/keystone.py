@@ -60,8 +60,6 @@ def conf_keystone(config):
 
     db_migration_cmd = [
         "sudo", "-u", "keystone",
-        "env",
-        "PATH=/usr/bin:/usr/local/bin",
         "keystone-manage", "db_sync"
     ]
 

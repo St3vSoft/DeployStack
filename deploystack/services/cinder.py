@@ -6,6 +6,7 @@ import os
 import subprocess
 import shutil
 import json
+import re
 
 from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install
@@ -18,6 +19,7 @@ from ..templates import CINDER_LOOPBACK_SERVICE, CINDER_LOOPBACK_START_SCRIPT, C
 
 cinder_conf = "/etc/cinder/cinder.conf"
 tgt_conf_path = "/etc/tgt/conf.d/cinder.conf"
+lvm_conf_path = "/etc/lvm/lvm.conf"
 
 def get_vg_for_pv(device):
     try:
@@ -161,6 +163,52 @@ def conf_lvm(config):
     if not os.path.exists(tgt_conf_path):
         with open(tgt_conf_path, "w") as f:
             f.write("include /var/lib/cinder/volumes/*")
+
+    return True
+
+def set_lvm_filter(config):
+    lvm_physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME")
+    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
+
+    device = lvm_physical_volume or lvm_loop_dev
+
+    filters = [
+        f"a|{device}|",
+        "r|.*|",
+    ]
+
+    filter_value = '[ ' + ', '.join(f'"{f}"' for f in filters) + ' ]'
+
+    with open(lvm_conf_path, "r") as f:
+        content = f.read()
+
+    pattern_existing = r'^(\s*#?\s*filter\s*=\s*).*$'
+
+    if re.search(pattern_existing, content, flags=re.MULTILINE):
+        content = re.sub(
+            pattern_existing,
+            r'\1' + filter_value,
+            content,
+            flags=re.MULTILINE
+        )
+
+    else:
+        devices_match = re.search(r'devices\s*{', content)
+
+        if not devices_match:
+            print(f"{colors.RED}No 'devices' section found in lvm.conf{colors.RESET}")
+            return False
+
+        insert_point = devices_match.end()
+
+        content = (
+            content[:insert_point] +
+            f"\n    filter = {filter_value}\n" +
+            content[insert_point:]
+        )
+
+    with open(lvm_conf_path, "w") as f:
+        f.write(content)
 
     return True
 
@@ -349,7 +397,9 @@ def run_setup_cinder(config):
 
     if not install_pkgs(): return False 
     if not conf_lvm(config): return False
+    if not set_lvm_filter(config) : return False
     if not write_cinder_lvm_env(config): return False   
+
     if not setup_loopback_service(config): return False   
     if not conf_cinder(config): return False    
     if not finalize(config): return False

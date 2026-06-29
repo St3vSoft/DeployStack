@@ -1,9 +1,39 @@
 import ipaddress
 import psutil
 import subprocess
+import os
 
 from .parser import get
 from ..core import colors
+
+def get_root_device():
+    result = subprocess.check_output(["lsblk", "-no", "PKNAME", "/"])
+    return result.decode().strip()
+
+def is_system_disk(device):
+    root_disk = get_root_device()
+
+    device_base = os.path.basename(device).replace("/dev/", "")
+    device_base = device_base.split("p")[0]
+
+    return device_base == root_disk
+
+def is_safe_lvm_device(device):
+    if not device:
+        return False
+
+    if device.startswith("/dev/loop"):
+        return True
+
+    if is_system_disk(device):
+        return False
+
+    unsafe_prefixes = ["/dev/sda", "/dev/nvme0n1", "/dev/vda"]
+
+    if any(device.startswith(p) for p in unsafe_prefixes):
+        return False
+
+    return True
 
 def parse_bool(value, default=False):
     if isinstance(value, bool):
