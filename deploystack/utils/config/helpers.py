@@ -1,22 +1,39 @@
 import ipaddress
 import psutil
 import subprocess
-import os
 
 from .parser import get
 from ..core import colors
 
 def get_root_device():
-    result = subprocess.check_output(["lsblk", "-no", "PKNAME", "/"])
-    return result.decode().strip()
+    try:
+        return subprocess.check_output(
+            ["findmnt", "-n", "-o", "SOURCE", "/"]
+        ).decode().strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
+def get_root_disk():
+    device = get_root_device()
+    if not device:
+        return None
+
+    try:
+        return subprocess.check_output(
+            ["lsblk", "-no", "PKNAME", device]
+        ).decode().strip()
+    except subprocess.CalledProcessError:
+        return None
 
 def is_system_disk(device):
-    root_disk = get_root_device()
+    root_disk = get_root_disk()
+    if not root_disk:
+        return False
 
-    device_base = os.path.basename(device).replace("/dev/", "")
-    device_base = device_base.split("p")[0]
+    device = device.replace("/dev/", "").split("p")[0]
 
-    return device_base == root_disk
+    return device == root_disk
 
 def is_safe_lvm_device(device):
     if not device:
