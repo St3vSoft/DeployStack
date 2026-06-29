@@ -14,7 +14,7 @@ from ...utils.core import colors
 from ...utils.core.system_utils import service_exists, is_debian
 from ...templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 
-from .helpers import rule_matches
+from .network.security_group import add_rules_to_default_sg
 
 from .network.provisioner import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
 from .network.routers import create_custom_network_router
@@ -480,39 +480,7 @@ def create_ovs_networks(config, env):
 
     if services_rules:
         print()
-
-        for name, rule in services_rules.items():
-
-            if not rule.get("enabled"):
-                continue
-
-            port = rule.get("port")
-            protocol = rule.get("protocol", "tcp")
-            rule_type = name.upper()
-
-            is_icmp = protocol == "icmp"
-
-            rule_exists = any(
-                rule_matches(r, protocol, port, services_rules_remote_ip_prefix)
-                for r in rules
-            )
-
-            if create_ovs_bridges and not rule_exists:
-
-                cmd = [
-                    "openstack", "security", "group", "rule", "create",
-                    "--proto", protocol,
-                ]
-
-                if not is_icmp:
-                    cmd += ["--dst-port", str(port)]
-
-                cmd += ["--remote-ip", services_rules_remote_ip_prefix, sg_id]
-
-                if not os_run(cmd, f"Allowing {rule_type} access...", env=env):
-                    return False
-            else:
-                print(f"{colors.YELLOW}{rule_type} rule already exists, skipping creation{colors.RESET}")
+        if not add_rules_to_default_sg(create_bridges=create_ovs_bridges, rules=services_rules, ip_prefix=services_rules_remote_ip_prefix, sg_id=sg_id, env=env) : return False
 
     return True
 
