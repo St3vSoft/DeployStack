@@ -182,29 +182,29 @@ def set_lvm_filter(config):
     with open(lvm_conf_path, "r") as f:
         content = f.read()
 
-    pattern_existing = r'^(\s*#?\s*filter\s*=\s*).*$'
+    pattern = r'^(\s*#?\s*)filter\s*=\s*.*$'
 
-    if re.search(pattern_existing, content, flags=re.MULTILINE):
+    if re.search(pattern, content, flags=re.MULTILINE):
         content = re.sub(
-            pattern_existing,
-            r'\1' + filter_value,
+            pattern,
+            r'\1filter = ' + filter_value,
             content,
             flags=re.MULTILINE
         )
 
     else:
-        devices_match = re.search(r'devices\s*{', content)
+        match = re.search(r'devices\s*{', content)
 
-        if not devices_match:
-            print(f"{colors.RED}No 'devices' section found in lvm.conf{colors.RESET}")
+        if not match:
+            print(f"{colors.RED}Error: No devices section found in lvm.conf{colors.RESET}")
             return False
 
-        insert_point = devices_match.end()
+        pos = match.end()
 
         content = (
-            content[:insert_point] +
+            content[:pos] +
             f"\n    filter = {filter_value}\n" +
-            content[insert_point:]
+            content[pos:]
         )
 
     with open(lvm_conf_path, "w") as f:
