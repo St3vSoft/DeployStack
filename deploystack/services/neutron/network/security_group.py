@@ -3,7 +3,7 @@ from ..network.helpers import rule_matches
 from ....utils.core import colors
 from ....utils.core.commands import os_run
 
-def add_rules_to_default_sg(create_bridges: bool, rules: dict, ip_prefix: str, sg_id: str, env) -> bool:
+def add_rules_to_default_sg(create_bridges: bool, rules_dict, ip_prefix, sg_id: str, rules, env) -> bool:
     
     for name, rule in rules.items():
 
@@ -18,7 +18,7 @@ def add_rules_to_default_sg(create_bridges: bool, rules: dict, ip_prefix: str, s
 
         rule_exists = any(
             rule_matches(r, protocol, port, ip_prefix)
-            for r in rules
+            for r in rules_dict
         )
 
         if create_bridges and not rule_exists:
