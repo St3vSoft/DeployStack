@@ -70,7 +70,6 @@ def validate_public_network(config) -> bool:
     ]
     cidr_fields = ["neutron.public_network.PUBLIC_SUBNET_CIDR"]
 
-    # Validate CIDR fields
     for field in cidr_fields:
         value = get(config, field)
         if not value:
@@ -80,7 +79,6 @@ def validate_public_network(config) -> bool:
             ok = False
             print(f"{colors.RED}Error: Field '{field}' has invalid CIDR: {value}{colors.RESET}")
 
-    # Validate IP fields
     for field in ip_fields:
         value = get(config, field)
         if not value:
@@ -90,7 +88,6 @@ def validate_public_network(config) -> bool:
             ok = False
             print(f"{colors.RED}Error: Field '{field}' has invalid IP: {value}{colors.RESET}")
 
-    # Validate DNS servers
     dns_servers = get(config, "neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS", [])
     for i, dns in enumerate(dns_servers):
         if not validate_ip(dns, f"neutron.public_network.PUBLIC_SUBNET_DNS_SERVERS[{i}]"):
@@ -99,9 +96,11 @@ def validate_public_network(config) -> bool:
 
     return ok
 
-def validate_bridges(bridges, colors):
+def validate_bridges(config, bridges):
     ok = True
     defined_bridges = set()
+
+    public_bridge_iface = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE_INTERFACE") or get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
 
     for i, bridge in enumerate(bridges):
         name = bridge.get("name")
@@ -117,11 +116,15 @@ def validate_bridges(bridges, colors):
             ok = False
             continue
 
+        if public_bridge_iface and public_bridge_iface in port:
+            print(f"{colors.RED}Error: The public provider network bridge interface '{public_bridge_iface}' cannot be respecified in the neutron.bridges section.{colors.RESET}")
+            ok = False
+
         defined_bridges.add(name)
 
     return ok, defined_bridges
 
-def validate_provider_networks(config, provider_networks, defined_bridges, colors):
+def validate_provider_networks(config, provider_networks, defined_bridges):
     ok = True
 
     IGNORED_BRIDGES = []
@@ -213,7 +216,7 @@ def validate_provider_networks(config, provider_networks, defined_bridges, color
                                 print(f"{colors.RED}Error: {prefix} subnet.range.start must be less than range.end{colors.RESET}")
                                 ok = False
                         except ValueError:
-                            pass  # già catturato sopra
+                            pass
 
                     for j, dns in enumerate(subnet.get("dns", [])):
                         if not validate_ip(dns, f"{prefix} subnet.dns[{j}]"):
@@ -259,7 +262,6 @@ def validate_default_security_group(config) -> bool:
             print(f"{colors.RED}Error: Invalid port in {name}: {port}{colors.RESET}")
             ok = False
 
-        # 4. enabled type safety
         if not isinstance(rule.get("enabled"), bool):
             print(f"{colors.RED}Error: enabled must be boolean in {name}{colors.RESET}")
             ok = False
@@ -343,8 +345,8 @@ def validate_neutron(config) -> bool:
             print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
             ok = False
 
-    ok_bridges, defined_bridges = validate_bridges(bridges, colors)
-    ok_networks = validate_provider_networks(config, provider_networks, defined_bridges, colors)
+    ok_bridges, defined_bridges = validate_bridges(bridges)
+    ok_networks = validate_provider_networks(config, provider_networks, defined_bridges)
     ok_default_security_group = validate_default_security_group(config)
 
     ok &= ok_bridges
