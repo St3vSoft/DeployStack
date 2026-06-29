@@ -2,6 +2,8 @@
 
 import os
 import re
+import shutil
+import tempfile
 
 from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install, apt_update
@@ -16,31 +18,77 @@ debian_apache_conf = "/etc/apache2/sites-enabled/openstack-dashboard-alias-only.
 
 resolv_conf = "/etc/resolv.conf"
 
-def set_memcached(settings_file="/etc/openstack-dashboard/local_settings.py", host="127.0.0.1", port=11211):
+debian_apache_block = """
+WSGIDaemonProcess horizon user=www-data group=www-data threads=5
+WSGIScriptAlias /horizon /usr/share/openstack-dashboard/wsgi.py process-group=horizon application-group=%{GLOBAL}
+Alias /static /var/lib/openstack-dashboard/static
+Alias /horizon/static /var/lib/openstack-dashboard/static
+
+<Directory /usr/share/openstack-dashboard>
+    Require all granted
+</Directory>
+
+<Directory /var/lib/openstack-dashboard/static>
+    Require all granted
+</Directory>
+"""
+
+ubuntu_apache_block = """
+WSGIScriptAlias /dashboard /usr/share/openstack-dashboard/openstack_dashboard/wsgi.py process-group=horizon
+WSGIDaemonProcess horizon user=horizon group=horizon processes=3 threads=10 display-name=%{GROUP}
+WSGIProcessGroup horizon
+WSGIApplicationGroup %{GLOBAL}
+Alias /static /var/lib/openstack-dashboard/static/
+Alias /dashboard/static /var/lib/openstack-dashboard/static/
+
+<Directory /usr/share/openstack-dashboard/openstack_dashboard>
+    Require all granted
+</Directory>
+
+<Directory /var/lib/openstack-dashboard/static>
+    Require all granted
+</Directory>
+"""
+
+def atomic_write(path, content):
+    dir_name = os.path.dirname(path)
+    os.makedirs(dir_name, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile("w", delete=False, dir=dir_name) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    shutil.move(tmp_path, path)
+
+def set_memcached(settings_file=settings_file, host="127.0.0.1", port=11211):
+
+    content = ""
     if os.path.exists(settings_file):
         with open(settings_file, "r") as f:
             content = f.read()
-    else:
-        content = ""
 
-    memcached_block = f"""CACHES = {{
+    memcached_block = f"""
+CACHES = {{
     'default': {{
         'BACKEND': 'django.core.cache.backends.memcached.PyMemcacheCache',
         'LOCATION': '{host}:{port}',
     }}
-}}"""
+}}
+"""
 
-    if "CACHES = {" in content:
-
-        content = re.sub(r"CACHES\s*=\s*\{.*\}\s*\}", memcached_block, content, flags=re.DOTALL)
+    pattern = r"CACHES\s*=\s*\{.*?\}\s*\}"
+    if re.search(pattern, content, flags=re.DOTALL):
+        content = re.sub(pattern, memcached_block, content, flags=re.DOTALL)
     else:
         content += "\n" + memcached_block + "\n"
 
-    with open(settings_file, "w") as f:
-        f.write(content)
+    atomic_write(settings_file, content)
 
 def write_resolv_conf(config):
-    dns_servers = get(config, "network.HOST_DNS_SERVERS")
+    dns_servers = get(config, "network.HOST_DNS_SERVERS") or []
+
+    if not dns_servers:
+        return True
 
     try:
         with open(resolv_conf, "r") as f:
@@ -48,37 +96,35 @@ def write_resolv_conf(config):
     except FileNotFoundError:
         existing = ""
 
+    lines_to_add = []
+    for dns in dns_servers:
+        line = f"nameserver {dns}\n"
+        if line not in existing:
+            lines_to_add.append(line)
+
+    if not lines_to_add:
+        return True
+
     with open(resolv_conf, "a") as f:
-        for dns in dns_servers:
-            line = f"nameserver {dns}\n"
-            if line not in existing:
-                f.write(line)
-
-def install_pkgs():
-
-    if not apt_update() : return False
-
-    horizon_packages = []
-
-    if is_debian():
-        os.environ["DEBIAN_FRONTEND"] = "noninteractive"
-
-        horizon_packages.append("openstack-dashboard-apache")
-    else:
-        horizon_packages.append("openstack-dashboard")
-    
-    if not apt_install(horizon_packages, ux_text=f"Installing Horizon package...") : return False
+        f.writelines(lines_to_add)
 
     return True
 
+def install_pkgs():
+    if not apt_update():
+        return False
+
+    packages = ["openstack-dashboard-apache"] if is_debian() else ["openstack-dashboard"]
+
+    return apt_install(packages, ux_text="Installing Horizon package...")
+
 def conf_horizon(config):
     ip_address = get(config, "network.HOST_IP")
-
-    apache_conf: str
-    apache_block: str
+    if not ip_address:
+        print(f"{colors.RED}Missing HOST_IP{colors.RESET}")
+        return False
 
     settings_to_set = {
-
         "OPENSTACK_HOST": f'"{ip_address}"',
         "OPENSTACK_KEYSTONE_URL": f'"http://{ip_address}:5000/v3"',
         "DEBUG": "False",
@@ -87,115 +133,59 @@ def conf_horizon(config):
         "COMPRESS_OFFLINE": "False",
     }
 
-    if is_debian():
-        settings_to_set.update({
-            "WEBROOT": "'/horizon/'"
-        })
-    else:
-        settings_to_set.update({
-            "WEBROOT": "'/dashboard/'"
-        })
+    settings_to_set["WEBROOT"] = "'/horizon/'" if is_debian() else "'/dashboard/'"
 
+    content = ""
     if os.path.exists(settings_file):
         with open(settings_file, "r") as f:
-            lines = f.readlines()
-    else:
-        lines = []
+            content = f.read()
 
-    existing_keys = {l.split("=")[0].strip() for l in lines if "=" in l}
+    for key, value in settings_to_set.items():
+        pattern = rf"^{key}\s*=.*$"
+        replacement = f"{key} = {value}"
+        if re.search(pattern, content, flags=re.MULTILINE):
+            content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+        else:
+            content += "\n" + replacement + "\n"
 
-    with open(settings_file, "w") as f:
-        for line in lines:
-            key_found = False
-            for key, value in settings_to_set.items():
-                if line.strip().startswith(key):
-                    f.write(f"{key} = {value}\n")
-                    key_found = True
-                    break
-            if not key_found:
-                f.write(line)
-
-        for key, value in settings_to_set.items():
-            if key not in existing_keys:
-                f.write(f"{key} = {value}\n")
+    atomic_write(settings_file, content)
 
     set_memcached(host="127.0.0.1", port=11211)
 
-    debian_apache_block= """
-WSGIDaemonProcess horizon user=www-data group=www-data threads=5
+    apache_conf = debian_apache_conf if is_debian() else ubuntu_apache_conf
+    apache_block = debian_apache_block if is_debian() else ubuntu_apache_block
 
-WSGIScriptAlias /horizon /usr/share/openstack-dashboard/wsgi.py process-group=horizon application-group=%{GLOBAL}
-
-Alias /static /var/lib/openstack-dashboard/static
-
-Alias /horizon/static /var/lib/openstack-dashboard/static
-
-<Directory /usr/share/openstack-dashboard>
-        Require all granted
-</Directory>
-
-<Directory /var/lib/openstack-dashboard/static>
-        Require all granted
-</Directory>
-
-"""
-
-    ubuntu_apache_block = """
-WSGIScriptAlias /dashboard /usr/share/openstack-dashboard/openstack_dashboard/wsgi.py process-group=horizon
-WSGIDaemonProcess horizon user=horizon group=horizon processes=3 threads=10 display-name=%{GROUP}
-WSGIProcessGroup horizon
-WSGIApplicationGroup %{GLOBAL}
-Alias /static /var/lib/openstack-dashboard/static/
-Alias /dashboard/static /var/lib/openstack-dashboard/static/
-<Directory /usr/share/openstack-dashboard/openstack_dashboard>
-  Require all granted
-</Directory>
-<Directory /var/lib/openstack-dashboard/static>
-  Require all granted
-</Directory>
-"""
-
-    if is_debian():
-        apache_conf = debian_apache_conf
-        apache_block = debian_apache_block
-    else:
-        apache_conf = ubuntu_apache_conf
-        apache_block = ubuntu_apache_block
-
-    if os.path.exists(apache_conf):
-        os.remove(apache_conf)
-
-    with open(apache_conf, "w") as f:
-        f.write(apache_block)
-
-def finalize(config):
-
-    ip_address = get(config, "network.HOST_IP")
-
-    if is_debian():
-        print()
-
-        if not run_command(["sudo", "a2enmod", "ssl"], "Enabling SSL Module...") : return False
-
-        if not run_command(["make-ssl-cert", "generate-default-snakeoil", "--force-overwrite"], "Regenerating SSL Certificates..."): return False
-
-        print()
-    else:
-        print()
-
-    if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2..."): return False
-    
-    if not nc_wait(ip_address, 80) : return False
+    atomic_write(apache_conf, apache_block)
 
     return True
 
-def run_setup_horizon(config):
+def finalize(config):
+    ip_address = get(config, "network.HOST_IP")
+    if not ip_address:
+        return False
 
+    if is_debian():
+        print()
+
+        run_command(["a2enmod", "ssl"], "Enabling SSL Module...")
+        run_command(["make-ssl-cert", "generate-default-snakeoil", "--force-overwrite"],
+                    "Regenerating SSL Certificates...")
+
+    run_command(["systemctl", "restart", "apache2"], "Restarting Apache2...")
+
+    return nc_wait(ip_address, 80)
+
+def run_setup_horizon(config):
     write_resolv_conf(config)
 
-    if not install_pkgs(): return False
-    conf_horizon(config)
-    if not finalize(config): return False
+    if not install_pkgs():
+        return False
+
+    if not conf_horizon(config):
+        return False
+
+    if not finalize(config):
+        return False
 
     print(f"\n{colors.GREEN}Horizon configured successfully!{colors.RESET}")
     return True
