@@ -161,21 +161,6 @@ def conf_horizon(config):
 
     atomic_write(apache_conf, apache_block)
 
-    path = "/etc/openstack-dashboard/local_settings.py"
-    directory = "/etc/openstack-dashboard"
-
-    uid = pwd.getpwnam("root").pw_uid
-    gid = grp.getgrnam("root").gr_gid
-
-    uid = pwd.getpwnam("root").pw_uid
-    gid = grp.getgrnam("root").gr_gid
-
-    os.chown(path, uid, gid)
-    os.chown(directory, uid, gid)
-
-    os.chmod(path, 0o644)
-    os.chmod(directory, 0o755)
-
     return True
 
 def finalize(config):
