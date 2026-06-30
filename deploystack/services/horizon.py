@@ -1,6 +1,8 @@
 # Configure the Dashboard (Horizon)
 
 import os
+import pwd
+import grp
 import re
 import shutil
 import tempfile
@@ -156,6 +158,21 @@ def conf_horizon(config):
     apache_block = debian_apache_block if is_debian() else ubuntu_apache_block
 
     atomic_write(apache_conf, apache_block)
+
+    path = "/etc/openstack-dashboard/local_settings.py"
+    directory = "/etc/openstack-dashboard"
+
+    uid = pwd.getpwnam("root").pw_uid
+    gid = grp.getgrnam("root").gr_gid
+
+    uid = pwd.getpwnam("root").pw_uid
+    gid = grp.getgrnam("root").gr_gid
+
+    os.chown(path, uid, gid)
+    os.chown(directory, uid, gid)
+
+    os.chmod(path, 0o644)
+    os.chmod(directory, 0o755)
 
     return True
 

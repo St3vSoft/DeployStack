@@ -172,42 +172,62 @@ def set_lvm_filter(config):
 
     device = lvm_physical_volume or lvm_loop_dev
 
+    if not device:
+        print(f"{colors.RED}Error: No physical volume or loop device configured{colors.RESET}")
+        return False
+
     filters = [
         f"a|{device}|",
         "r|.*|",
     ]
-
     filter_value = '[ ' + ', '.join(f'"{f}"' for f in filters) + ' ]'
 
-    with open(lvm_conf_path, "r") as f:
-        content = f.read()
+    try:
+        with open(lvm_conf_path, "r") as f:
+            content = f.read()
+    except OSError as e:
+        print(f"{colors.RED}Error: Unable to read {lvm_conf_path}: {e}{colors.RESET}")
+        return False
 
-    pattern = r'(^\s*#?\s*filter\s*=\s*).*$'
+    devices_match = re.search(r'^(\s*)devices\s*{', content, flags=re.MULTILINE)
+    if not devices_match:
+        print(f"{colors.RED}Error: No devices section found in lvm.conf{colors.RESET}")
+        return False
 
-    if re.search(pattern, content, flags=re.MULTILINE):
-        content = re.sub(
-            pattern,
-            r'\1' + filter_value,
-            content,
-            flags=re.MULTILINE
+    section_start = devices_match.end()
+
+    depth = 1
+    pos = section_start
+    while pos < len(content) and depth > 0:
+        if content[pos] == '{':
+            depth += 1
+        elif content[pos] == '}':
+            depth -= 1
+        pos += 1
+    section_end = pos - 1
+    section_content = content[section_start:section_end]
+
+    filter_pattern = r'(^\s*#?\s*filter\s*=\s*).*$'
+    filter_match = re.search(filter_pattern, section_content, flags=re.MULTILINE)
+
+    if filter_match:
+        new_section_content = (
+            section_content[:filter_match.start()]
+            + filter_match.group(1) + filter_value
+            + section_content[filter_match.end():]
         )
     else:
-        match = re.search(r'^(\s*)devices\s*{', content, flags=re.MULTILINE)
-        if not match:
-            print(f"{colors.RED}Error: No devices section found in lvm.conf{colors.RESET}")
-            return False
+        pad = devices_match.group(1) + "    "
+        new_section_content = f"\n{pad}filter = {filter_value}\n" + section_content
 
-        pad = match.group(1) + "    "
-        pos = match.end()
+    new_content = content[:section_start] + new_section_content + content[section_end:]
 
-        content = (
-            content[:pos]
-            + f"\n{pad}filter = {filter_value}\n"
-            + content[pos:]
-        )
-
-    with open(lvm_conf_path, "w") as f:
-        f.write(content)
+    try:
+        with open(lvm_conf_path, "w") as f:
+            f.write(new_content)
+    except OSError as e:
+        print(f"{colors.RED}Error: Unable to write {lvm_conf_path}: {e}{colors.RESET}")
+        return False
 
     return True
 
@@ -396,7 +416,7 @@ def run_setup_cinder(config):
 
     if not install_pkgs(): return False 
     if not conf_lvm(config): return False
-    #if not set_lvm_filter(config) : return False
+    if not set_lvm_filter(config) : return False
     if not write_cinder_lvm_env(config): return False   
 
     if not setup_loopback_service(config): return False   
