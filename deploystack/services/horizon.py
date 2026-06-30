@@ -58,6 +58,8 @@ def atomic_write(path, content):
 
     with tempfile.NamedTemporaryFile("w", delete=False, dir=dir_name) as tmp:
         tmp.write(content)
+        tmp.flush()
+        os.fchmod(tmp.fileno(), 0o644)
         tmp_path = tmp.name
 
     shutil.move(tmp_path, path)
