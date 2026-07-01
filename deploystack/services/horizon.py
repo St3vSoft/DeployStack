@@ -165,8 +165,6 @@ def conf_horizon(config):
 
 def finalize(config):
     ip_address = get(config, "network.HOST_IP")
-    if not ip_address:
-        return False
 
     if is_debian():
         print()
@@ -174,6 +172,8 @@ def finalize(config):
         run_command(["a2enmod", "ssl"], "Enabling SSL Module...")
         run_command(["make-ssl-cert", "generate-default-snakeoil", "--force-overwrite"],
                     "Regenerating SSL Certificates...")
+        
+    print()
 
     run_command(["systemctl", "restart", "apache2"], "Restarting Apache2...")
 
