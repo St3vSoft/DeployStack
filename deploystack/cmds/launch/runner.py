@@ -46,6 +46,11 @@ def is_private_tenant_network(network_id: str) -> bool:
 
     return True
 
+def is_local_network_type_by_id(network_id: str) -> bool:
+    network = json.loads(_os("network", "show", network_id, "-f", "json"))
+
+    return network.get("provider:network_type") == "local"
+
 def is_external_network_by_id(network_id: str) -> bool:
     net = json.loads(_os("network", "show", network_id, "-f", "json"))
     return net.get("router:external", False)
@@ -486,6 +491,7 @@ def launch(
     flavor_id  = get_default_flavor(flavor)
     network_id = get_default_network(network)
     is_private = is_private_tenant_network(network_id)
+    is_local_network = is_local_network_type_by_id(network_id)
 
     props = get_image_properties(image_id) or {}
 
@@ -546,7 +552,7 @@ def launch(
 
     if is_private:
 
-        if internal_router_has_gateway():
+        if internal_router_has_gateway() and not is_local_network:
             fip = allocate_floating_ip(external_net)
             attach_floating_ip(server_id, fip)
 
