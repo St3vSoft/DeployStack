@@ -195,6 +195,7 @@ def set_lvm_filter(config):
         return False
 
     section_start = devices_match.end()
+    base_indent = devices_match.group(1)
 
     depth = 1
     pos = section_start
@@ -207,20 +208,26 @@ def set_lvm_filter(config):
     section_end = pos - 1
     section_content = content[section_start:section_end]
 
-    filter_pattern = r'(^\s*#?\s*filter\s*=\s*).*$'
+    filter_pattern = r'^([ \t]*)#?[ \t]*filter\s*=\s*.*$'
     filter_match = re.search(filter_pattern, section_content, flags=re.MULTILINE)
 
     if filter_match:
+        line_indent = filter_match.group(1)
+        new_line = f"{line_indent}filter = {filter_value}"
         new_section_content = (
             section_content[:filter_match.start()]
-            + filter_match.group(1) + filter_value
+            + new_line
             + section_content[filter_match.end():]
         )
     else:
-        pad = devices_match.group(1) + "    "
+        pad = base_indent + "    "
         new_section_content = f"\n{pad}filter = {filter_value}\n" + section_content
 
     new_content = content[:section_start] + new_section_content + content[section_end:]
+
+    if new_content == content:
+        print(f"{colors.YELLOW}Warning: no changes made, filter already up to date{colors.RESET}")
+        return True
 
     try:
         with open(lvm_conf_path, "w") as f:
@@ -229,6 +236,7 @@ def set_lvm_filter(config):
         print(f"{colors.RED}Error: Unable to write {lvm_conf_path}: {e}{colors.RESET}")
         return False
 
+    print(f"{colors.GREEN}LVM filter updated successfully: {filter_value}{colors.RESET}")
     return True
 
 def write_cinder_lvm_env(config):
