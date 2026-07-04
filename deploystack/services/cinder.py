@@ -416,7 +416,7 @@ def run_setup_cinder(config):
 
     if not install_pkgs(): return False 
     if not conf_lvm(config): return False
-    #if not set_lvm_filter(config) : return False
+    if not set_lvm_filter(config) : return False
     if not write_cinder_lvm_env(config): return False   
 
     if not setup_loopback_service(config): return False   
