@@ -14,7 +14,7 @@ from ..utils.core import colors
 
 keystone_conf = "/etc/keystone/keystone.conf"
 
-def get_endpoints(service: str, env=None):
+def get_endpoints(env=None):
     raw = run_command_output(["openstack", "endpoint", "list", "-f", "json"], env=env)
     return json.loads(raw or "[]")
 
