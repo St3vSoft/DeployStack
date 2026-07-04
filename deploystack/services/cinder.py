@@ -233,6 +233,9 @@ def set_lvm_filter(config):
 
 def write_cinder_lvm_env(config):
 
+    if get(config, "cinder.lvm.PHYSICAL_VOLUME"):
+        return True
+
     env_path = "/etc/default/cinder-lvm"
 
     physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME", default="")
@@ -261,6 +264,9 @@ def write_cinder_lvm_env(config):
     return True
 
 def setup_loopback_service(config):
+
+    if get(config, "cinder.lvm.PHYSICAL_VOLUME"):
+        return True
 
     print()
 
@@ -331,7 +337,6 @@ def conf_cinder(config):
     set_conf_option(cinder_conf, "keystone_authtoken", "memcached_servers", "127.0.0.1:11211")
     set_conf_option(cinder_conf, "keystone_authtoken", "www_authenticate_uri", f"http://{ip_address}:5000/")
     set_conf_option(cinder_conf, "keystone_authtoken", "auth_url", f"http://{ip_address}:5000/")
-    set_conf_option(cinder_conf, "keystone_authtoken", "memcached_servers", "127.0.0.1:11211")
     set_conf_option(cinder_conf, "keystone_authtoken", "auth_type", "password")
     set_conf_option(cinder_conf, "keystone_authtoken", "project_domain_name", "Default")
     set_conf_option(cinder_conf, "keystone_authtoken", "user_domain_name", "Default")
@@ -417,9 +422,13 @@ def run_setup_cinder(config):
     if not install_pkgs(): return False 
     if not conf_lvm(config): return False
     if not set_lvm_filter(config) : return False
-    if not write_cinder_lvm_env(config): return False   
 
-    if not setup_loopback_service(config): return False   
+    using_loopback = not get(config, "cinder.lvm.PHYSICAL_VOLUME")
+
+    if using_loopback:
+        if not write_cinder_lvm_env(config): return False   
+        if not setup_loopback_service(config): return False   
+
     if not conf_cinder(config): return False    
     if not finalize(config): return False
     
