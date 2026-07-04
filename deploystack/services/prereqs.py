@@ -41,7 +41,6 @@ def _add_uca_repo(release: str):
     )
     
     if not result:
-        print(f"{colors.RED}Failed to add Cloud Archive repository for {release}{colors.RESET}")
         return False
     
     return True
