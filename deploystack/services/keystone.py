@@ -285,13 +285,13 @@ def create_services_endpoints(config, env):
          endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "admin", nova_url])
 
     if ("network", "public", os_region_name, nova_url) not in existing_endpoints:
-         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "public", neutron_url])
+         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "network", "public", neutron_url])
     
     if ("network", "internal", os_region_name, nova_url) not in existing_endpoints:
-         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "internal", neutron_url])
+         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "network", "internal", neutron_url])
 
     if ("network", "admin", os_region_name, nova_url) not in existing_endpoints:
-         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "admin", neutron_url])
+         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "network", "admin", neutron_url])
 
     if install_cinder:
         cinder_url = f"http://{ip_address}:8776/v3/%(project_id)s"
