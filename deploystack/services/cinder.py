@@ -171,11 +171,7 @@ def set_lvm_filter(config):
     lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
 
     device = lvm_physical_volume or lvm_loop_dev
-
-    if not device:
-        print(f"{colors.RED}Error: No physical volume or loop device configured{colors.RESET}")
-        return False
-
+    
     filters = [
         f"a|{device}|",
         "r|.*|",
@@ -226,7 +222,6 @@ def set_lvm_filter(config):
     new_content = content[:section_start] + new_section_content + content[section_end:]
 
     if new_content == content:
-        print(f"{colors.YELLOW}Warning: no changes made, filter already up to date{colors.RESET}")
         return True
 
     try:
@@ -236,7 +231,6 @@ def set_lvm_filter(config):
         print(f"{colors.RED}Error: Unable to write {lvm_conf_path}: {e}{colors.RESET}")
         return False
 
-    print(f"{colors.GREEN}LVM filter updated successfully: {filter_value}{colors.RESET}")
     return True
 
 def write_cinder_lvm_env(config):

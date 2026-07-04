@@ -14,6 +14,10 @@ from ..utils.core import colors
 
 keystone_conf = "/etc/keystone/keystone.conf"
 
+def get_endpoints(service: str, env=None):
+    raw = run_command_output(["openstack", "endpoint", "list", "--service", service, "-f", "json"], env=env)
+    return json.loads(raw or "[]")
+
 def get_role_assignments(env=None):
     raw = run_command_output(
         ["openstack", "role", "assignment", "list", "--names", "-f", "json"],
@@ -228,61 +232,80 @@ def create_services_users(config, env):
 def create_services_endpoints(config, env):
 
     print()
-
+  
     ip_address = get(config, "network.HOST_IP")
     install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
     os_region_name = get(config, "openstack.REGION_NAME")
 
-    def ep(service, interface, url):
+    glance_url = f"http://{ip_address}:9292"
 
-        try:
-            result = os_run_output(["openstack", "endpoint", "list", "--service", service, "-f", "json"], env=env)
+    placement_url = f"http://{ip_address}:8778"
+    nova_url = f"http://{ip_address}:8774/v2.1"
+    neutron_url = f"http://{ip_address}:9696"
 
-            endpoints = json.loads(result)
+    endpoints = get_endpoints(env=env)
 
-            for ep_data in endpoints:
-                if (ep_data["Interface"] == interface and 
-                    ep_data["Region"] == os_region_name and
-                    ep_data["URL"] == url):
-                    
-                    return None
-        except subprocess.CalledProcessError as e:
-            print(f"\n{colors.RED}Warning: could not list endpoints: {e}{colors.RESET}")
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON: {e}")
-            return None
+    endpoints_create_cmds = []
 
-        return [
-            "openstack", "endpoint", "create", "--region", os_region_name, service, interface, url
-        ]
+    existing_endpoints = {
+        (
+            a["Service Type"],
+            a["Interface"],
+            a["Region"],
+            a["URL"],
+        )
+        for a in endpoints
+    }
 
-    endpoints_create_cmds = [
-        ep("image", "public",   f"http://{ip_address}:9292"),
-        ep("image", "internal", f"http://{ip_address}:9292"),
-        ep("image", "admin",    f"http://{ip_address}:9292"),
+    if ("image", "public", os_region_name, glance_url) not in existing_endpoints:
+        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "image", "public", glance_url])
 
-        ep("placement", "public",   f"http://{ip_address}:8778"),
-        ep("placement", "internal", f"http://{ip_address}:8778"),
-        ep("placement", "admin",    f"http://{ip_address}:8778"),
+    if ("image", "internal", os_region_name, glance_url) not in existing_endpoints:
+        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "image", "internal", glance_url])
 
-        ep("compute", "public",   f"http://{ip_address}:8774/v2.1"),
-        ep("compute", "internal", f"http://{ip_address}:8774/v2.1"),
-        ep("compute", "admin",    f"http://{ip_address}:8774/v2.1"),
+    if ("image", "admin", os_region_name, glance_url) not in existing_endpoints:
+        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "image", "admin", glance_url])
 
-        ep("network", "public",   f"http://{ip_address}:9696"),
-        ep("network", "internal", f"http://{ip_address}:9696"),
-        ep("network", "admin",    f"http://{ip_address}:9696"),
-    ]
+    if ("placement", "public", os_region_name, placement_url) not in existing_endpoints:
+        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "placement", "public", placement_url])
+
+    if ("placement", "internal", os_region_name, placement_url) not in existing_endpoints:
+        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "placement", "internal", placement_url])
+
+    if ("placement", "admin", os_region_name, placement_url) not in existing_endpoints:
+        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "placement", "admin", placement_url])
+    
+    if ("compute", "public", os_region_name, nova_url) not in existing_endpoints:
+         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "public", nova_url])
+
+    if ("compute", "internal", os_region_name, nova_url) not in existing_endpoints:
+         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "internal", nova_url])
+
+    if ("compute", "admin", os_region_name, nova_url) not in existing_endpoints:
+         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "admin", nova_url])
+
+    if ("network", "public", os_region_name, nova_url) not in existing_endpoints:
+         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "public", neutron_url])
+    
+    if ("network", "internal", os_region_name, nova_url) not in existing_endpoints:
+         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "internal", neutron_url])
+
+    if ("network", "admin", os_region_name, nova_url) not in existing_endpoints:
+         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "admin", neutron_url])
 
     if install_cinder:
         cinder_url = f"http://{ip_address}:8776/v3/%(project_id)s"
-        endpoints_create_cmds += [
-            ep("volumev3", "public",   cinder_url),
-            ep("volumev3", "internal", cinder_url),
-            ep("volumev3", "admin",    cinder_url),
-        ]
 
-    endpoints_create_cmds = [cmd for cmd in endpoints_create_cmds if cmd is not None]
+        if ("volumev3", "public", os_region_name, nova_url) not in existing_endpoints:
+            endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "volumev3", "public", cinder_url])
+    
+        if ("volumev3", "internal", os_region_name, nova_url) not in existing_endpoints:
+            endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "volumev3", "internal", cinder_url])
+
+        if ("volumev3", "admin", os_region_name, nova_url) not in existing_endpoints:
+            endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "volumev3", "admin", cinder_url])
+
+    #endpoints_create_cmds = [cmd for cmd in endpoints_create_cmds if cmd is not None]
 
     if not run_commands(endpoints_create_cmds, "Creating services endpoints...", env=env) : return False
 
