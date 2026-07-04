@@ -569,7 +569,7 @@ def launch(
                     f"be reachable only through the '{network}' network."
                     f"{colors.RESET}\n"
                 )
-            elif not is_local_network:
+            elif is_local_network:
                 logger.warning(
                     f"{colors.YELLOW}"
                     f"The '{network_id}' network is a local provider network. "
