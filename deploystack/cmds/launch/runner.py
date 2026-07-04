@@ -561,13 +561,22 @@ def launch(
         else:
             instance_ip_address = get_instance_ip(name, network)
 
-            logger.warning(
-                f"{colors.YELLOW}"
-                "The internal router is not connected to an external gateway. "
-                "Floating IP allocation will be skipped and the instance will "
-                f"be reachable only through the '{network}' network."
-                f"{colors.RESET}\n"
-            )
+            if not internal_router_has_gateway():
+                logger.warning(
+                    f"{colors.YELLOW}"
+                    "The internal router is not connected to an external gateway. "
+                    "Floating IP allocation will be skipped and the instance will "
+                    f"be reachable only through the '{network}' network."
+                    f"{colors.RESET}\n"
+                )
+            elif not is_local_network:
+                logger.warning(
+                    f"{colors.YELLOW}"
+                    f"The '{network_id}' network is a local provider network. "
+                    "It is intended for testing only and does not provide external connectivity. "
+                    "Floating IP allocation will be skipped."
+                    f"{colors.RESET}\n"
+                )
     else:
         instance_ip_address = get_instance_ip(name, network)
     
