@@ -430,12 +430,19 @@ def wait_for_active(server_id: str, timeout: int = 100):
     sys.exit(1)
 
 def print_summary(name: str, fip: str, key_path: str | None, is_password: bool,
-                  username: str, password: str, os_type: str, ip_address: str = None) -> None:
+                  username: str, password: str, os_type: str, ip_address: str = None, show_access: bool = True) -> None:
 
     os_type = (os_type or "").lower()
     ip = fip or ip_address
 
     print(f"{colors.GREEN}Instance '{name}' successfully started{colors.RESET}\n")
+
+    if not show_access:
+        print(
+            "Access is only available via internal/local network.\n"
+            "No external SSH or Floating IP is configured for this instance.\n"
+        )
+        return
 
     if fip:
         print(f"Attached Floating IP : {fip}\n")
@@ -501,6 +508,7 @@ def launch(
     os_admin_user = (props.get("os_admin_user") or "")
 
     password_enabled = True
+    show_access = True
 
     fip: str = None
     instance_ip_address: str = None
@@ -579,10 +587,15 @@ def launch(
                 )
     else:
         instance_ip_address = get_instance_ip(name, network)
+
+    if is_local_network:
+        instance_ip_address = None
+        fip = None
+        show_access = False
     
     if password_enabled and password:
-        print_summary(name, fip, key_path, True, os_admin_user, password, os_type, instance_ip_address)
+        print_summary(name, fip, key_path, True, os_admin_user, password, os_type, instance_ip_address, show_access)
     elif "cirros" in image_name and get_cirros_image_checksum() is not None and get_cirros_image_checksum() == CIRROS_IMAGE_CHECKSUM:
-        print_summary(name, fip, key_path, False, "cirros", None, "linux", instance_ip_address)
+        print_summary(name, fip, key_path, False, "cirros", None, "linux", instance_ip_address, show_access)
     else:
-        print_summary(name, fip, key_path, False, os_admin_user, None, os_type, instance_ip_address)
+        print_summary(name, fip, key_path, False, os_admin_user, None, os_type, instance_ip_address, show_access)
