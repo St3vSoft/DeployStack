@@ -15,7 +15,7 @@ from ..utils.core import colors
 keystone_conf = "/etc/keystone/keystone.conf"
 
 def get_endpoints(service: str, env=None):
-    raw = run_command_output(["openstack", "endpoint", "list", "--service", service, "-f", "json"], env=env)
+    raw = run_command_output(["openstack", "endpoint", "list", "-f", "json"], env=env)
     return json.loads(raw or "[]")
 
 def get_role_assignments(env=None):
