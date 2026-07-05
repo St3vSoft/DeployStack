@@ -1,8 +1,20 @@
 from setuptools import setup, find_packages
+from pathlib import Path
 import sys
+
+info = {}
+
+is_debian_like = (
+    info.get("ID") == "debian"
+    or "debian" in info.get("ID_LIKE", "").split()
+)
 
 if sys.platform.startswith("win") or sys.platform == "darwin":
     print("This package is not supported on Windows or macOS platforms.")
+    sys.exit(1)
+
+if not is_debian_like:
+    print("This utility requires a Debian-based Linux distribution (e.g. Debian or Ubuntu).")
     sys.exit(1)
 
 setup(

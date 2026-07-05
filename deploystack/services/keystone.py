@@ -305,8 +305,6 @@ def create_services_endpoints(config, env):
         if ("volumev3", "admin", os_region_name, nova_url) not in existing_endpoints:
             endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "volumev3", "admin", cinder_url])
 
-    #endpoints_create_cmds = [cmd for cmd in endpoints_create_cmds if cmd is not None]
-
     if not run_commands(endpoints_create_cmds, "Creating services endpoints...", env=env) : return False
 
     return True
