@@ -4,6 +4,11 @@ import sys
 
 info = {}
 
+with open("/etc/os-release") as f:
+    for line in f:
+        key, _, value = line.strip().partition("=")
+        info[key] = value.strip('"')
+
 is_debian_like = (
     info.get("ID") == "debian"
     or "debian" in info.get("ID_LIKE", "").split()
