@@ -284,25 +284,25 @@ def create_services_endpoints(config, env):
     if ("compute", "admin", os_region_name, nova_url) not in existing_endpoints:
          endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "admin", nova_url])
 
-    if ("network", "public", os_region_name, nova_url) not in existing_endpoints:
+    if ("network", "public", os_region_name, neutron_url) not in existing_endpoints:
          endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "network", "public", neutron_url])
     
-    if ("network", "internal", os_region_name, nova_url) not in existing_endpoints:
+    if ("network", "internal", os_region_name, neutron_url) not in existing_endpoints:
          endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "network", "internal", neutron_url])
 
-    if ("network", "admin", os_region_name, nova_url) not in existing_endpoints:
+    if ("network", "admin", os_region_name, neutron_url) not in existing_endpoints:
          endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "network", "admin", neutron_url])
 
     if install_cinder:
         cinder_url = f"http://{ip_address}:8776/v3/%(project_id)s"
 
-        if ("volumev3", "public", os_region_name, nova_url) not in existing_endpoints:
+        if ("volumev3", "public", os_region_name, cinder_url) not in existing_endpoints:
             endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "volumev3", "public", cinder_url])
     
-        if ("volumev3", "internal", os_region_name, nova_url) not in existing_endpoints:
+        if ("volumev3", "internal", os_region_name, cinder_url) not in existing_endpoints:
             endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "volumev3", "internal", cinder_url])
 
-        if ("volumev3", "admin", os_region_name, nova_url) not in existing_endpoints:
+        if ("volumev3", "admin", os_region_name, cinder_url) not in existing_endpoints:
             endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "volumev3", "admin", cinder_url])
 
     if not run_commands(endpoints_create_cmds, "Creating services endpoints...", env=env) : return False
