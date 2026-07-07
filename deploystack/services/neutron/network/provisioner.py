@@ -109,12 +109,12 @@ def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge
             
             print()
 
+            run_command(["ovs-vsctl", "--if-exists", "del-br", bridge],
+                    f"Deleting bridge {bridge}", ignore_errors=True)
+
             run_command(["ovs-vsctl", "--if-exists", "del-port", bridge, port],
                         f"Deleting port {port} from {bridge}", ignore_errors=True)
 
-        run_command(["ovs-vsctl", "--if-exists", "del-br", bridge],
-                    f"Deleting bridge {bridge}", ignore_errors=True)
-        
     return True, line1
 
 def create_custom_networks(
