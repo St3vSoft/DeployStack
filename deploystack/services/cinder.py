@@ -82,7 +82,7 @@ def conf_lvm(config):
     lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
     lvm_image_size_in_gb = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB")
 
-    VG_NAME = "cinder-volumes"
+    VG_NAME = get(config, "cinder.lvm.VOLUME_GROUP")
 
     if lvm_physical_volume:
         lvm_dev = lvm_physical_volume
@@ -329,12 +329,17 @@ def conf_cinder(config):
 
     ip_address = get(config, "network.HOST_IP")
 
+    target_ip_address = get(config, "cinder.lvm.TARGET_IP_ADDRESS")
+
+    volume_clear = get(config, "cinder.lvm.VOLUME_CLEAR")
+    volume_clear_size = int(get(config, "cinder.lvm.VOLUME_CLEAR_SIZE"))
+
     set_conf_option(cinder_conf, "DEFAULT", "transport_url", f"rabbit://openstack:{rabbitmq_password}@{ip_address}:5672/")
     set_conf_option(cinder_conf, "DEFAULT", "glance_api_servers", f"http://{ip_address}:9292")
     set_conf_option(cinder_conf, "DEFAULT", "enabled_backends", "lvm")
 
     set_conf_option(cinder_conf, "DEFAULT", "my_ip", ip_address)
-    set_conf_option(cinder_conf, "DEFAULT", "target_ip_address", ip_address)
+    set_conf_option(cinder_conf, "DEFAULT", "target_ip_address", target_ip_address)
 
     set_conf_option(cinder_conf, "keystone_authtoken", "memcached_servers", "127.0.0.1:11211")
     set_conf_option(cinder_conf, "keystone_authtoken", "www_authenticate_uri", f"http://{ip_address}:5000/")
@@ -351,8 +356,8 @@ def conf_cinder(config):
     set_conf_option(cinder_conf, "lvm", "volume_backend_name", "LVM")
     set_conf_option(cinder_conf, "lvm", "iscsi_protocol", "iscsi")
     set_conf_option(cinder_conf, "lvm", "iscsi_helper", "tgtadm")
-    set_conf_option(cinder_conf, "lvm", "volume_clear", "zero")
-    set_conf_option(cinder_conf, "lvm", "volume_clear_size", "1")
+    set_conf_option(cinder_conf, "lvm", "volume_clear", volume_clear)
+    set_conf_option(cinder_conf, "lvm", "volume_clear_size", volume_clear_size)
 
     set_conf_option(cinder_conf, "service_user", "project_domain_name", "Default")
     set_conf_option(cinder_conf, "service_user", "project_name", "service")

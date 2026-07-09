@@ -40,7 +40,6 @@ def validate_host_network(config) -> bool:
             ok = False
             print(f"{colors.RED}Error: Field '{field}' has invalid CIDR: {value}{colors.RESET}")
 
-    # Validazione IP singoli
     for field in host_network_fields:
         value = get(config, field)
         if not value:
@@ -131,6 +130,9 @@ def validate_provider_networks(config, provider_networks, defined_bridges):
 
     neutron_driver = (get(config, "neutron.DRIVER") or "").lower()
 
+    seen_names = set()
+    seen_bridges = {}
+
     public_bridge = (
         get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")
         or get(config, "neutron.ovs.PUBLIC_BRIDGE")
@@ -148,32 +150,62 @@ def validate_provider_networks(config, provider_networks, defined_bridges):
 
     for i, net in enumerate(provider_networks):
         net_name = net.get("name")
+
+        if net_name in seen_names:
+            print(f"{colors.RED}Error: duplicate provider network name '{net_name}'{colors.RESET}")
+            ok = False
+
+        seen_names.add(net_name)
+
+        net_name = net.get("name")
         net_type = net.get("type")
         prefix = f"provider_networks[{i}] ('{net_name}')"
 
         subnet = net.get("subnet")
+
+        bridge = net.get("bridge")
+        if bridge and net_type == "flat":
+            if bridge in seen_bridges:
+                print(f"{colors.YELLOW}Warning: bridge '{bridge}' is used by both '{seen_bridges[bridge]}' and '{net_name}' — this may cause conflicts{colors.RESET}")
+            else:
+                seen_bridges[bridge] = net_name
 
         if not net_name:
             print(f"{colors.RED}Error: missing network name at index {i}{colors.RESET}")
             ok = False
             continue
 
+        if net_type != "local":
+            if not net.get("bridge"):
+                print(f"{colors.RED}Error: {prefix} requires 'bridge' when type is '{net_type}'{colors.RESET}")
+                ok = False
+
         if net_type not in ["flat", "vlan", "local"]:
             print(f"{colors.RED}Error: invalid type '{net_type}' in {prefix}{colors.RESET}")
             ok = False
             continue
 
+        if net_type == "local" and net.get("bridge"):
+            print(f"{colors.YELLOW}Warning: {prefix} has 'bridge' set but type is 'local' — bridge will be ignored{colors.RESET}")
+
         net_bridges = net.get("bridge", [])
         if isinstance(net_bridges, str):
             net_bridges = [net_bridges]
 
+        bridge = net.get("bridge", "")
+        if bridge.lower() in IGNORED_BRIDGES and subnet:
+            print(f"{colors.YELLOW}Warning: {prefix} is mapped to a default bridge ('{bridge}') and has a 'subnet' section — it will be ignored{colors.RESET}")
+
         for b in net_bridges:
             if b not in IGNORED_BRIDGES and b not in defined_bridges:
                 print(f"{colors.RED}Error: {prefix} references undefined bridge '{b}'{colors.RESET}")
-                ok = False
+                ok = False       
         
         if subnet:
             cidr = subnet.get("cidr")
+
+            attach = subnet.get("attach_external_router") in (True, "yes", "true")
+            is_ext = subnet.get("is_external") in (True, "yes", "true")
 
             if not cidr:
                 print(f"{colors.RED}Error: {prefix} subnet missing 'cidr'{colors.RESET}")
@@ -196,6 +228,10 @@ def validate_provider_networks(config, provider_networks, defined_bridges):
                     start = net_range.get("start")
                     end = net_range.get("end")
 
+                    if bool(start) != bool(end):
+                        print(f"{colors.RED}Error: {prefix} subnet.range requires both 'start' and 'end'{colors.RESET}")
+                        ok = False
+
                     if start:
                         if not validate_ip(start, f"{prefix} subnet.range.start"):
                             ok = False
@@ -209,6 +245,10 @@ def validate_provider_networks(config, provider_networks, defined_bridges):
                         elif ipaddress.ip_address(end) not in net_obj:
                             print(f"{colors.RED}Error: {prefix} subnet.range.end '{end}' is not within '{cidr}'{colors.RESET}")
                             ok = False
+
+                    if attach and not is_ext:
+                        print(f"{colors.RED}Error: {prefix} has 'attach_external_router: yes' but 'is_external' is not set{colors.RESET}")
+                        ok = False
 
                     if start and end:
                         try:
@@ -362,6 +402,8 @@ def validate_cinder(config) -> bool:
     size_raw = (get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB") or "")
     path = (get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH") or "").lower()
     pv = (get(config, "cinder.lvm.PHYSICAL_VOLUME") or "").lower()
+    volume_clear = (get(config, "cinder.lvm.VOLUME_CLEAR") or "").lower()
+    volume_clear_size = get(config, "cinder.lvm.VOLUME_CLEAR_SIZE")
 
     if pv:
         if not os.path.exists(pv):
@@ -392,6 +434,9 @@ def validate_cinder(config) -> bool:
             "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
             "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",
             "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",
+            "cinder.lvm.VOLUME_GROUP",
+            "cinder.lvm.VOLUME_CLEAR",
+            "cinder.lvm.VOLUME_CLEAR_SIZE"
         ]
         
         loop_dev = (get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH") or "").lower()
@@ -427,6 +472,28 @@ def validate_cinder(config) -> bool:
                 print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
                 ok = False
 
+    target_ip = get(config, "cinder.lvm.TARGET_IP_ADDRESS") or ""
+    if target_ip and not validate_ip(target_ip):
+        print(f"{colors.RED}Error: TARGET_IP_ADDRESS '{target_ip}' is not a valid IP{colors.RESET}")
+        ok = False
+    
+    if volume_clear not in ("zero", "shred", "none"):
+        print(
+            f"{colors.RED}Error: Invalid value for 'cinder.lvm.volume_clear'. "
+            f"Allowed values are: 'zero', 'shred', 'none'.{colors.RESET}"
+        )
+        ok = False
+
+    try:
+        volume_clear_size_val = int(volume_clear_size)
+
+        if volume_clear_size_val < 0:
+            print(f"{colors.RED}Error: 'VOLUME_CLEAR_SIZE' must be >= 0{colors.RESET}")
+            ok = False
+    except (TypeError, ValueError):
+        print(f"{colors.RED}Error: 'cinder.lvm.VOLUME_CLEAR_SIZE' must be a integer number, found: {volume_clear_size}{colors.RESET}")
+        ok = False
+    
     return ok
 
 # --- Compute ---

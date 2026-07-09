@@ -155,7 +155,11 @@ def config_openstack(
     config_dict["cinder"]["lvm"] = {
         "CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH": get_free_loop(),
         "CINDER_VOLUME_LVM_IMAGE_FILE_PATH": "/var/lib/cinder/images/cinder-volumes.img",
-        "CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB": lvm_image_size_in_gb
+        "CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB": lvm_image_size_in_gb,
+        "TARGET_IP_ADDRESS": ip,
+        "VOLUME_GROUP": "cinder-volumes",
+        "VOLUME_CLEAR": "zero",
+        "VOLUME_CLEAR_SIZE": 1
     }
 
     # Compute

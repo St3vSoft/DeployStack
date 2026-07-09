@@ -93,17 +93,40 @@ neutron:
     #    remote_ip_prefix: "0.0.0.0/0"
 
 cinder:
-    lvm:
-      # Use a real physical volume, or leave blank to use loopback
-      PHYSICAL_VOLUME: "" # Example: "/dev/sdb0"
+  lvm:
 
-      # Loopback file (used only if physical_volume is not specified)
+    # --- Backend ---
 
-      CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH: "/dev/loop0"
+    # Name of the LVM volume group to use for Cinder volumes
+    VOLUME_GROUP: "cinder-volumes"
 
-      CINDER_VOLUME_LVM_IMAGE_FILE_PATH: "/var/lib/cinder/cinder-volumes.img"
+    # IP address of the iSCSI target (defaults to network.HOST_IP if left empty)
+    TARGET_IP_ADDRESS: ""
 
-      CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB: "5"
+    # Volume clearing strategy when a volume is deleted
+    # Options: zero (overwrite with zeros), shred (secure erase), none (skip, faster for testing)
+    VOLUME_CLEAR: "zero"
+
+    # Amount of data to clear in MB (0 = entire volume)
+    VOLUME_CLEAR_SIZE: 1
+
+    # --- Physical volume ---
+
+    # Path to a real block device to use as LVM backend
+    # If set, the loopback settings below are ignored
+    # Example: "/dev/sdb"
+    PHYSICAL_VOLUME: ""
+
+    # --- Loopback device (used only if PHYSICAL_VOLUME is not set) ---
+
+    # Loopback device path
+    CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH: "/dev/loop0"
+
+    # Path of the loopback image file on disk
+    CINDER_VOLUME_LVM_IMAGE_FILE_PATH: "/var/lib/cinder/cinder-volumes.img"
+
+    # Size of the loopback image in GB
+    CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB: "5"
 
 compute:
   NOVA_COMPUTE_VIRT_TYPE: "kvm"   # kvm | qemu (qemu for VM nested)
