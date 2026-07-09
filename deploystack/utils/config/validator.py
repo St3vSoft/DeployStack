@@ -117,7 +117,7 @@ def validate_bridges(config, bridges):
 
         if public_bridge_iface and public_bridge_iface in port:
             print(f"{colors.RED}Error: The public provider network bridge interface '{public_bridge_iface}' cannot be respecified in the neutron.bridges section.{colors.RESET}")
-            return False
+            return False, None
 
         defined_bridges.add(name)
 
