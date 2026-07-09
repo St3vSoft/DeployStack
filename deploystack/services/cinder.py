@@ -357,7 +357,7 @@ def conf_cinder(config):
     set_conf_option(cinder_conf, "lvm", "iscsi_protocol", "iscsi")
     set_conf_option(cinder_conf, "lvm", "iscsi_helper", "tgtadm")
     set_conf_option(cinder_conf, "lvm", "volume_clear", volume_clear)
-    set_conf_option(cinder_conf, "lvm", "volume_clear_size", volume_clear_size)
+    set_conf_option(cinder_conf, "lvm", "volume_clear_size", str(volume_clear_size))
 
     set_conf_option(cinder_conf, "service_user", "project_domain_name", "Default")
     set_conf_option(cinder_conf, "service_user", "project_name", "service")
