@@ -465,7 +465,7 @@ def validate_cinder(config) -> bool:
                         f"{colors.YELLOW}Warning: the requested LVM image size ({size} GB) exceeds "
                         f"the available disk space ({free_gb:.2f} GB). "
                         f"The sparse file will be created successfully, but the volume group may run out "
-                        f"of space as volumes are written.{colors.RESET}\n"
+                        f"of space as volumes are written.{colors.RESET}"
                     )
 
             except FileNotFoundError:
