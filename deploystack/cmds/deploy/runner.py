@@ -122,10 +122,11 @@ def deploy(config_file):
 
     print(f"\n{colors.BRIGHT_BLUE}Access your OpenStack services:{colors.RESET}")
 
-    if is_debian():
-        print(f" - Horizon Dashboard: http://{ip_address}/horizon")
-    else:
-        print(f" - Horizon Dashboard: http://{ip_address}/dashboard")
+    if install_horizon:
+        if is_debian():
+            print(f" - Horizon Dashboard: http://{ip_address}/horizon")
+        else:
+            print(f" - Horizon Dashboard: http://{ip_address}/dashboard")
 
     print(f" - Keystone API:      http://{ip_address}:5000/\n")
 

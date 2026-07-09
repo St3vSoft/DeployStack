@@ -75,7 +75,7 @@ def create_custom_network_router(
         if not router_exists(router_name, env):
             if not os_run(
                 ["openstack", "router", "create", router_name],
-                f"Creating router {router_name}",
+                f"Creating router {router_name}...",
                 env=env
             ):
                 return False
@@ -84,7 +84,7 @@ def create_custom_network_router(
             if not os_run(
                 ["openstack", "router", "set", router_name,
                  "--external-gateway", "public"],
-                f"Setting gateway for {router_name}",
+                f"Setting external gateway for {router_name}...",
                 env=env
             ):
                 return False
@@ -105,7 +105,7 @@ def create_custom_network_router(
             if not os_run(
                 ["openstack", "router", "add", "subnet",
                  router_name, subnet_name],
-                f"Attaching {subnet_name} to {router_name}",
+                f"Attaching {subnet_name} to {router_name}...",
                 env=env
             ):
                 return False
