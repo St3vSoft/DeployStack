@@ -1,5 +1,5 @@
 import shutil
-import subprocess
+import sys
 import os
 import ipaddress
 
@@ -117,7 +117,7 @@ def validate_bridges(config, bridges):
 
         if public_bridge_iface and public_bridge_iface in port:
             print(f"{colors.RED}Error: The public provider network bridge interface '{public_bridge_iface}' cannot be respecified in the neutron.bridges section.{colors.RESET}")
-            return False, defined_bridges
+            sys.exit(1)
 
         defined_bridges.add(name)
 
