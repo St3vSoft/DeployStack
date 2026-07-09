@@ -1,5 +1,4 @@
 import shutil
-import sys
 import os
 import ipaddress
 
@@ -117,7 +116,7 @@ def validate_bridges(config, bridges):
 
         if public_bridge_iface and public_bridge_iface in port:
             print(f"{colors.RED}Error: The public provider network bridge interface '{public_bridge_iface}' cannot be respecified in the neutron.bridges section.{colors.RESET}")
-            sys.exit(1)
+            ok = False
 
         defined_bridges.add(name)
 
@@ -467,6 +466,8 @@ def validate_cinder(config) -> bool:
                         f"The sparse file will be created successfully, but the volume group may run out "
                         f"of space as volumes are written.{colors.RESET}"
                     )
+
+            
 
             except FileNotFoundError:
                 print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
