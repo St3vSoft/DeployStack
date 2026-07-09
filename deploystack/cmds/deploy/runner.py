@@ -64,7 +64,7 @@ def deploy(config_file):
         sys.exit(1)
         return False 
 
-    print("OpenStack Deployment Started\n")
+    print("\nOpenStack Deployment Started\n")
     
     print("Setting up prerequirements\n")
     if not run_setup_prereqs(config): 
