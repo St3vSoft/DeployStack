@@ -182,7 +182,7 @@ def create_services_users(config, env):
     }
 
     if "glance" not in existing_services:
-        services_create_cmds.append(["openstack", "service", "create", "--name", "glance", "--description", "'OpenStack Image'", "image"])
+        services_create_cmds.append(["openstack", "service", "create", "--name", "glance", "--description", ""OpenStack Image"", "image"])
 
     if "placement" not in existing_services:
         services_create_cmds.append(["openstack", "service", "create", "--name", "placement", "--description", "'Placement API'", "placement"])
