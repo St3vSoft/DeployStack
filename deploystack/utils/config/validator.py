@@ -467,8 +467,6 @@ def validate_cinder(config) -> bool:
                         f"of space as volumes are written.{colors.RESET}"
                     )
 
-            
-
             except FileNotFoundError:
                 print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
                 ok = False
