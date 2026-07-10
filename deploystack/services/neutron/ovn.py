@@ -556,6 +556,9 @@ def create_ovn_networks(config, env):
 
     if service_exists("neutron-api.service") and not service_exists("neutron-server.service"):
         ovs_services.append("neutron-api")
+    elif service_exists("neutron-periodic-workers.service") and not service_exists("neutron-server.service"):
+        ovs_services.append("neutron-periodic-workers.service")
+        ovs_services.append("apache2.service")
     else:
         ovs_services.append("neutron-server")
         
