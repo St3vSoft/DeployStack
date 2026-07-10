@@ -182,16 +182,16 @@ def create_services_users(config, env):
     }
 
     if "glance" not in existing_services:
-        services_create_cmds.append(["openstack", "service", "create", "--name", "glance", "--description", "OpenStack Image", "image"])
+        services_create_cmds.append(["openstack", "service", "create", "--name", "glance", "--description", "'OpenStack Image'", "image"])
 
     if "placement" not in existing_services:
-        services_create_cmds.append(["openstack", "service", "create", "--name", "placement", "--description", "Placement API", "placement"])
+        services_create_cmds.append(["openstack", "service", "create", "--name", "placement", "--description", "'Placement API'", "placement"])
 
     if "nova" not in existing_services:
-        services_create_cmds.append(["openstack", "service", "create", "--name", "nova", "--description", "OpenStack Compute", "compute"])
+        services_create_cmds.append(["openstack", "service", "create", "--name", "nova", "--description", "'OpenStack Compute'", "compute"])
 
     if "neutron" not in existing_services:
-        services_create_cmds.append(["openstack", "service", "create", "--name", "neutron", "--description", "OpenStack Networking", "network"])
+        services_create_cmds.append(["openstack", "service", "create", "--name", "neutron", "--description", "'OpenStack Networking'", "network"])
 
     if ("glance", "service", "admin") not in existing_assignments:
         services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "glance", "admin"])
@@ -213,7 +213,7 @@ def create_services_users(config, env):
         services_user_create_cmds.append(["openstack", "user", "create", "--domain", "default", "--password", service_password, "cinder", "--or-show"])
 
         if "cinderv3" not in existing_services:
-            services_create_cmds.append(["openstack", "service", "create", "--name", "cinderv3", "--description", "OpenStack Block Storage", "volumev3"])
+            services_create_cmds.append(["openstack", "service", "create", "--name", "cinderv3", "--description", "'OpenStack Block Storage'", "volumev3"])
 
         if ("cinder", "service", "admin") not in existing_assignments:
             services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "cinder", "admin"])
