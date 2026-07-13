@@ -42,10 +42,10 @@ def install_novncproxy(os_release):
 
     print()
 
-    nova_version: str
+    nova_version = None
 
     if os_release=="gazpacho":
-        nova_version == "33.0.0"
+        nova_version = "33.0.0"
 
     install_novncproxy_cmd_pip = [os.path.join(venv_path, "bin", "pip"), "install", f"nova=={nova_version}", "eventlet", "websockify", "pymysql"]
     downgrade_cryptography_cmd_pip = [os.path.join(venv_path, "bin", "pip"), "install", "cryptography<43.0", "--force-reinstall"]
