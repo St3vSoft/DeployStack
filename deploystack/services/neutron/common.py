@@ -5,14 +5,16 @@ import os
 from ...utils.core.commands import run_command
 from ...utils.apt.apt import apt_install, apt_update
 from ...utils.config.parser import get
-from ...utils.config.setter import set_conf_option
-from ...utils.core.system_utils import service_exists, is_debian
+from ...utils.config.setter import set_conf_option, set_service_option
+from ...utils.core.system_utils import service_exists, is_debian, is_ubuntu_release
 from ...utils.core import colors
 
 neutron_conf = "/etc/neutron/neutron.conf"
 conf_ml2 = "/etc/neutron/plugins/ml2/ml2_conf.ini"
 conf_metadata_agent = "/etc/neutron/metadata_agent.ini"
 conf_nova = "/etc/nova/nova.conf"
+
+apache2_systemd_unit = "/usr/lib/systemd/system/apache2.service"
 
 def install_pkgs():
     
@@ -108,6 +110,12 @@ def conf_neutron(config):
 def finalize():
 
     print()
+
+    if not is_debian() and is_ubuntu_release("26.04"):
+        set_service_option(apache2_systemd_unit, "Service", "ProtectProc", "default")
+        set_service_option(apache2_systemd_unit, "Service", "ProcSubset", "all")
+
+        if not run_command(["systemctl", "daemon-reload"], "Reloading systemd daemon..."): return False
 
     if service_exists("nova-api.service"):
         if not run_command(["systemctl", "restart", "nova-api"], "Restarting Nova API service...", False, None, 3, 5): return False

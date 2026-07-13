@@ -8,8 +8,10 @@ from ..utils.core.system_utils import service_exists
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option, set_service_option
-from ..utils.core.system_utils import nc_wait, is_debian
+from ..utils.core.system_utils import nc_wait, is_debian, is_ubuntu_release
 from ..utils.core import colors
+
+from .patches.novncproxy import run_novncproxy_setup_patches
 
 nova_conf = "/etc/nova/nova.conf"
 nova_novncproxy_service = "/lib/systemd/system/nova-novncproxy.service"
@@ -144,8 +146,15 @@ def conf_nova(config):
 def finalize(config):
 
     ip_address = get(config, "network.HOST_IP")
+    os_release = get(config, "openstack.OPENSTACK_RELEASE")
 
     services_to_restart = ["nova-scheduler", "nova-conductor", "nova-novncproxy"]
+
+    if not is_debian() and is_ubuntu_release("26.04"):
+
+        print(f"\n{colors.YELLOW}Warning: Ubuntu 26.04 Resolute has been detected, we will patch the NoVNCProxy console to make it work properly.{colors.RESET}\n")
+
+        if not run_novncproxy_setup_patches(os_release) : return False
 
     if is_debian() and service_exists("nova-serialproxy.service") and service_exists("nova-spicehtml5proxy.service"):
              

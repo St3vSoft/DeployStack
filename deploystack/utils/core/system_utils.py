@@ -2,14 +2,48 @@
 import random
 import string
 import socket
+
+import subprocess
+import sys
+import os
+
 from time import sleep, time
 
 from ...utils.core import colors
 from ...utils.config.parser import get
 
-import subprocess
-import sys
-import os
+def is_package_installed(package_name: str) -> bool:
+
+    try:
+
+        result = subprocess.run(["dpkg", "-s", package_name], 
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL
+        )
+
+        return result.returncode == 0
+    except FileNotFoundError:
+        return False
+    
+def is_ubuntu_release(target_version: str) -> bool:
+
+    try:
+        with open("/etc/os-release") as f:
+
+            info = {}
+            for line in f:
+                if "=" in line:
+                    key, value = line.strip().split("=", 1)
+
+                    info[key.upper()] = value.strip('"')
+
+        is_ubuntu = info.get("ID") == "ubuntu" or "ubuntu" in info.get("ID_LIKE", "")
+        version_matches = info.get("VERSION_ID") == target_version
+        
+        return is_ubuntu and version_matches
+
+    except FileNotFoundError:
+        return False
 
 def is_debian():
     try:
