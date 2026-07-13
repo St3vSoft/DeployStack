@@ -13,10 +13,12 @@ def add_deadsnaker_ppa():
 
     if not apt_update() : return False
 
+    print()
+
     if not is_package_installed("software-properties-common"):
         if not apt_install(["software-properties-common"], "Installing Software Properties Common packages...") : return False
 
-    if not run_command(["add-apt-repository", "ppa:deadsnakes/ppa" "-y"], "Adding deadsnakes repository...") : return False
+    if not run_command(["add-apt-repository", "ppa:deadsnakes/ppa", "-y"], "Adding deadsnakes repository...") : return False
 
     return True
 
