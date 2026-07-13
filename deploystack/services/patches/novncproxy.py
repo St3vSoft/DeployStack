@@ -46,7 +46,7 @@ def install_novncproxy(os_release):
         nova_version == "33.0.0"
 
     install_novncproxy_cmd_pip = [os.path.join(venv_path, "bin", "pip"), "install", f"nova=={nova_version}", "eventlet", "websockify", "pymysql"]
-    downgrade_cryptography_cmd_pip = [os.path.join(venv_path, "bin", "pip"), "install", ""cryptography<43.0"", "--force-reinstall"]
+    downgrade_cryptography_cmd_pip = [os.path.join(venv_path, "bin", "pip"), "install", "cryptography<43.0", "--force-reinstall"]
 
     if not run_command(install_novncproxy_cmd_pip, "Installing novncproxy in virtual environment...") : return False
     if not run_command(downgrade_cryptography_cmd_pip, "Downgrading Cryptography to 43.0...") : return False
@@ -67,7 +67,7 @@ def run_novncproxy_setup_patches(os_release):
     if not install_python312() : return False
     if not create_virtual_env() : return False
     if not install_novncproxy(os_release) : return False
-    
+
     patch_novncproxy_systemd_unit()
 
     return True
