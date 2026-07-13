@@ -18,6 +18,8 @@ def add_deadsnaker_ppa():
     if not is_package_installed("software-properties-common"):
         if not apt_install(["software-properties-common"], "Installing Software Properties Common packages...") : return False
 
+        print()
+
     if not run_command(["add-apt-repository", "ppa:deadsnakes/ppa", "-y"], "Adding deadsnakes repository...") : return False
 
     return True
@@ -57,9 +59,11 @@ def install_novncproxy(os_release):
 
 def patch_novncproxy_systemd_unit():
 
-    novncproxy_binary_path = [os.path.join(venv_path, "bin", "nova-novncproxy")]
+    novncproxy_binary_path = os.path.join(venv_path, "bin", "nova-novncproxy")
 
-    set_service_option(novncproxy_systemd_unit, "Service", "ExecStart", f"{novncproxy_binary_path} --config-file /etc/nova/nova.conf")
+    set_service_option(novncproxy_systemd_unit, "Service", "ExecStart", f"{novncproxy_binary_path} --config-file=/etc/nova/nova.conf --log-file=/var/log/nova/nova-novncproxy.log")
+
+    print()
 
     if not run_command(["systemctl", "daemon-reload"], "Reloading systemd daemon..."): return False
 
