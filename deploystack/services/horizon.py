@@ -1,8 +1,6 @@
 # Configure the Dashboard (Horizon)
 
 import os
-import pwd
-import grp
 import re
 import shutil
 import tempfile

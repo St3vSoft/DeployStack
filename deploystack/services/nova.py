@@ -152,7 +152,7 @@ def finalize(config):
 
     if not is_debian() and is_ubuntu_release("26.04"):
 
-        print(f"\n{colors.YELLOW}Warning: Ubuntu 26.04 Resolute has been detected, we will patch the NoVNCProxy console to make it work properly.{colors.RESET}\n")
+        print(f"\n{colors.YELLOW}Warning: Ubuntu 26.04 Resolute has been detected; a patch will be applied to the NoVNCProxy console to ensure it works properly.{colors.RESET}\n")
 
         if not run_novncproxy_setup_patches(os_release) : return False
 

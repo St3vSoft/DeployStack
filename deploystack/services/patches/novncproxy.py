@@ -36,7 +36,7 @@ def create_virtual_env():
 
     print()
 
-    if not run_command(["python3.12", "-m", "venv", venv_path], "Creating novncproxy virtual environment...") : return False 
+    if not run_command(["python3.12", "-m", "venv", venv_path], "Creating novncproxy venv in /opt...") : return False 
 
     return True
 
@@ -52,8 +52,8 @@ def install_novncproxy(os_release):
     install_novncproxy_cmd_pip = [os.path.join(venv_path, "bin", "pip"), "install", f"nova=={nova_version}", "eventlet", "websockify", "pymysql"]
     downgrade_cryptography_cmd_pip = [os.path.join(venv_path, "bin", "pip"), "install", "cryptography<43.0", "--force-reinstall"]
 
-    if not run_command(install_novncproxy_cmd_pip, "Installing novncproxy in virtual environment...") : return False
-    if not run_command(downgrade_cryptography_cmd_pip, "Downgrading Cryptography to 43.0...") : return False
+    if not run_command(install_novncproxy_cmd_pip, "Installing dependecies in venv...") : return False
+    if not run_command(downgrade_cryptography_cmd_pip, "Downgrading Cryptography...") : return False
 
     return True
 
