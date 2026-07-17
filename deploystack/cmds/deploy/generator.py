@@ -138,7 +138,7 @@ def config_openstack(
     if neutron_driver == "ovs":
         config_dict["neutron"]["provider_networks"] = [
             {"name": "public", "bridge": "br-ex", "type": "flat"},
-            {"name": "internal", "bridge": "br-internal", "type": "flat"}
+            {"name": "internal", "bridge": "br-tenant", "type": "flat"}
         ]
     else:
         config_dict["neutron"]["provider_networks"] = [
