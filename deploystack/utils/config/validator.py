@@ -473,10 +473,12 @@ def validate_cinder(config) -> bool:
 
     target_ip = get(config, "cinder.TARGET_IP_ADDRESS") or ""
 
-    if target_ip == "{network.HOST_IP}":
+    if isinstance(target_ip, dict) or (isinstance(target_ip, str) and "{network.HOST_IP}" in target_ip):
         pass  
-
-    elif not validate_ip(target_ip, "cinder.TARGET_IP_ADDRESS"):
+    elif target_ip and isinstance(target_ip, str):
+        if not validate_ip(target_ip, "cinder.TARGET_IP_ADDRESS"):
+            ok = False
+    else:
         ok = False
         
     if volume_clear not in ("zero", "shred", "none"):
