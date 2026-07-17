@@ -122,7 +122,7 @@ def create_custom_networks(
         subnets_list: list,
         provider_networks: list, 
         public_bridge: str,
-        internal_flat_bridge: str,
+        tenant_bridge: str,
         tunnel_bridge: str,
         env):
     
@@ -131,7 +131,7 @@ def create_custom_networks(
         bridge = pn.get("bridge")
         net_type = pn.get("type")
 
-        if net_type != "local" and bridge in (public_bridge, tunnel_bridge, "br-int", internal_flat_bridge):
+        if net_type != "local" and bridge in (public_bridge, tunnel_bridge, "br-int", tenant_bridge):
             continue
         else:
             print()

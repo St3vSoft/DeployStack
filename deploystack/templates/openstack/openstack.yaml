@@ -29,7 +29,7 @@ neutron:
     PUBLIC_BRIDGE_INTERFACE: ""
     PUBLIC_BRIDGE: "br-ex"
     TUNNEL_BRIDGE: "br-tun" # only for VXLAN networks tenant
-    INTERNAL_BRIDGE: "br-internal"  # only OVS, OVN manages it alone
+    TENANT_BRIDGE: "br-tenant"  # only OVS, OVN manages it alone
 
   # OVN-specific
   ovn:
@@ -94,21 +94,10 @@ neutron:
 
 cinder:
   lvm:
-
     # --- Backend ---
 
     # Name of the LVM volume group to use for Cinder volumes
     VOLUME_GROUP: "cinder-volumes"
-
-    # IP address of the iSCSI target (defaults to network.HOST_IP if left empty)
-    TARGET_IP_ADDRESS: ""
-
-    # Volume clearing strategy when a volume is deleted
-    # Options: zero (overwrite with zeros), shred (secure erase), none (skip, faster for testing)
-    VOLUME_CLEAR: "zero"
-
-    # Amount of data to clear in MB (0 = entire volume)
-    VOLUME_CLEAR_SIZE: 1
 
     # --- Physical volume ---
 
@@ -127,6 +116,17 @@ cinder:
 
     # Size of the loopback image in GB
     CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB: "5"
+
+  # IP address of the iSCSI target (defaults to network.HOST_IP if left empty)
+  TARGET_IP_ADDRESS: "{network.HOST_IP}"
+
+  # Volume clearing strategy when a volume is deleted
+  # Options: zero (overwrite with zeros), shred (secure erase), none (skip, faster for testing)
+  VOLUME_CLEAR: "zero"
+
+  # Amount of data to clear in MB (0 = entire volume)
+  VOLUME_CLEAR_SIZE: 1
+
 
 compute:
   NOVA_COMPUTE_VIRT_TYPE: "kvm"   # kvm | qemu (qemu for VM nested)

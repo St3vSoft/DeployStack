@@ -401,8 +401,8 @@ def validate_cinder(config) -> bool:
     size_raw = (get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB") or "")
     path = (get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH") or "").lower()
     pv = (get(config, "cinder.lvm.PHYSICAL_VOLUME") or "").lower()
-    volume_clear = (get(config, "cinder.lvm.VOLUME_CLEAR") or "").lower()
-    volume_clear_size = get(config, "cinder.lvm.VOLUME_CLEAR_SIZE")
+    volume_clear = (get(config, "cinder.VOLUME_CLEAR") or "").lower()
+    volume_clear_size = get(config, "cinder.VOLUME_CLEAR_SIZE")
 
     if pv:
         if not os.path.exists(pv):
@@ -434,8 +434,8 @@ def validate_cinder(config) -> bool:
             "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",
             "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",
             "cinder.lvm.VOLUME_GROUP",
-            "cinder.lvm.VOLUME_CLEAR",
-            "cinder.lvm.VOLUME_CLEAR_SIZE"
+            "cinder.VOLUME_CLEAR",
+            "cinder.VOLUME_CLEAR_SIZE"
         ]
         
         loop_dev = (get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH") or "").lower()
@@ -471,13 +471,13 @@ def validate_cinder(config) -> bool:
                 print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
                 ok = False
 
-    target_ip = get(config, "cinder.lvm.TARGET_IP_ADDRESS") or ""
-    if target_ip and not validate_ip(target_ip, "cinder.lvm.TARGET_IP_ADDRESS"):
+    target_ip = get(config, "cinder.TARGET_IP_ADDRESS") or ""
+    if target_ip and not validate_ip(target_ip, "cinder.TARGET_IP_ADDRESS"):
         ok = False
     
     if volume_clear not in ("zero", "shred", "none"):
         print(
-            f"{colors.RED}Error: Invalid value for 'cinder.lvm.volume_clear'. "
+            f"{colors.RED}Error: Invalid value for 'cinder.volume_clear'. "
             f"Allowed values are: 'zero', 'shred', 'none'.{colors.RESET}"
         )
         ok = False
@@ -489,7 +489,7 @@ def validate_cinder(config) -> bool:
             print(f"{colors.RED}Error: 'VOLUME_CLEAR_SIZE' must be >= 0{colors.RESET}")
             ok = False
     except (TypeError, ValueError):
-        print(f"{colors.RED}Error: 'cinder.lvm.VOLUME_CLEAR_SIZE' must be a integer number, found: {volume_clear_size}{colors.RESET}")
+        print(f"{colors.RED}Error: 'cinder.VOLUME_CLEAR_SIZE' must be a integer number, found: {volume_clear_size}{colors.RESET}")
         ok = False
     
     return ok

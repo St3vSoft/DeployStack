@@ -329,17 +329,21 @@ def conf_cinder(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    target_ip_address = get(config, "cinder.lvm.TARGET_IP_ADDRESS")
+    target_scsi_ip_address = get(config, "cinder.TARGET_IP_ADDRESS")
 
-    volume_clear = get(config, "cinder.lvm.VOLUME_CLEAR")
-    volume_clear_size = int(get(config, "cinder.lvm.VOLUME_CLEAR_SIZE"))
+    volume_clear = get(config, "cinder.VOLUME_CLEAR")
+    volume_clear_size = int(get(config, "cinder.VOLUME_CLEAR_SIZE"))
+
+    if "{network.HOST_IP}" in target_scsi_ip_address:
+        target_scsi_ip_address = ip_address
+        config["cinder"]["TARGET_IP_ADDRESS"] = ip_address
 
     set_conf_option(cinder_conf, "DEFAULT", "transport_url", f"rabbit://openstack:{rabbitmq_password}@{ip_address}:5672/")
     set_conf_option(cinder_conf, "DEFAULT", "glance_api_servers", f"http://{ip_address}:9292")
     set_conf_option(cinder_conf, "DEFAULT", "enabled_backends", "lvm")
 
     set_conf_option(cinder_conf, "DEFAULT", "my_ip", ip_address)
-    set_conf_option(cinder_conf, "DEFAULT", "target_ip_address", target_ip_address)
+    set_conf_option(cinder_conf, "DEFAULT", "target_ip_address", target_scsi_ip_address)
 
     set_conf_option(cinder_conf, "keystone_authtoken", "memcached_servers", "127.0.0.1:11211")
     set_conf_option(cinder_conf, "keystone_authtoken", "www_authenticate_uri", f"http://{ip_address}:5000/")

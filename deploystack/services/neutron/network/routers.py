@@ -44,14 +44,14 @@ def create_custom_network_router(
     routers_list,
     provider_networks,
     public_bridge,
-    internal_flat_bridge,
+    tenant_bridge,
     tunnel_bridge,
     env
 ) -> bool:
 
     internal_bridges = {
         public_bridge,
-        internal_flat_bridge,
+        tenant_bridge,
         tunnel_bridge,
         "br-int"
     }
