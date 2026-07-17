@@ -243,7 +243,7 @@ def write_cinder_lvm_env(config):
     physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME", default="")
     lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_NAME")
     lvm_image_file = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
-    vg_name = "cinder-volumes"
+    vg_name = get(config, "cinder.lvm.VOLUME_GROUP")
 
     try:
 
@@ -336,7 +336,7 @@ def conf_cinder(config):
 
     if "{network.HOST_IP}" in target_scsi_ip_address:
         target_scsi_ip_address = ip_address
-        config["cinder"]["TARGET_IP_ADDRESS"] = ip_address
+        config["cinder"]["TARGET_IP_ADDRESS"] = str(ip_address)
 
     set_conf_option(cinder_conf, "DEFAULT", "transport_url", f"rabbit://openstack:{rabbitmq_password}@{ip_address}:5672/")
     set_conf_option(cinder_conf, "DEFAULT", "glance_api_servers", f"http://{ip_address}:9292")
