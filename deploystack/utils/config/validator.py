@@ -141,11 +141,11 @@ def validate_provider_networks(config, provider_networks, defined_bridges):
     IGNORED_BRIDGES.append(public_bridge)
 
     if neutron_driver == "ovs":
-        internal_bridge = get(config, "neutron.ovs.INTERNAL_BRIDGE")
+        TENANT_BRIDGE = get(config, "neutron.ovs.TENANT_BRIDGE")
         tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE")
 
         IGNORED_BRIDGES.append(tunnel_bridge)
-        IGNORED_BRIDGES.append(internal_bridge)
+        IGNORED_BRIDGES.append(TENANT_BRIDGE)
 
     for i, net in enumerate(provider_networks):
         net_name = net.get("name")
@@ -330,7 +330,7 @@ def validate_neutron(config) -> bool:
     if neutron_driver == "ovs":
         ovs_fields = [
             "neutron.ovs.PUBLIC_BRIDGE",
-            "neutron.ovs.INTERNAL_BRIDGE",
+            "neutron.ovs.TENANT_BRIDGE",
             "neutron.ovs.PUBLIC_BRIDGE_INTERFACE"
         ]
         if tenant_type == "vxlan":

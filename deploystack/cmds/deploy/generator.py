@@ -100,7 +100,7 @@ def config_openstack(
     config_dict["neutron"]["ovs"]["CREATE_BRIDGES"] = "yes" if neutron_driver == "ovs" else ""
     config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE_INTERFACE"] = iface if neutron_driver == "ovs" else ""
     config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE"] = "br-ex" if neutron_driver == "ovs" else ""
-    config_dict["neutron"]["ovs"]["INTERNAL_BRIDGE"] = "br-tenant" if neutron_driver == "ovs" else ""
+    config_dict["neutron"]["ovs"]["TENANT_BRIDGE"] = "br-tenant" if neutron_driver == "ovs" else ""
     config_dict["neutron"]["ovs"]["TUNNEL_BRIDGE"] = "br-tun" if neutron_driver == "ovs" else ""
 
     config_dict["neutron"].setdefault("ovn", {})
