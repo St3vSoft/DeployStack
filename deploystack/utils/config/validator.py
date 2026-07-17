@@ -472,7 +472,7 @@ def validate_cinder(config) -> bool:
                 ok = False
 
     target_ip = get(config, "cinder.TARGET_IP_ADDRESS") or ""
-    if target_ip and not validate_ip(target_ip, "cinder.TARGET_IP_ADDRESS"):
+    if target_ip and not validate_ip(target_ip, "cinder.TARGET_IP_ADDRESS") and target_ip != "{network.HOST_IP}":
         ok = False
     
     if volume_clear not in ("zero", "shred", "none"):

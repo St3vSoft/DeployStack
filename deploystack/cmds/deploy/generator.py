@@ -100,7 +100,7 @@ def config_openstack(
     config_dict["neutron"]["ovs"]["CREATE_BRIDGES"] = "yes" if neutron_driver == "ovs" else ""
     config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE_INTERFACE"] = iface if neutron_driver == "ovs" else ""
     config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE"] = "br-ex" if neutron_driver == "ovs" else ""
-    config_dict["neutron"]["ovs"]["INTERNAL_BRIDGE"] = "br-internal" if neutron_driver == "ovs" else ""
+    config_dict["neutron"]["ovs"]["INTERNAL_BRIDGE"] = "br-tenant" if neutron_driver == "ovs" else ""
     config_dict["neutron"]["ovs"]["TUNNEL_BRIDGE"] = "br-tun" if neutron_driver == "ovs" else ""
 
     config_dict["neutron"].setdefault("ovn", {})
@@ -152,8 +152,8 @@ def config_openstack(
     if "cinder" not in config_dict:
         config_dict["cinder"] = {}
 
-    config_dict["optional_services"]["INSTALL_CINDER"] = parse_bool(install_horizon.lower(), "yes")
-    config_dict["optional_services"]["INSTALL_HORIZON"] = parse_bool(install_cinder.lower(), "ytes")
+    config_dict["optional_services"]["INSTALL_CINDER"] = install_horizon.lower()
+    config_dict["optional_services"]["INSTALL_HORIZON"] = install_cinder.lower()
 
     config_dict["cinder"]["VOLUME_CLEAR"] = "zero"
     config_dict["cinder"]["VOLUME_CLEAR_SIZE"] = 1
