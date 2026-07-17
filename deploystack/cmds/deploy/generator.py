@@ -149,20 +149,21 @@ def config_openstack(
     config_dict.setdefault("cinder", {})
     config_dict.setdefault("optional_services", {})
 
+    if "cinder" not in config_dict:
+        config_dict["cinder"] = {}
+
     config_dict["optional_services"]["INSTALL_CINDER"] = "yes"
     config_dict["optional_services"]["INSTALL_HORIZON"] = "yes"
+
+    config_dict["cinder"]["VOLUME_CLEAR"] = "zero"
+    config_dict["cinder"]["VOLUME_CLEAR_SIZE"] = 1
+    config_dict["cinder"]["TARGET_IP_ADDRESS"] = ip
 
     config_dict["cinder"]["lvm"] = {
         "CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH": get_free_loop(),
         "CINDER_VOLUME_LVM_IMAGE_FILE_PATH": "/var/lib/cinder/images/cinder-volumes.img",
         "CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB": lvm_image_size_in_gb,
         "VOLUME_GROUP": "cinder-volumes",
-    }
-
-    config_dict["cinder"] = {
-        "VOLUME_CLEAR": "zero",
-        "VOLUME_CLEAR_SIZE": 1,
-        "TARGET_IP_ADDRESS": ip,
     }
 
     # Compute
