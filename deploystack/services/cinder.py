@@ -334,9 +334,10 @@ def conf_cinder(config):
     volume_clear = get(config, "cinder.VOLUME_CLEAR")
     volume_clear_size = int(get(config, "cinder.VOLUME_CLEAR_SIZE"))
 
-    if "{network.HOST_IP}" in target_scsi_ip_address:
-        target_scsi_ip_address = ip_address
-        config["cinder"]["TARGET_IP_ADDRESS"] = str(ip_address)
+    if isinstance(target_scsi_ip_address, dict) or target_scsi_ip_address is None or "{network.HOST_IP}" in str(target_scsi_ip_address):
+        target_scsi_ip_address = ip_address 
+
+    target_scsi_ip_address = str(target_scsi_ip_address)
 
     set_conf_option(cinder_conf, "DEFAULT", "transport_url", f"rabbit://openstack:{rabbitmq_password}@{ip_address}:5672/")
     set_conf_option(cinder_conf, "DEFAULT", "glance_api_servers", f"http://{ip_address}:9292")
