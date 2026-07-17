@@ -38,7 +38,7 @@ def config_openstack(
     neutron_driver: str = "ovs",   # "ovs" | "ovn"
     os_release: str = "caracal"
 ):
-    # Carica template YAML
+
     try:
         with open(config_file_path, "r") as f:
             config_dict = yaml.safe_load(f) or {}
@@ -152,12 +152,14 @@ def config_openstack(
     if "cinder" not in config_dict:
         config_dict["cinder"] = {}
 
-    config_dict["optional_services"]["INSTALL_CINDER"] = "yes"
-    config_dict["optional_services"]["INSTALL_HORIZON"] = "yes"
+    config_dict["optional_services"]["INSTALL_CINDER"] = parse_bool(install_horizon.lower(), "yes")
+    config_dict["optional_services"]["INSTALL_HORIZON"] = parse_bool(install_cinder.lower(), "ytes")
 
     config_dict["cinder"]["VOLUME_CLEAR"] = "zero"
     config_dict["cinder"]["VOLUME_CLEAR_SIZE"] = 1
     config_dict["cinder"]["TARGET_IP_ADDRESS"] = ip
+
+    config_dict["cinder"].setdefault("lvm", {})
 
     config_dict["cinder"]["lvm"] = {
         "CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH": get_free_loop(),
