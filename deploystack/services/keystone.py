@@ -312,13 +312,13 @@ def create_services_endpoints(config, env):
         manila_url = f"http://{ip_address}:8786/v2"
 
         if ("sharev2", "public", os_region_name, manila_url) not in existing_endpoints:
-            endpoints_create_cmds(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "public", manila_url])
+            endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "public", manila_url])
 
         if ("sharev2", "internal", os_region_name, manila_url) not in existing_endpoints:
-            endpoints_create_cmds(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "internal", manila_url])
+            endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "internal", manila_url])
 
         if ("sharev2", "admin", os_region_name, manila_url) not in existing_endpoints:
-            endpoints_create_cmds(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "admin", manila_url])
+            endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "admin", manila_url])
 
     if install_cinder:
         cinder_url = f"http://{ip_address}:8776/v3/%(project_id)s"
