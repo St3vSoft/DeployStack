@@ -212,10 +212,10 @@ def create_services_users(config, env):
     if install_manila:
         services_user_create_cmds.append(["openstack", "user", "create", "--domain", "default", "--password", service_password, "manila", "--or-show"])
 
-        if "share" not in existing_services:
+        if "manila" not in existing_services:
             services_create_cmds.append(["openstack", "service", "create", "--name", "manila", "--description", "OpenStack Shared File Systems", "share"])
 
-        if "sharev2" not in existing_services:
+        if "manilav2" not in existing_services:
             services_create_cmds.append(["openstack", "service", "create", "--name", "manilav2", "--description", "OpenStack Shared File Systems V2", "sharev2"])
 
         if ("manila", "service", "admin") not in existing_assignments:
