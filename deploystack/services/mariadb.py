@@ -81,8 +81,12 @@ def create_services_databases(config):
         "nova": ["nova"],
         "neutron": ["neutron"]
     }
+
     if install_cinder:
         users["cinder"] = ["cinder"]
+
+    if install_manila:
+        users["manila"] = ["manila"]
 
     for db, usernames in users.items():
         for user in usernames:
