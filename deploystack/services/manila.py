@@ -31,7 +31,7 @@ def install_pkgs():
     if not apt_update():
         return False
     
-    if not apt_install(["manila-api", "manila-scheduler", "manila-share", "python3-manilaclient"], "Installing manila packages..."):
+    if not apt_install(["manila-api", "manila-scheduler", "manila-share", "python3-manilaclient"], "Installing Manila packages..."):
         return False
     
     return True
@@ -57,7 +57,7 @@ def conf_manila(config):
     set_conf_option(manila_conf, "DEFAULT", "my_ip", ip_address)
 
     set_conf_option(manila_conf, "DEFAULT", "default_share_type", "default_share_type")
-    set_conf_option(manila_conf, "DEFAULT", "share_name_template", "share-%s")
+    set_conf_option(manila_conf, "DEFAULT", "share_name_template", "share-%%s")
     set_conf_option(manila_conf, "DEFAULT", "rootwrap_config", "/etc/manila/rootwrap.conf")
     set_conf_option(manila_conf, "DEFAULT", "api_paste_config", "/etc/manila/api-paste.ini")
 
