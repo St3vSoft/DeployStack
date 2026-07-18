@@ -114,7 +114,7 @@ def conf_generic_backend(config):
 
     set_conf_option(manila_conf, "generic", "share_backend_name", "GENERIC")
     set_conf_option(manila_conf, "generic", "share_driver", "manila.share.drivers.generic.GenericShareDriver")
-    set_conf_option(manila_conf, "generic", "driver_handles_share_servers", generic_driver_handles_share_servers)
+    set_conf_option(manila_conf, "generic", "driver_handles_share_servers", str(generic_driver_handles_share_servers))
     set_conf_option(manila_conf, "generic", "connect_share_server_to_tenant_network", str(generic_share_server_to_tenant_network))
     set_conf_option(manila_conf, "generic", "service_instance_flavor", generic_service_instance_flavor)
     set_conf_option(manila_conf, "generic", "service_image_name", generic_service_image_name)
