@@ -172,7 +172,7 @@ def finalize_generic_backend(config, env):
 
         print()
 
-        if not os_run(["openstack", "share", "type", "create", "default_share_type", "True"], "Creating default share type...", venv=env):
+        if not os_run(["openstack", "share", "type", "create", "default_share_type", "True"], "Creating default share type...", env=env):
             return False
 
     manila_service_image_exists = any(image.get("Name") == generic_service_image_name for image in images_list)
