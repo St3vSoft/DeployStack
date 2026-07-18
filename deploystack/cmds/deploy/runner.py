@@ -22,6 +22,7 @@ from ...services.placement import run_setup_placement
 from ...services.nova import run_setup_nova
 from ...services.nova_compute import run_setup_nova_compute
 from ...services.neutron import run_setup_neutron
+from ...services.manila import run_setup_manila
 from ...services.horizon import run_setup_horizon
 
 from ...utils.config.helpers import parse_bool
@@ -52,6 +53,8 @@ def deploy(config_file):
         
     if not has_hw_virtualization():
         print(f"{colors.YELLOW}Warning: No hardware virtualization detected – QEMU hypervisor will be used and Nova instances will be emulated with lower performance{colors.RESET}\n")
+
+    install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA", False))
 
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
     install_horizon = parse_bool(get(config, "optional_services.INSTALL_HORIZON", False))
@@ -111,6 +114,12 @@ def deploy(config_file):
     if not run_setup_neutron(config, env): 
         sys.exit(1)
         return False
+    
+    if install_manila:
+        print("Setting up Manila\n")
+        if not run_setup_manila(config, env):
+            sys.exit(1)
+            return False
     
     if install_horizon:
         print("Setting up Horizon\n")

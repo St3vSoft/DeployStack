@@ -2,9 +2,8 @@
 
 import os
 import json
-import subprocess
 
-from ..utils.core.commands import run_command, os_run_output, run_command_output, run_commands
+from ..utils.core.commands import run_command, run_command_output, run_commands
 from ..utils.core.system_utils import service_exists, is_debian 
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
@@ -152,7 +151,9 @@ def create_services_users(config, env):
     print()
 
     service_password = get(config, "passwords.SERVICE_PASSWORD")
+
     install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
+    install_manila = get(config, "optional_services.INSTALL_MANILA", "no").lower() == "yes"
 
     services = get_services(env)
     assignments = get_role_assignments(env)
@@ -208,8 +209,19 @@ def create_services_users(config, env):
     if ("neutron", "service", "admin") not in existing_assignments:
         services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "neutron", "admin"])
 
-    if install_cinder:
+    if install_manila:
+        services_user_create_cmds.append(["openstack", "user", "create", "--domain", "default", "--password", service_password, "manila", "--or-show"])
 
+        if "share" not in existing_services:
+            services_create_cmds.append(["openstack", "service", "create", "--name", "manila", "--description", "OpenStack Shared File Systems", "share"])
+
+        if "sharev2" not in existing_services:
+            services_create_cmds.append(["openstack", "service", "create", "--name", "manilav2", "--description", "OpenStack Shared File Systems V2", "sharev2"])
+
+        if ("manila", "service", "admin") not in existing_assignments:
+            services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "manila", "admin"])
+
+    if install_cinder:
         services_user_create_cmds.append(["openstack", "user", "create", "--domain", "default", "--password", service_password, "cinder", "--or-show"])
 
         if "cinderv3" not in existing_services:
@@ -234,7 +246,10 @@ def create_services_endpoints(config, env):
     print()
   
     ip_address = get(config, "network.HOST_IP")
+
     install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
+    install_manila = get(config, "optional_services.INSTALL_MANILA", "no").lower() == "yes"
+    
     os_region_name = get(config, "openstack.REGION_NAME")
 
     glance_url = f"http://{ip_address}:9292"
@@ -292,6 +307,18 @@ def create_services_endpoints(config, env):
 
     if ("network", "admin", os_region_name, neutron_url) not in existing_endpoints:
          endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "network", "admin", neutron_url])
+
+    if install_manila:
+        manila_url = f"http://{ip_address}:8786/v2"
+
+        if ("sharev2", "public", os_region_name, manila_url) not in existing_endpoints:
+            endpoints_create_cmds(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "public", manila_url])
+
+        if ("sharev2", "internal", os_region_name, manila_url) not in existing_endpoints:
+            endpoints_create_cmds(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "internal", manila_url])
+
+        if ("sharev2", "admin", os_region_name, manila_url) not in existing_endpoints:
+            endpoints_create_cmds(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "admin", manila_url])
 
     if install_cinder:
         cinder_url = f"http://{ip_address}:8776/v3/%(project_id)s"

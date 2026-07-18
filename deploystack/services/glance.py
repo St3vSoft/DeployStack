@@ -127,7 +127,6 @@ def upload_cirros_image(env):
         print(f"{colors.RED}ERROR: Unable to retrieve official SHA256 checksum{colors.RESET}")
         return False
 
-    # Compare hashes
     if calculated_hash != official_hash:
         print(
             f"{colors.RED}ERROR: SHA256 checksum mismatch!\n"

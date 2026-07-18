@@ -56,12 +56,16 @@ def create_services_databases(config):
     db_password = get(config, "passwords.DATABASE_PASSWORD")
     ip_address = get(config, "network.HOST_IP")
 
-    install_cinder = get(config, "optional_services.INSTALL_CINDER", "no") == "yes"
+    install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
+    install_manila = get(config, "optional_services.INSTALL_MANILA", "no").lower() == "yes"
 
     databases = ["keystone", "glance", "placement", "nova_api", "nova_cell0", "nova", "neutron"]
     
     if install_cinder:
         databases.append("cinder")
+
+    if install_manila:
+        databases.append("manila")
 
     sql_commands = []
 

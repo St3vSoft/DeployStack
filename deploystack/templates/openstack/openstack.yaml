@@ -92,6 +92,34 @@ neutron:
     #    port_range: [8080, 8080]
     #    remote_ip_prefix: "0.0.0.0/0"
 
+manila:
+  BACKEND: "generic"     # generic | cephfs | cephfsnfs | netapp | dell_emc | ...
+
+  BACKEND_NAME: "generic"
+
+  SERVICE_NETWORK_NAME: "manila-service-network"
+
+  SHARE_PROTOCOLS:
+    - NFS
+
+  generic:
+    SERVICE_INSTANCE_FLAVOR: "manila-service"
+    SERVICE_IMAGE_NAME: "manila-service-image"
+
+    DRIVER_HANDLES_SHARE_SERVERS: "yes"
+
+    INTERFACE_DRIVER: "manila.network.linux.interface.OVSInterfaceDriver"
+
+    CONNECT_SHARE_SERVER_TO_TENANT_NETWORK: "yes"
+
+  cephfs: {}
+
+  cephfsnfs: {}
+
+  netapp: {}
+
+  dell_emc: {}
+
 cinder:
   lvm:
     # --- Backend ---
@@ -136,6 +164,7 @@ compute:
 
 optional_services:
   INSTALL_CINDER: "no"
+  INSTALL_MANILA: "no"
   INSTALL_HORIZON: "yes"
 
   # ( Coming Soon to be Implemented )
