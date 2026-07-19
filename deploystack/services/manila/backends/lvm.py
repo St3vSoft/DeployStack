@@ -8,7 +8,7 @@ import os
 import subprocess
 import shutil
 
-from ....utils.core.commands import run_command, os_run_output
+from ....utils.core.commands import run_command, os_run_output, os_run
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
@@ -171,6 +171,13 @@ def finalize():
 
     print()
 
+    sudoers_content = "manila ALL=(root) NOPASSWD: /usr/bin/privsep-helper\n"
+
+    with open("/etc/sudoers.d/manila-privsep", "w") as f:
+        f.write(sudoers_content)
+
+    os.chmod("/etc/sudoers.d/manila-privsep", 0o440)
+
     if not run_command(["systemctl", "restart", "manila-share"], "Restarting Manila services..."):
         return False
 
@@ -185,8 +192,12 @@ def finalize_lvm_backend(env):
 
     if not default_share_exists:
         print()
-        if not run_command(["manila", "type-create", "default_share_type", "False"], "Creating default share type...", env=env):
-            return False
+        if not os_run([
+                "openstack", "share", "type", "create",
+                "default_share_type", "False",
+                "--extra-specs", "volume_backend_name=LVM"
+            ], "Creating default share type...", env=env):
+                return False
         
     share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env))
 
@@ -194,7 +205,7 @@ def finalize_lvm_backend(env):
 
     if not default_share_exists:
         print()
-        if not run_command(["manila", "create", "NFS", "1", "--name", "default_share"], "Creating default share...", env=env):
+        if not os_run(["openstack", "share", "create", "NFS", "1", "--name", "default_share"], "Creating default share...", env=env):
             return False
         
     return True
