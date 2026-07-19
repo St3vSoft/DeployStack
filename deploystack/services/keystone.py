@@ -323,7 +323,7 @@ def create_services_endpoints(config, env):
             if ("sharev2", "admin", os_region_name, manila_url) not in existing_endpoints:
                 endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "admin", manila_url])
         else:
-            manilav1_url = f"http://{ip_address}:8786/v1/%\(tenant_id\)s"
+            manilav1_url = f"http://{ip_address}:8786/v1/%(tenant_id)s"
             manilav2_url = f"http://{ip_address}:8786/v2"
 
             if ("share", "public", os_region_name, manilav1_url) not in existing_endpoints:
