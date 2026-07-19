@@ -2,7 +2,10 @@ import configparser
 
 def set_conf_option(conf_file, section, option, value, interpolation = True):
 
-    config = configparser.ConfigParser(interpolation=interpolation)
+    config = configparser.ConfigParser(
+        interpolation=None if not interpolation else configparser.BasicInterpolation()
+    )
+    
     config.optionxform = str  # mantiene maiuscole/minuscole
     config.read(conf_file)
 
