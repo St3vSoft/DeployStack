@@ -121,12 +121,12 @@ def conf_lvm_manila(config):
     SERVICE_PATH = "/etc/systemd/system/manila-lvm-network.service"
     script_path = "/usr/local/bin/manila-br-ex-ip.sh"
 
-    backend_name = get(config, "manila.lvm.SHARE_VOLUME_GROUP")
+    backend_name = get(config, "manila.lvm.BACKEND_NAME")
 
     protocols = get(config, "manila.SHARE_PROTOCOLS", default=["NFS"])
     enabled_share_protocols = ",".join(protocols)
 
-    vg_name = get(config, "manila.lvm.VOLUME_GROUP")
+    vg_name = get(config, "manila.lvm.SHARE_VOLUME_GROUP")
     
     public_bridge = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")
     public_cidr = get(config, "neutron.public_network.PUBLIC_SUBNET_CIDR")
