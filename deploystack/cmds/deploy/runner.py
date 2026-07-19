@@ -75,15 +75,17 @@ def deploy(config_file):
         cinder_pv = get(config, "cinder.lvm.PHYSICAL_VOLUME")
         cinder_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
 
-        devices.append(cinder_loop_dev or cinder_pv)
+        devices.append(cinder_pv or cinder_loop_dev)
 
     if install_manila and is_lvm_manila_backend_enabled:
         manila_pv = get(config, "manila.lvm.PHYSICAL_VOLUME")
         manila_loop_dev = get(config, "manila.lvm.LVM_LOOP_PATH")
 
-        devices.append(manila_loop_dev or manila_pv)
+        devices.append(manila_pv or manila_loop_dev)
 
-    set_lvm_filter(devices)
+    if devices:
+        if not set_lvm_filter(devices):
+            return False
 
     ip_address = get(config, "network.HOST_IP")
 
