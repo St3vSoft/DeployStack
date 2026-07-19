@@ -93,9 +93,7 @@ neutron:
     #    remote_ip_prefix: "0.0.0.0/0"
 
 manila:
-  BACKEND: "generic"     # generic | cephfs | cephfsnfs | netapp | dell_emc | ...
-
-  BACKEND_NAME: "generic"
+  BACKEND: "generic"     # generic | lvm
 
   SERVICE_NETWORK_NAME: "manila-service-network"
 
@@ -103,6 +101,8 @@ manila:
     - NFS
 
   generic:
+    BACKEND_NAME: "generic"
+
     SERVICE_INSTANCE_FLAVOR: "manila-service"
     SERVICE_IMAGE_NAME: "manila-service-image"
 
@@ -112,13 +112,27 @@ manila:
 
     CONNECT_SHARE_SERVER_TO_TENANT_NETWORK: "yes"
 
-  cephfs: {}
+  lvm:
+    BACKEND_NAME: "lvm"
 
-  cephfsnfs: {}
+    SHARE_VOLUME_GROUP: "manila-volumes"
 
-  netapp: {}
+    SHARE_EXPORT_IP:
 
-  dell_emc: {}
+    # --- Physical volume ---
+
+    # Path to a real block device to use as LVM backend
+    # If set, the loopback settings below are ignored
+    # Example: "/dev/sdb"
+    PHYSICAL_VOLUME: ""
+
+    # --- Loopback device (used only if PHYSICAL_VOLUME is not set) ---
+
+    LVM_IMAGE_FILE_PATH: "/var/lib/manila/manila-volumes.img"
+
+    LVM_IMAGE_SIZE_IN_GB: "10"
+
+    LVM_LOOP_PATH: "/dev/loop0"
 
 cinder:
   lvm:
@@ -154,7 +168,6 @@ cinder:
 
   # Amount of data to clear in MB (0 = entire volume)
   VOLUME_CLEAR_SIZE: 1
-
 
 compute:
   NOVA_COMPUTE_VIRT_TYPE: "kvm"   # kvm | qemu (qemu for VM nested)

@@ -11,6 +11,8 @@ from ...utils.tasks.check_deployment import mark_deployment_complete, MARKER_FIL
 from ...utils.core.system_utils import is_debian
 from ...utils.core.commands import build_openstack_env
 
+from ...utils.lvm.loopback import set_lvm_filter
+
 from ...utils.config.validator import validate_all
 
 from ...services.prereqs import run_setup_prereqs
@@ -39,6 +41,8 @@ def deploy(config_file):
     create_ovs_bridges = get(config, "ovs.CREATE_BRIDGES")
     create_ovn_bridges = get(config, "ovn.CREATE_BRIDGES")
 
+    devices = []
+
     if (create_ovn_bridges or create_ovs_bridges) and os.path.exists(f"/sys/class/net/{public_iface}/wireless"):
         print(f"{colors.RED}Wi-Fi interfaces are not supported for OVS bridge networking, Switch to Ethernet to continue OpenStack deployment.{colors.RESET}")
 
@@ -54,18 +58,34 @@ def deploy(config_file):
     if not has_hw_virtualization():
         print(f"{colors.YELLOW}Warning: No hardware virtualization detected – QEMU hypervisor will be used and Nova instances will be emulated with lower performance{colors.RESET}\n")
 
-    install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA", False))
-
-    install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
-    install_horizon = parse_bool(get(config, "optional_services.INSTALL_HORIZON", False))
-
-    ip_address = get(config, "network.HOST_IP")
-
     if not validate_all(config):
         print("\nPlease review and correct any errors reported in the configuration above before retrying the OpenStack deployment again.")
 
         sys.exit(1)
         return False 
+    
+    install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA", False))
+
+    install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
+    install_horizon = parse_bool(get(config, "optional_services.INSTALL_HORIZON", False))
+
+    is_lvm_manila_backend_enabled = get(config, "manila.BACKEND_NAME") == "lvm"
+
+    if install_cinder:
+        cinder_pv = get(config, "cinder.lvm.PHYSICAL_VOLUME")
+        cinder_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
+
+        devices.append(cinder_loop_dev or cinder_pv)
+
+    if install_manila and is_lvm_manila_backend_enabled:
+        manila_pv = get(config, "manila.lvm.PHYSICAL_VOLUME")
+        manila_loop_dev = get(config, "manila.lvm.LVM_LOOP_PATH")
+
+        devices.append(manila_loop_dev or manila_pv)
+
+    set_lvm_filter(devices)
+
+    ip_address = get(config, "network.HOST_IP")
 
     print("OpenStack Deployment Started\n")
     

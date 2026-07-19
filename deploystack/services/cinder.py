@@ -15,55 +15,12 @@ from ..utils.config.setter import set_conf_option
 from ..utils.core.system_utils import nc_wait
 from ..utils.core import colors
 from ..utils.core.system_utils import service_exists, is_debian
-from ..templates import CINDER_LOOPBACK_SERVICE, CINDER_LOOPBACK_START_SCRIPT, CINDER_LOOPBACK_STOP_SCRIPT, CINDER_LVM_ENV_CONF
+from ..utils.lvm.loopback import set_lvm_filter, write_loopback_lvm_env, setup_loopback_service
+from ..utils.lvm import get_vg_for_pv, ensure_system_user_with_run_command
 
 cinder_conf = "/etc/cinder/cinder.conf"
 tgt_conf_path = "/etc/tgt/conf.d/cinder.conf"
 lvm_conf_path = "/etc/lvm/lvm.conf"
-
-def get_vg_for_pv(device):
-    try:
-        result = subprocess.run(
-            ["pvs", "--reportformat", "json", "-o", "pv_name,vg_name"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except subprocess.CalledProcessError:
-        return None
-
-    data = json.loads(result.stdout)
-
-    for pv in data["report"][0]["pv"]:
-        if pv["pv_name"] == device:
-            return pv["vg_name"] or None
-
-    return None
-
-def ensure_system_user_with_run_command(username="cinder"):
-    success = True
-
-    try:
-        grp.getgrnam(username)
-    except KeyError:
-        if not run_command(
-            ["groupadd", username],
-            message=f"Creating group {username}",
-            ignore_errors=False
-        ):
-            success = False
-
-    try:
-        pwd.getpwnam(username)
-    except KeyError:
-        if not run_command(
-            ["useradd", "-r", "-s", "/bin/false", username],
-            message=f"Creating system user {username}",
-            ignore_errors=False
-        ):
-            success = False
-
-    return success
 
 def install_pkgs():
 
@@ -163,157 +120,6 @@ def conf_lvm(config):
     if not os.path.exists(tgt_conf_path):
         with open(tgt_conf_path, "w") as f:
             f.write("include /var/lib/cinder/volumes/*")
-
-    return True
-
-def set_lvm_filter(config):
-    lvm_physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME")
-    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
-
-    device = lvm_physical_volume or lvm_loop_dev
-    
-    filters = [
-        f"a|{device}|",
-        "r|.*|",
-    ]
-    filter_value = '[ ' + ', '.join(f'"{f}"' for f in filters) + ' ]'
-
-    try:
-        with open(lvm_conf_path, "r") as f:
-            content = f.read()
-    except OSError as e:
-        print(f"{colors.RED}Error: Unable to read {lvm_conf_path}: {e}{colors.RESET}")
-        return False
-
-    devices_match = re.search(r'^(\s*)devices\s*{', content, flags=re.MULTILINE)
-    if not devices_match:
-        print(f"{colors.RED}Error: No devices section found in lvm.conf{colors.RESET}")
-        return False
-
-    section_start = devices_match.end()
-    base_indent = devices_match.group(1)
-
-    depth = 1
-    pos = section_start
-    while pos < len(content) and depth > 0:
-        if content[pos] == '{':
-            depth += 1
-        elif content[pos] == '}':
-            depth -= 1
-        pos += 1
-    section_end = pos - 1
-    section_content = content[section_start:section_end]
-
-    filter_pattern = r'^([ \t]*)#?[ \t]*filter\s*=\s*.*$'
-    filter_match = re.search(filter_pattern, section_content, flags=re.MULTILINE)
-
-    if filter_match:
-        line_indent = filter_match.group(1)
-        new_line = f"{line_indent}filter = {filter_value}"
-        new_section_content = (
-            section_content[:filter_match.start()]
-            + new_line
-            + section_content[filter_match.end():]
-        )
-    else:
-        pad = base_indent + "    "
-        new_section_content = f"\n{pad}filter = {filter_value}\n" + section_content
-
-    new_content = content[:section_start] + new_section_content + content[section_end:]
-
-    if new_content == content:
-        return True
-
-    try:
-        with open(lvm_conf_path, "w") as f:
-            f.write(new_content)
-    except OSError as e:
-        print(f"{colors.RED}Error: Unable to write {lvm_conf_path}: {e}{colors.RESET}")
-        return False
-
-    return True
-
-def write_cinder_lvm_env(config):
-
-    if get(config, "cinder.lvm.PHYSICAL_VOLUME"):
-        return True
-
-    env_path = "/etc/default/cinder-lvm"
-
-    physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME", default="")
-    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_NAME")
-    lvm_image_file = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
-    vg_name = get(config, "cinder.lvm.VOLUME_GROUP")
-
-    try:
-
-        with open(CINDER_LVM_ENV_CONF, "r") as f:
-                template = f.read()
-                cinder_loopback_service_content = template.format(
-                    physical_volume=physical_volume,
-                    lvm_loop_dev=lvm_loop_dev, 
-                    lvm_image_file=lvm_image_file,
-                    vg_name=vg_name
-                )
-
-        with open(env_path, "w") as f:
-                f.write(cinder_loopback_service_content)
-
-    except Exception as e:
-        print(f"\n{colors.RED}Failed to write '{env_path}' with an unhandled exception: {e}{colors.RESET}")
-        return False
-
-    return True
-
-def setup_loopback_service(config):
-
-    if get(config, "cinder.lvm.PHYSICAL_VOLUME"):
-        return True
-
-    print()
-
-    SERVICE_PATH = "/etc/systemd/system/cinder-loopback.service"
-
-    lvm_image_file_path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
-    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
-    VG_NAME = "cinder-volumes"
-
-    try:
-
-        shutil.copy2(CINDER_LOOPBACK_SERVICE, SERVICE_PATH)
-
-        with open(CINDER_LOOPBACK_START_SCRIPT, "r") as f:
-            template = f.read()
-            cinder_loopback_service_start_script_content = template.format(
-                lvm_loop_dev=lvm_loop_dev,
-                lvm_image_file_path=lvm_image_file_path,
-                VG_NAME=VG_NAME
-            )
-
-        with open(CINDER_LOOPBACK_STOP_SCRIPT, "r") as f:
-            template = f.read()
-            cinder_loopback_service_stop_script_content = template.format(
-                lvm_loop_dev=lvm_loop_dev,
-                lvm_image_file_path=lvm_image_file_path,
-                VG_NAME=VG_NAME
-            )
-
-        for path, content in [
-            ("/usr/local/bin/cinder-loopback-start.sh", cinder_loopback_service_start_script_content),
-            ("/usr/local/bin/cinder-loopback-stop.sh", cinder_loopback_service_stop_script_content),
-            ]:
-            with open(path, "w") as f:
-                f.write(content)
-
-            os.chmod(path, 0o755)
-
-    except Exception as e:
-        print(f"{colors.RED}Failed to write service files with an unhandled exception: {e}{colors.RESET}")
-        return False
-
-    if not run_command(["systemctl", "daemon-reload"], "Reloading systemd daemon..."): return False
-
-    if not run_command(["systemctl", "enable", "--now", "cinder-loopback.service"], "Enabling and starting cinder-loopback service..."): return False
 
     return True
 
@@ -431,15 +237,20 @@ def finalize(config):
 
 def run_setup_cinder(config):
 
+    lvm_physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME")
+    lvm_image_file_path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
+    lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
+
+    vg_name = get(config, "cinder.lvm.VOLUME_GROUP")
+
     if not install_pkgs(): return False 
     if not conf_lvm(config): return False
-    if not set_lvm_filter(config) : return False
 
     using_loopback = not get(config, "cinder.lvm.PHYSICAL_VOLUME")
 
     if using_loopback:
-        if not write_cinder_lvm_env(config): return False   
-        if not setup_loopback_service(config): return False   
+        if not write_loopback_lvm_env("cinder", lvm_image_file_path, lvm_loop_dev, vg_name, description="Cinder Loopback LVM", before_services="cinder-volume.service tgt.service"): return False   
+        if not setup_loopback_service(lvm_image_file_path, lvm_loop_dev, vg_name, "cinder"): return False   
 
     if not conf_cinder(config): return False    
     if not finalize(config): return False

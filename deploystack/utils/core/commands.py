@@ -116,7 +116,7 @@ def run_command(
                 if spinner:
                     spinner.stop("TIMEOUT", color="red", width=50)
 
-                print(f"{colors.RED}Timeout running: {' '.join(cmd)}{colors.RESET}")
+                print(f"{colors.RED}Timeout running: {' '.join(cmd)}{colors.RESET}\n")
                 return False
 
             returncode = process.returncode

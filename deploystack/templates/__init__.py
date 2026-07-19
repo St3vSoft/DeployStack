@@ -5,11 +5,15 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def _t(*parts) -> str:
     return os.path.join(BASE_DIR, *parts)
 
-# Cinder
-CINDER_LOOPBACK_SERVICE         = _t("cinder", "cinder-loopback.service")
-CINDER_LOOPBACK_START_SCRIPT    = _t("cinder", "cinder-loopback-start.sh.tpl")
-CINDER_LOOPBACK_STOP_SCRIPT     = _t("cinder", "cinder-loopback-stop.sh.tpl")
-CINDER_LVM_ENV_CONF             = _t("cinder", "cinder-lvm-env-conf.tpl")
+# Loopback
+LOOPBACK_SERVICE         = _t("loopback", "loopback.service.tpl")
+LOOPBACK_START_SCRIPT    = _t("loopback", "loopback-start.sh.tpl")
+LOOPBACK_STOP_SCRIPT     = _t("loopback", "loopback-stop.sh.tpl")
+LVM_ENV_CONF             = _t("loopback", "lvm-env-conf.tpl")
+
+# Manila
+MANILA_LVM_NETWORK_SERVICE  = _t("manila", "manila_lvm_network.service")
+MANILA_BRIDGE_IP_SCRIPT     = _t("manila", "manila-lvm-br-ip.sh.tpl")
 
 # Neutron OVS
 OVS_BRIDGES_INTERFACES          = _t("openvswitch", "ovs_bridges_interfaces.tpl")

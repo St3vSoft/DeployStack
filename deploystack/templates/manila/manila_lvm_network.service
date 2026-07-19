@@ -1,0 +1,12 @@
+[Unit]
+Description=Configure br-ex IP for Manila backend
+After=openvswitch.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/manila-br-ex-ip.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

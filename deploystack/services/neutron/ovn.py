@@ -130,21 +130,19 @@ def conf_ovn_bridges(config):
         shutil.move(full_path, backup_path)
 
     if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge],
-                       f"Adding bridge {public_bridge}"):
-        return False
+                       f"Adding bridge {public_bridge}"): return False
+    
     if not run_command(["ovs-vsctl", "--may-exist", "add-port", public_bridge, public_iface],
-                       f"Adding port {public_iface} to {public_bridge}"):
-        return False
+                       f"Adding port {public_iface} to {public_bridge}"): return False
     
     if custom_bridges:
         if not add_custom_bridges(bridges=bridges, public_bridge=public_bridge, tunnel_bridge=None, internal_flat_bridge=None) : return False
 
     print()
 
-    if not run_command(["ip", "link", "set", public_iface, "up"], f"Bringing {public_iface} up"):
-        return False
-    if not run_command(["ip", "link", "set", public_bridge, "up"], f"Bringing {public_bridge} up"):
-        return False
+    if not run_command(["ip", "link", "set", public_iface, "up"], f"Bringing {public_iface} up"): return False
+    
+    if not run_command(["ip", "link", "set", public_bridge, "up"], f"Bringing {public_bridge} up"): return False
     
     if custom_bridges:
         if not bring_up_custom_bridges_ifaces(bridges=bridges) : return False
