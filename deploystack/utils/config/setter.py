@@ -1,6 +1,6 @@
 import configparser
 
-def set_conf_option(conf_file, section, option, value, interpolation: bool = True):
+def set_conf_option(conf_file, section, option, value, interpolation = True):
 
     config = configparser.ConfigParser(interpolation=interpolation)
     config.optionxform = str  # mantiene maiuscole/minuscole
