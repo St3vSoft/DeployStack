@@ -136,7 +136,7 @@ def conf_lvm_manila(config):
     share_export_ip = get(config, "manila.lvm.SHARE_EXPORT_IP")
 
     set_conf_option(manila_conf, "DEFAULT", "enabled_share_backends", "lvm")
-    set_conf_option(manila_conf, "DEFAULT", "enabled_store_protocols", enabled_share_protocols)
+    set_conf_option(manila_conf, "DEFAULT", "enabled_share_protocols", enabled_share_protocols)
 
     set_conf_option(manila_conf, "lvm", "share_backend_name", backend_name)
     set_conf_option(manila_conf, "lvm", "driver_handles_share_servers", "False")
@@ -190,6 +190,8 @@ def finalize(env):
     return True
 
 def finalize_lvm_backend(config, env):
+
+    print()
 
     public_cidr = get(config, "neutron.public_network.PUBLIC_SUBNET_CIDR")
     backend_name = get(config, "manila.lvm.BACKEND_NAME")
@@ -279,6 +281,7 @@ def finalize_lvm_backend(config, env):
         ):
             return False
 
+        print()
 
         default_share_info = wait_share_available(
             "default_share",
@@ -329,8 +332,6 @@ def finalize_lvm_backend(config, env):
         )
 
         return False
-
-
 
     access_list = json.loads(
         os_run_output(

@@ -128,6 +128,7 @@ def install_pkgs(config):
     if not apt_install(packages, ux_text="Installing Horizon package..."): return False
 
     if install_manila:
+        print()
         if not setup_manila_horizon(): return False
 
     return True
