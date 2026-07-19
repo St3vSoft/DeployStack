@@ -69,7 +69,7 @@ def deploy(config_file):
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
     install_horizon = parse_bool(get(config, "optional_services.INSTALL_HORIZON", False))
 
-    is_lvm_manila_backend_enabled = get(config, "manila.BACKEND_NAME") == "lvm"
+    is_lvm_manila_backend_enabled = get(config, "manila.BACKEND") == "lvm"
 
     if install_cinder:
         cinder_pv = get(config, "cinder.lvm.PHYSICAL_VOLUME")
