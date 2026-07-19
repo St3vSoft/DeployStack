@@ -11,6 +11,10 @@ from ..utils.config.parser import get
 from ..utils.core.system_utils import nc_wait, is_debian
 from ..utils.core import colors
 
+from ..utils.config.helpers import parse_bool
+
+from .manila.horizon import setup_manila_horizon
+
 settings_file = "/etc/openstack-dashboard/local_settings.py"
 
 ubuntu_apache_conf = "/etc/apache2/conf-enabled/openstack-dashboard.conf"
@@ -112,13 +116,21 @@ def write_resolv_conf(config):
 
     return True
 
-def install_pkgs():
+def install_pkgs(config):
+
+    install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA", False))
+
     if not apt_update():
         return False
 
     packages = ["openstack-dashboard-apache"] if is_debian() else ["openstack-dashboard"]
 
-    return apt_install(packages, ux_text="Installing Horizon package...")
+    if not apt_install(packages, ux_text="Installing Horizon package..."): return False
+
+    if install_manila:
+        if not setup_manila_horizon(): return False
+
+    return True
 
 def conf_horizon(config):
     ip_address = get(config, "network.HOST_IP")
@@ -180,7 +192,7 @@ def finalize(config):
 def run_setup_horizon(config):
     write_resolv_conf(config)
 
-    if not install_pkgs():
+    if not install_pkgs(config):
         return False
 
     if not conf_horizon(config):

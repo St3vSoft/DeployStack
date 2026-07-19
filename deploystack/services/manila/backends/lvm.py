@@ -4,9 +4,9 @@ import os
 import json
 import pwd
 import grp
-import os
 import subprocess
 import shutil
+import time
 
 from ....utils.core.commands import run_command, os_run_output, os_run
 from ....utils.apt.apt import apt_install
@@ -17,6 +17,8 @@ from ....utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_servic
 from ....utils.lvm import get_vg_for_pv, ensure_system_user_with_run_command
 
 from ....templates import MANILA_LVM_NETWORK_SERVICE, MANILA_BRIDGE_IP_SCRIPT
+
+from .helpers import wait_manila_backend, wait_share_available
 
 from ....utils.core import colors
 
@@ -155,13 +157,15 @@ def conf_lvm_manila(config):
         with open(script_path, "w") as f:
             f.write(ip_script_content)
 
+        os.chmod(script_path, 0o755)
+
     except Exception as e:
         print(f"\n{colors.RED}Failed to write '{script_path}' with an unhandled exception: {e}{colors.RESET}")
         return False
 
     return True
     
-def finalize():
+def finalize(env):
 
     print()
 
@@ -180,36 +184,230 @@ def finalize():
 
     if not run_command(["systemctl", "restart", "manila-share"], "Restarting Manila services..."):
         return False
-
-    return True
-
-
-def finalize_lvm_backend(env):
-
-    share_type_list = json.loads(os_run_output(["openstack", "share", "type", "list", "-f", "json"], env=env))
-
-    default_share_exists = any(share_type.get("Name") == "default_share_type" for share_type in share_type_list)
-
-    if not default_share_exists:
-        print()
-        if not os_run([
-                "openstack", "share", "type", "create",
-                "default_share_type", "False",
-                "--extra-specs", "volume_backend_name=LVM"
-            ], "Creating default share type...", env=env):
-                return False
-        
-    share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env))
-
-    default_share_exists = any(share.get("Name") == "default_share" for share in share_list)
-
-    if not default_share_exists:
-        print()
-        if not os_run(["openstack", "share", "create", "NFS", "1", "--name", "default_share"], "Creating default share...", env=env):
-            return False
-        
-    return True
     
+    if not wait_manila_backend(env=env) : return False
+
+    return True
+
+def finalize_lvm_backend(config, env):
+
+    public_cidr = get(config, "neutron.public_network.PUBLIC_SUBNET_CIDR")
+    backend_name = get(config, "manila.lvm.BACKEND_NAME")
+
+    share_type_list = json.loads(
+        os_run_output(
+            ["openstack", "share", "type", "list", "-f", "json"],
+            env=env
+        )
+    )
+
+    default_share_type_exists = any(
+        share_type.get("Name", share_type.get("name")) == "default_share_type"
+        for share_type in share_type_list
+    )
+
+    if not default_share_type_exists:
+
+        if not os_run(
+            [
+                "openstack",
+                "share",
+                "type",
+                "create",
+                "default_share_type",
+                "False",
+                "--extra-specs",
+                f"share_backend_name={backend_name.lower()}"
+            ],
+            "Creating default share type...",
+            env=env
+        ):
+            return False
+
+
+    share_list = json.loads(
+        os_run_output(
+            ["openstack", "share", "list", "-f", "json"],
+            env=env
+        )
+    )
+
+    default_share = next(
+        (
+            share for share in share_list
+            if share.get("Name", share.get("name")) == "default_share"
+        ),
+        None
+    )
+
+
+    if default_share:
+
+        default_share_id = default_share.get(
+            "ID",
+            default_share.get("id")
+        )
+
+        print(
+            f"{colors.YELLOW}"
+            f"default_share already exists, checking status..."
+            f"{colors.RESET}"
+        )
+
+        default_share_info = wait_share_available(
+            "default_share",
+            env
+        )
+
+        if not default_share_info:
+            return False
+
+    else:
+
+        if not os_run(
+            [
+                "openstack",
+                "share",
+                "create",
+                "NFS",
+                "1",
+                "--name",
+                "default_share"
+            ],
+            "Creating default share...",
+            env=env
+        ):
+            return False
+
+
+        default_share_info = wait_share_available(
+            "default_share",
+            env
+        )
+
+        if not default_share_info:
+            return False
+
+
+        default_share_id = default_share_info.get("id")
+
+
+    if not default_share_id:
+
+        print(
+            f"{colors.RED}"
+            "ERROR: unable to retrieve default_share id"
+            f"{colors.RESET}"
+        )
+
+        return False
+
+
+
+    export_locations = default_share_info.get(
+        "export_locations",
+        ""
+    )
+
+    export_info = {}
+
+    for line in export_locations.splitlines():
+
+        if "=" in line:
+
+            key, value = line.split("=", 1)
+
+            export_info[key.strip()] = value.strip()
+
+
+    if not export_info.get("path"):
+
+        print(
+            f"{colors.RED}"
+            "ERROR: default_share has no export location available"
+            f"{colors.RESET}"
+        )
+
+        return False
+
+
+
+    access_list = json.loads(
+        os_run_output(
+            [
+                "openstack",
+                "share",
+                "access",
+                "list",
+                default_share_id,
+                "-f",
+                "json"
+            ],
+            env=env
+        )
+    )
+
+
+    rules = [
+        public_cidr,
+        "10.0.0.0/24"
+    ]
+
+
+    for cidr in rules:
+
+        rule_exists = any(
+            access.get("access_type") == "ip"
+            and access.get("access_to") == cidr
+            for access in access_list
+        )
+
+
+        if rule_exists:
+
+            print(
+                f"{colors.YELLOW}"
+                f"Access rule {cidr} already exists, skipping."
+                f"{colors.RESET}"
+            )
+
+            continue
+
+
+        if not os_run(
+            [
+                "openstack",
+                "share",
+                "access",
+                "create",
+                default_share_id,
+                "ip",
+                cidr
+            ],
+            f"Adding access rule {cidr}...",
+            env=env
+        ):
+            return False
+
+
+        access_list = json.loads(
+            os_run_output(
+                [
+                    "openstack",
+                    "share",
+                    "access",
+                    "list",
+                    default_share_id,
+                    "-f",
+                    "json"
+                ],
+                env=env
+            )
+        )
+
+
+    return True
+
 def run_setup_lvm_backend(config, env):
 
     lvm_image_file_path = get(config, "manila.lvm.LVM_IMAGE_FILE_PATH")
@@ -229,8 +427,8 @@ def run_setup_lvm_backend(config, env):
 
     if not conf_lvm_manila(config): return False
 
-    if not finalize(): return False
-    if not finalize_lvm_backend(env=env): return False
+    if not finalize(env): return False
+    if not finalize_lvm_backend(config, env=env): return False
 
     return True
 
