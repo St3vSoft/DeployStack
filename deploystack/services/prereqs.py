@@ -209,7 +209,7 @@ def run_setup_prereqs(config):
     ip_address = get(config, "network.HOST_IP")
 
     if not set_openstack_release(config): return False
-    if not install_pkgs(): return False
+    if not install_pkgs(config): return False
 
     if not nc_wait(ip_address, 5672) : return False
     if not add_rabbitmq_openstack_user(config): return False

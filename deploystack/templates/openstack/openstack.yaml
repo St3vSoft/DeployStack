@@ -117,7 +117,7 @@ manila:
 
     SHARE_VOLUME_GROUP: "manila-volumes"
 
-    SHARE_EXPORT_IP:
+    SHARE_EXPORT_IP: 
 
     # --- Physical volume ---
 
