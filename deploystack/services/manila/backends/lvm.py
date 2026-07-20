@@ -173,7 +173,7 @@ def finalize(env):
 
     if not run_command(["systemctl", "daemon-reload"], "Reloading systemd daemon..."): return False
 
-    if not run_command(["systemctl", "enable", "--now", "manila-lvm-network.service"], "Enabling and starting manila-lvm-network.service..."): return False
+    if not run_command(["systemctl", "enable", "--now", "manila-lvm-network.service"], "Enabling and starting Manila LVM Network service..."): return False
 
     print()
 
@@ -249,6 +249,8 @@ def finalize_lvm_backend(config, env):
         if not export_info.get("path"):
             print(f"{colors.RED}ERROR: {share_name} has no export location available{colors.RESET}")
             return False
+    
+        print()
 
         for rule in share.get("access_rules", []):
             rule_access_type = rule["type"]
@@ -272,16 +274,17 @@ def finalize_lvm_backend(config, env):
 
 def run_setup_lvm_backend(config, env):
 
-    lvm_image_file_path = get(config, "manila.lvm.LVM_IMAGE_FILE_PATH")
-    lvm_loop_dev = get(config, "manila.lvm.LVM_LOOP_PATH")
+    lvm_image_file_path = get(config, "manila.backends.lvm.MANILA_LVM_IMAGE_FILE_PATH")
+    lvm_loop_dev = get(config, "manila.backends.lvm.MANILA_LVM_LOOP_PATH")
 
-    vg_name = get(config, "manila.lvm.SHARE_VOLUME_GROUP")
+    vg_name = get(config, "manila.backends.lvm.SHARE_VOLUME_GROUP")
+
 
     if not install_pkgs(): return False
 
     if not conf_lvm(config): return False
 
-    using_loopback = not get(config, "manila.lvm.PHYSICAL_VOLUME")
+    using_loopback = not get(config, "manila.backends.lvm.PHYSICAL_VOLUME")
 
     if using_loopback:
         if not write_loopback_lvm_env("manila", lvm_image_file_path, lvm_loop_dev, vg_name, description="Manila Loopback LVM", before_services="manila-share.service"): return False   
