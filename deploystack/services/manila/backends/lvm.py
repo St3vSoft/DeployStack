@@ -265,7 +265,7 @@ def finalize_lvm_backend(config, env):
                 print(f"{colors.YELLOW}Access rule {rule_access} already exists, skipping.{colors.RESET}")
                 continue
 
-            if not os_run(["openstack", "share", "access", "create", "--access-type", rule_access_type, "--access-level", rule_access_level, share_id, rule_access], f"Adding access rule {rule_access} to '{share_name}'...", env=env):
+            if not os_run(["openstack", "share", "access", "create", "--access-level", rule_access_level, share_id, rule_access_type, rule_access], f"Adding access rule {rule_access} to '{share_name}'...", env=env):
                 return False
             
             share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env))
