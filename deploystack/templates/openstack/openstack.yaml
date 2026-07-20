@@ -93,46 +93,83 @@ neutron:
     #    remote_ip_prefix: "0.0.0.0/0"
 
 manila:
-  BACKEND: "generic"     # generic | lvm
+  # Manila backend to use.
+  # generic: creates share servers using Nova service instances (more complex, multi-node)
+  # lvm: exports shares directly from the storage node using LVM (simple, single-node)
+  BACKEND: "generic"
 
-  SERVICE_NETWORK_NAME: "manila-service-network"
+  # Supported share protocols.
+  # Examples: NFS, CIFS
 
   SHARE_PROTOCOLS:
     - NFS
 
-  generic:
-    BACKEND_NAME: "generic"
+  backends:
 
-    SERVICE_INSTANCE_FLAVOR: "manila-service"
-    SERVICE_IMAGE_NAME: "manila-service-image"
+    generic:
+      BACKEND_NAME: "generic"
 
-    DRIVER_HANDLES_SHARE_SERVERS: "yes"
+      SERVICE_NETWORK_NAME: "manila-service-network"
 
-    INTERFACE_DRIVER: "manila.network.linux.interface.OVSInterfaceDriver"
+      SERVICE_INSTANCE_FLAVOR_NAME: "manila-service-flavor"
 
-    CONNECT_SHARE_SERVER_TO_TENANT_NETWORK: "yes"
+      SERVICE_IMAGE_NAME: "manila-service-image"
 
-  lvm:
-    BACKEND_NAME: "lvm"
+      DRIVER_HANDLES_SHARE_SERVERS: "yes"
 
-    SHARE_VOLUME_GROUP: "manila-volumes"
+      INTERFACE_DRIVER: "manila.network.linux.interface.OVSInterfaceDriver"
 
-    SHARE_EXPORT_IP: 
+      CONNECT_SHARE_SERVER_TO_TENANT_NETWORK: "yes"
 
-    # --- Physical volume ---
+      # Nova flavor configuration for Manila service instances.
+      SERVICE_INSTANCE_FLAVOR:
+        ID: 10
+        RAM: 1024
+        VCPUS: 1
+        DISK: 10
 
-    # Path to a real block device to use as LVM backend
-    # If set, the loopback settings below are ignored
-    # Example: "/dev/sdb"
-    PHYSICAL_VOLUME: ""
+    lvm:
+      # Backend name identifier.
+      BACKEND_NAME: "lvm"
 
-    # --- Loopback device (used only if PHYSICAL_VOLUME is not set) ---
+      # Manila share driver used by this backend.
+      SHARE_DRIVER: "manila.share.drivers.lvm.LVMShareDriver"
 
-    LVM_IMAGE_FILE_PATH: "/var/lib/manila/manila-volumes.img"
+      DRIVER_HANDLES_SHARE_SERVERS: "no"
 
-    LVM_IMAGE_SIZE_IN_GB: "10"
+      SHARE_VOLUME_GROUP: "manila-volumes"
 
-    LVM_LOOP_PATH: "/dev/loop0"
+      SHARE_EXPORT_IP: ""
+
+
+      # -------------------------
+      # Physical volume configuration
+      # -------------------------
+
+      PHYSICAL_VOLUME: ""
+
+      # -------------------------
+      # Loopback device configuration
+      # -------------------------
+
+      MANILA_LVM_IMAGE_FILE_PATH: "/var/lib/manila/manila-volumes.img"
+
+      MANILA_LVM_IMAGE_SIZE_IN_GB: "10"
+
+      MANILA_LVM_LOOP_PATH: "/dev/loop0"
+
+
+  # Shares to create automatically after deployment.
+  shares:
+    # Share name.
+    - name: default_share
+      share_type: default_share_type
+      share_protocol: NFS
+      share_size: 1
+      access_rules:
+        - type: "ip"
+          access: "10.0.0.0/24"
+          level: "rw"
 
 cinder:
   lvm:

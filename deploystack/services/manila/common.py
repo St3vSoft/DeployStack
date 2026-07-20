@@ -17,7 +17,7 @@ def install_pkgs():
     if not apt_update():
         return False
     
-    if not apt_install(["manila-api", "manila-scheduler", "manila-share", "python3-manilaclient"], "Installing Manila packages..."):
+    if not apt_install(["manila-api", "manila-scheduler", "python3-manilaclient"], "Installing Manila packages..."):
         return False
     
     return True
