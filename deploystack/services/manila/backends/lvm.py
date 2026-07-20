@@ -220,7 +220,7 @@ def finalize_lvm_backend(config, env):
         if existing_share:
             print(f"{colors.YELLOW}{share_name} already exists, checking status...{colors.RESET}")
         else:
-            if not os_run(["openstack", "share", "create", "--share-type", share_type, "--share-protocol", share_protocol, "--size", str(share_size), share_name], f"Creating share '{share_name}'...", env=env):
+            if not os_run(["openstack", "share", "create", "--name", share_name ,"--share-type", share_type, share_protocol, str(share_size)], f"Creating share '{share_name}'...", env=env):
                 return False
 
         share_info = wait_share_available(share_name, env)
