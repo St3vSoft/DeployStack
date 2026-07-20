@@ -173,7 +173,7 @@ def finalize(env):
 
     if not run_command(["systemctl", "daemon-reload"], "Reloading systemd daemon..."): return False
 
-    if not run_command(["systemctl", "enable", "--now", "manila-lvm-network.service"], "Enabling and starting Manila LVM Network service..."): return False
+    if not run_command(["systemctl", "enable", "--now", "manila-lvm-network.service"], "Enabling Manila LVM Network service..."): return False
 
     print()
 
@@ -184,7 +184,7 @@ def finalize(env):
 
     os.chmod("/etc/sudoers.d/manila-privsep", 0o440)
 
-    if not run_command(["systemctl", "restart", "manila-share"], "Restarting Manila services..."):
+    if not run_command(["systemctl", "restart", "manila-share", "manila-lvm-network.service"], "Restarting Manila Share services..."):
         return False
     
     if not wait_manila_backend(env=env) : return False
