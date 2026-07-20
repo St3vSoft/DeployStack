@@ -18,6 +18,7 @@ from ....utils.lvm import get_vg_for_pv, ensure_system_user_with_run_command
 from ....templates import MANILA_LVM_NETWORK_SERVICE, MANILA_BRIDGE_IP_SCRIPT
 
 from .helpers import wait_manila_backend, wait_share_available
+from ....utils.config.helpers import parse_bool
 
 from ....utils.core import colors
 
@@ -127,6 +128,8 @@ def conf_lvm_manila(config):
     protocols = get(config, "manila.SHARE_PROTOCOLS", default=["NFS"])
     enabled_share_protocols = ",".join(protocols)
 
+    driver_handles_share_servers = get(config, "manila.backends.lvm.DRIVER_HANDLES_SHARE_SERVERS")
+
     vg_name = get(config, "manila.backends.lvm.SHARE_VOLUME_GROUP")
     
     public_bridge = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE")
@@ -138,7 +141,7 @@ def conf_lvm_manila(config):
     set_conf_option(manila_conf, "DEFAULT", "enabled_share_protocols", enabled_share_protocols)
 
     set_conf_option(manila_conf, "lvm", "share_backend_name", backend_name)
-    set_conf_option(manila_conf, "lvm", "driver_handles_share_servers", "False")
+    set_conf_option(manila_conf, "lvm", "driver_handles_share_servers", parse_bool(driver_handles_share_servers), False)
     set_conf_option(manila_conf, "lvm", "share_driver", "manila.share.drivers.lvm.LVMShareDriver")
     set_conf_option(manila_conf, "lvm", "lvm_share_volume_group", vg_name)
     set_conf_option(manila_conf, "lvm", "lvm_share_export_ips", share_export_ip)
@@ -290,5 +293,3 @@ def run_setup_lvm_backend(config, env):
     if not finalize_lvm_backend(config, env=env): return False
 
     return True
-
-

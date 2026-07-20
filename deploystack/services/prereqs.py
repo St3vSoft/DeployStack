@@ -161,13 +161,14 @@ def install_pkgs(config):
         cinder_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
 
         devices.append(cinder_pv or cinder_loop_dev)
-        prereqs_pkgs.append("lvm2")
 
     if install_manila and is_lvm_manila_backend_enabled:
         manila_pv = get(config, "manila.lvm.PHYSICAL_VOLUME")
         manila_loop_dev = get(config, "manila.lvm.LVM_LOOP_PATH")
 
         devices.append(manila_pv or manila_loop_dev)
+        
+    if devices:
         prereqs_pkgs.append("lvm2")
 
     if not apt_install(prereqs_pkgs, ux_text=f"Installing prerequisite packages..."): return False
