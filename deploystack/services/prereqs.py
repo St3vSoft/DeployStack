@@ -163,8 +163,8 @@ def install_pkgs(config):
         devices.append(cinder_pv or cinder_loop_dev)
 
     if install_manila and is_lvm_manila_backend_enabled:
-        manila_pv = get(config, "manila.lvm.PHYSICAL_VOLUME")
-        manila_loop_dev = get(config, "manila.lvm.LVM_LOOP_PATH")
+        manila_pv = get(config, "manila.backends.lvm.PHYSICAL_VOLUME")
+        manila_loop_dev = get(config, "manila.backends.lvm.MANILA_LVM_LOOP_PATH")
 
         devices.append(manila_pv or manila_loop_dev)
         

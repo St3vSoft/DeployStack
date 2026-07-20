@@ -167,9 +167,9 @@ manila:
       share_protocol: NFS
       share_size: 1
       access_rules:
-        - type: "ip"
-          access: "10.0.0.0/24"
-          level: "rw"
+      - type: "ip"
+        access: "10.0.0.0/24"
+        level: "rw"
 
 cinder:
   lvm:
