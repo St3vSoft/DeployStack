@@ -239,11 +239,25 @@ def finalize_lvm_backend(config, env):
 
         for _ in range(10):
             share_info = json.loads(os_run_output(["openstack", "share", "show", share_id, "-f", "json"], env=env) or "{}")
-            export_locations = share_info.get("export_locations", [])
+            export_locations = share_info.get("export_locations", "")
 
             if export_locations:
-                export_path = export_locations[0].get("path")
-                break
+                if isinstance(export_locations, str):
+                    for line in export_locations.splitlines():
+                        if line.strip().startswith("path ="):
+                            export_path = line.split("=", 1)[1].strip()
+                            break
+
+                elif isinstance(export_locations, list):
+                    first_location = export_locations[0]
+
+                    if isinstance(first_location, dict):
+                        export_path = first_location.get("path")
+                    elif isinstance(first_location, str):
+                        export_path = first_location
+
+                if export_path:
+                    break
 
             time.sleep(3)
 
