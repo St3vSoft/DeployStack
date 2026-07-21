@@ -79,7 +79,7 @@ def conf_lvm(config):
         except subprocess.CalledProcessError:
             losetup_output = ""
 
-        if lvm_loop_dev not in losetup_output:
+        if lvm_image_file_path not in losetup_output:
             if not run_command(
                 ["losetup", lvm_loop_dev, lvm_image_file_path],
                 f"Associating {lvm_image_file_path} to {lvm_loop_dev}..."
