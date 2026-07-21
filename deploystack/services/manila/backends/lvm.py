@@ -284,7 +284,7 @@ def finalize_lvm_backend(config, env):
             for _ in range(10):
                 access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env) or "[]")
 
-                if any(access.get("access_type") == rule_access_type and access.get("access_to") == rule_access for access in access_list):
+                if any(access.get("access_type", access.get("Access Type")) == rule_access_type and access.get("access_to", access.get("Access To")) == rule_access for access in access_list):
                     break
 
                 time.sleep(2)
