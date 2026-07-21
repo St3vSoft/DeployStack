@@ -129,7 +129,7 @@ def install_pkgs(config):
 
     if install_manila:
         print()
-        if not setup_manila_horizon(): return False
+        if not setup_manila_horizon(config): return False
 
     return True
 

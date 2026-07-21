@@ -2,7 +2,10 @@ import os
 import glob
 
 from ....utils.apt.apt import apt_install
+from ....utils.config.parser import get
 from ....utils.core import colors
+
+from ....utils.config.helpers import parse_bool
 
 manila_ui_enabled_dir = "/usr/lib/python3/dist-packages/manila_ui/local/enabled/"
 openstack_dashboard_local_enabled_dir = "/usr/share/openstack-dashboard/openstack_dashboard/local/enabled/"
@@ -12,6 +15,41 @@ def install_pkgs():
     if not apt_install(["python3-manila-ui"], "Installing Python3 Manila UI Packages..."):
         return False
     
+    return True
+
+def disable_dhss_dashboard_panels():
+
+    dhss_panels = [
+        "_9040_manila_admin_add_share_networks_panel_to_share_panel_group.py",
+        "_9040_manila_project_add_share_networks_panel_to_share_panel_group.py",
+
+        "_9050_manila_admin_add_security_services_panel_to_share_panel_group.py",
+        "_9050_manila_project_add_security_services_panel_to_share_panel_group.py",
+
+        "_9060_manila_admin_add_share_servers_panel_to_share_panel_group.py",
+
+        "_9070_manila_admin_add_share_instances_panel_to_share_panel_group.py",
+
+        "_9080_manila_admin_add_share_groups_panel_to_share_panel_group.py",
+        "_9080_manila_project_add_share_groups_panel_to_share_panel_group.py",
+
+        "_9085_manila_admin_add_share_group_snapshots_panel_to_share_panel_group.py",
+        "_9085_manila_project_add_share_group_snapshots_panel_to_share_panel_group.py",
+
+        "_9090_manila_admin_add_share_group_types_panel_to_share_panel_group.py",
+    ]
+
+    for panel in dhss_panels:
+        src = os.path.join(manila_ui_enabled_dir, panel)
+        dst = src + ".disabled"
+
+        if os.path.exists(src) and not os.path.exists(dst):
+            try:
+                os.rename(src, dst)
+            except OSError as e:
+                print(f"{colors.RED}Error: Unable to disable '{panel}' panel with exception: {e}{colors.RESET}")
+                return False
+            
     return True
 
 def add_dashboard_ui_symlink():
@@ -47,7 +85,12 @@ def add_dashboard_ui_symlink():
     
     return True
 
-def setup_manila_horizon():
+def setup_manila_horizon(config):
+
+    is_lvm = get(config, "manila.BACKEND") == "lvm"
+    dhss = parse_bool(get(config, "manila.backends.lvm.DRIVER_HANDLES_SHARE_SERVERS"), False)
+
+    is_dhss_enabled = is_lvm and dhss
 
     if not os.path.exists("/usr/share/openstack-dashboard"):
         print(
@@ -56,6 +99,11 @@ def setup_manila_horizon():
         return False
 
     if not install_pkgs() : return False
+
+    if not is_dhss_enabled:
+        if not disable_dhss_dashboard_panels():
+            return False
+
     if not add_dashboard_ui_symlink() : return False
 
     return True

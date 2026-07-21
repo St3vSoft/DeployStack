@@ -184,7 +184,7 @@ def finalize(env):
 
     os.chmod("/etc/sudoers.d/manila-privsep", 0o440)
 
-    if not run_command(["systemctl", "restart", "manila-share", "manila-lvm-network.service"], "Restarting Manila Share services..."):
+    if not run_command(["systemctl", "restart", "manila-share", "manila-lvm-network"], "Restarting Manila Share services..."):
         return False
     
     if not wait_manila_backend(env=env) : return False
@@ -265,7 +265,7 @@ def finalize_lvm_backend(config, env):
                 print(f"{colors.YELLOW}Access rule {rule_access} already exists, skipping.{colors.RESET}")
                 continue
 
-            if not os_run(["openstack", "share", "access", "create", "--access-level", rule_access_level, share_id, rule_access_type, rule_access], f"Adding access rule {rule_access} to '{share_name}'...", env=env):
+            if not os_run(["openstack", "share", "access", "create", "--access-level", rule_access_level, share_id, rule_access_type, rule_access], f"Adding access rule {rule_access} to '{share_name}'... ", env=env):
                 return False
             
             share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env))
