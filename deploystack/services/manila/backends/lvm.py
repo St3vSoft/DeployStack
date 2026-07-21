@@ -232,7 +232,7 @@ def finalize_lvm_backend(config, env):
             share_id = share_info.get("id")
 
         if not share_id:
-            print(f"{colors.RED}ERROR: unable to retrieve {share_name} id{colors.RESET}")
+            print(f"\n{colors.RED}ERROR: unable to retrieve {share_name} id{colors.RESET}")
             return False
 
         export_path = None
@@ -262,7 +262,7 @@ def finalize_lvm_backend(config, env):
             time.sleep(3)
 
         if not export_path:
-            print(f"{colors.RED}ERROR: {share_name} has no export location available{colors.RESET}")
+            print(f"\n{colors.RED}ERROR: {share_name} has no export location available{colors.RESET}")
             return False
         
         print()
@@ -302,7 +302,6 @@ def run_setup_lvm_backend(config, env):
     lvm_loop_dev = get(config, "manila.backends.lvm.MANILA_LVM_LOOP_PATH")
 
     vg_name = get(config, "manila.backends.lvm.SHARE_VOLUME_GROUP")
-
 
     if not install_pkgs(): return False
 

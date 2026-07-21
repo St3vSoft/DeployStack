@@ -129,11 +129,9 @@ def conf_ovn_bridges(config):
         backup_path = os.path.join(backup_dir, backup_name)
         shutil.move(full_path, backup_path)
 
-    if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge],
-                       f"Adding bridge {public_bridge}"): return False
+    if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge], f"Adding bridge {public_bridge}"): return False
     
-    if not run_command(["ovs-vsctl", "--may-exist", "add-port", public_bridge, public_iface],
-                       f"Adding port {public_iface} to {public_bridge}"): return False
+    if not run_command(["ovs-vsctl", "--may-exist", "add-port", public_bridge, public_iface], f"Adding port {public_iface} to {public_bridge}"): return False
     
     if custom_bridges:
         if not add_custom_bridges(bridges=bridges, public_bridge=public_bridge, tunnel_bridge=None, internal_flat_bridge=None) : return False
@@ -530,13 +528,6 @@ def create_ovn_networks(config, env):
         if not add_rules_to_default_sg(create_bridges=create_ovn_bridges, rules_dict=services_rules, ip_prefix=services_rules_remote_ip_prefix, sg_id=sg_id, rules=rules, env=env) : return False
 
     print()
-
-    #if create_ovn_bridges:
-    
-     #   router_gw_ip = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json"], env=env))
-
-      #  gw_ip = router_gw_ip["external_gateway_info"]["external_fixed_ips"][0]["ip_address"]
-        #run_command_sync(["ip", "route", "replace", "10.0.0.0/24", "via", gw_ip, "dev", ovn_public_bridge])
 
     if not run_command([
         "neutron-ovn-db-sync-util",
