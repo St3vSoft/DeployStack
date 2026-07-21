@@ -184,7 +184,7 @@ def finalize(env):
 
     os.chmod("/etc/sudoers.d/manila-privsep", 0o440)
 
-    if not run_command(["systemctl", "restart", "manila-share", "manila-lvm-network"], "Restarting Manila Share services..."):
+    if not run_command(["systemctl", "restart", "manila-share", "manila-lvm-network"], "Restarting Manila Share services...", False, None, 3, 5):
         return False
     
     if not wait_manila_backend(env=env) : return False

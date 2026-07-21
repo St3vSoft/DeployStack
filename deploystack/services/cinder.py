@@ -237,7 +237,6 @@ def finalize(config):
 
 def run_setup_cinder(config):
 
-    lvm_physical_volume = get(config, "cinder.lvm.PHYSICAL_VOLUME")
     lvm_image_file_path = get(config, "cinder.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
     lvm_loop_dev = get(config, "cinder.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
 
