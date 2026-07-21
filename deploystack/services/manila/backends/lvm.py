@@ -272,7 +272,7 @@ def finalize_lvm_backend(config, env):
 
             access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env) or "[]")
 
-            rule_exists = any(access.get("access_type") == rule_access_type and access.get("access_to") == rule_access for access in access_list)
+            rule_exists = any(access.get("access_type", access.get("Access Type")) == rule_access_type and access.get("access_to", access.get("Access To")) == rule_access for access in access_list)
 
             if rule_exists:
                 print(f"{colors.YELLOW}Access rule {rule_access} already exists, skipping.{colors.RESET}")
