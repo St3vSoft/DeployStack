@@ -19,37 +19,39 @@ def install_pkgs():
 
 def disable_dhss_dashboard_panels():
 
+    enabled_dirs = [
+        "/usr/lib/python3/dist-packages/openstack_dashboard/enabled",
+        "/usr/lib/python3/dist-packages/manila_ui/local/enabled",
+    ]
+
     dhss_panels = [
         "_9040_manila_admin_add_share_networks_panel_to_share_panel_group.py",
         "_9040_manila_project_add_share_networks_panel_to_share_panel_group.py",
-
         "_9050_manila_admin_add_security_services_panel_to_share_panel_group.py",
         "_9050_manila_project_add_security_services_panel_to_share_panel_group.py",
-
         "_9060_manila_admin_add_share_servers_panel_to_share_panel_group.py",
-
         "_9070_manila_admin_add_share_instances_panel_to_share_panel_group.py",
-
         "_9080_manila_admin_add_share_groups_panel_to_share_panel_group.py",
         "_9080_manila_project_add_share_groups_panel_to_share_panel_group.py",
-
         "_9085_manila_admin_add_share_group_snapshots_panel_to_share_panel_group.py",
         "_9085_manila_project_add_share_group_snapshots_panel_to_share_panel_group.py",
-
         "_9090_manila_admin_add_share_group_types_panel_to_share_panel_group.py",
     ]
 
-    for panel in dhss_panels:
-        src = os.path.join(manila_ui_enabled_dir, panel)
-        dst = src + ".disabled"
+    for enabled_dir in enabled_dirs:
+        for panel in dhss_panels:
+            src = os.path.join(enabled_dir, panel)
+            dst = src + ".disabled"
 
-        if os.path.exists(src) and not os.path.exists(dst):
-            try:
-                os.rename(src, dst)
-            except OSError as e:
-                print(f"{colors.RED}Error: Unable to disable '{panel}' panel with exception: {e}{colors.RESET}")
-                return False
-            
+            if os.path.exists(src) and not os.path.exists(dst):
+                try:
+                    os.rename(src, dst)
+                except OSError as e:
+                    print(
+                        f"{colors.RED}Error: Unable to disable '{panel}' panel with exception: {e}{colors.RESET}"
+                    )
+                    return False
+
     return True
 
 def add_dashboard_ui_symlink():
@@ -100,10 +102,10 @@ def setup_manila_horizon(config):
 
     if not install_pkgs() : return False
 
+    if not add_dashboard_ui_symlink() : return False
+    
     if not is_dhss_enabled:
         if not disable_dhss_dashboard_panels():
             return False
-
-    if not add_dashboard_ui_symlink() : return False
 
     return True
