@@ -264,6 +264,8 @@ def finalize_lvm_backend(config, env):
         if not export_path:
             print(f"{colors.RED}ERROR: {share_name} has no export location available{colors.RESET}")
             return False
+        
+        print()
 
         for rule in share.get("access_rules", []):
             rule_access_type = rule["type"]
@@ -275,7 +277,7 @@ def finalize_lvm_backend(config, env):
             rule_exists = any(access.get("access_type", access.get("Access Type")) == rule_access_type and access.get("access_to", access.get("Access To")) == rule_access for access in access_list)
 
             if rule_exists:
-                print(f"{colors.YELLOW}Access rule {rule_access} already exists, skipping.{colors.RESET}")
+                print(f"{colors.YELLOW}Access rule {rule_access} already exists, skipping creation.{colors.RESET}")
                 continue
 
             if not os_run(["openstack", "share", "access", "create", "--access-level", rule_access_level, share_id, rule_access_type, rule_access], f"Adding access rule {rule_access} to '{share_name}'...", env=env):
@@ -289,7 +291,7 @@ def finalize_lvm_backend(config, env):
 
                 time.sleep(2)
             else:
-                print(f"\n{colors.RED}ERROR: access rule {rule_access} not created{colors.RESET}")
+                print(f"\n{colors.RED}ERROR: access rule {rule_access} is not created{colors.RESET}")
                 return False
 
     return True

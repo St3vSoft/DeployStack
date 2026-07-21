@@ -36,6 +36,6 @@ def add_rules_to_default_sg(create_bridges: bool, rules_dict, ip_prefix, sg_id: 
             if not os_run(cmd, f"Allowing {rule_type} access...", env=env):
                 return False
         else:
-            print(f"{colors.YELLOW}{rule_type} rule already exists, skipping creation{colors.RESET}")
+            print(f"{colors.YELLOW}{rule_type} rule already exists, skipping creation.{colors.RESET}")
 
     return True
