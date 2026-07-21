@@ -6,6 +6,7 @@ import pwd
 import grp
 import subprocess
 import shutil
+import time
 
 from ....utils.core.commands import run_command, os_run_output, os_run
 from ....utils.apt.apt import apt_install
@@ -197,9 +198,9 @@ def finalize_lvm_backend(config, env):
 
     backend_name = get(config, "manila.backends.lvm.BACKEND_NAME").lower()
 
-    shares = get(config, "manila.shares", [])
+    shares = get(config, "manila.shares") or []
 
-    share_type_list = json.loads(os_run_output(["openstack", "share", "type", "list", "-f", "json"], env=env))
+    share_type_list = json.loads(os_run_output(["openstack", "share", "type", "list", "-f", "json"], env=env) or "[]")
 
     default_share_type_exists = any(share_type.get("Name", share_type.get("name")) == "default_share_type" for share_type in share_type_list)
 
@@ -207,7 +208,7 @@ def finalize_lvm_backend(config, env):
         if not os_run(["openstack", "share", "type", "create", "default_share_type",  "False",  "--extra-specs", f"share_backend_name={backend_name}"], "Creating default share type...", env=env):
             return False
 
-    share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env))
+    share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env) or "[]")
 
     for share in shares:
         share_name = share["name"]
@@ -220,8 +221,9 @@ def finalize_lvm_backend(config, env):
         if existing_share:
             print(f"{colors.YELLOW}{share_name} already exists, checking status...{colors.RESET}")
         else:
-            if not os_run(["openstack", "share", "create", "--name", share_name ,"--share-type", share_type, share_protocol, str(share_size)], f"Creating share '{share_name}'...", env=env):
-                return False
+            if not os_run(["openstack","share", "create", "--name", share_name, "--share-type", share_type, share_protocol, str(share_size)], f"Creating share '{share_name}'...",env=env): return False
+
+            share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env) or "[]")
 
         share_info = wait_share_available(share_name, env)
 
@@ -234,30 +236,19 @@ def finalize_lvm_backend(config, env):
             print(f"{colors.RED}ERROR: unable to retrieve {share_name} id{colors.RESET}")
             return False
 
-        export_info = {}
         export_locations = share_info.get("export_locations", [])
-
-        if isinstance(export_locations, list):
-            export_info = export_locations[0] if export_locations else {}
-        else:
-            export_info = {}
-            for line in export_locations.splitlines():
-                if "=" in line:
-                    key, value = line.split("=",1)
-                    export_info[key.strip()] = value.strip()
+        export_info = export_locations[0] if isinstance(export_locations, list) and export_locations else {}
 
         if not export_info.get("path"):
             print(f"{colors.RED}ERROR: {share_name} has no export location available{colors.RESET}")
             return False
-    
-        print()
 
         for rule in share.get("access_rules", []):
             rule_access_type = rule["type"]
             rule_access = rule["access"]
             rule_access_level = rule["level"]
 
-            access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env))
+            access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env) or "[]")
 
             rule_exists = any(access.get("access_type") == rule_access_type and access.get("access_to") == rule_access for access in access_list)
 
@@ -266,9 +257,15 @@ def finalize_lvm_backend(config, env):
                 continue
 
             if not os_run(["openstack", "share", "access", "create", "--access-level", rule_access_level, share_id, rule_access_type, rule_access], f"Adding access rule {rule_access} to '{share_name}'... ", env=env):
-                return False
-            
-            share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env))
+                for _ in range(3):
+                    access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env) or "[]")
+
+                    if any(access.get("access_type") == rule_access_type and access.get("access_to") == rule_access for access in access_list):
+                        break
+
+                    time.sleep(2)
+                else:
+                    return False
 
     return True
 
