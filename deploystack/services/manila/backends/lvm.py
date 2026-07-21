@@ -289,7 +289,7 @@ def finalize_lvm_backend(config, env):
 
                 time.sleep(2)
             else:
-                print(f"{colors.RED}ERROR: access rule {rule_access} not created{colors.RESET}")
+                print(f"\n{colors.RED}ERROR: access rule {rule_access} not created{colors.RESET}")
                 return False
 
     return True
