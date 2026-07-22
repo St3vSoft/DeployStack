@@ -89,10 +89,12 @@ def add_dashboard_ui_symlink():
 
 def setup_manila_horizon(config):
 
-    is_lvm = get(config, "manila.BACKEND") == "lvm"
-    dhss = parse_bool(get(config, "manila.backends.lvm.DRIVER_HANDLES_SHARE_SERVERS"), False)
+    is_generic = get(config, "manila.BACKEND") == "generic"
 
-    is_dhss_enabled = is_lvm and dhss
+    is_generic_dhss_enabled = parse_bool(get(config, "manila.backends.generic.DRIVER_HANDLES_SHARE_SERVERS"), False)
+    is_lvm_dhss_enabled = parse_bool(get(config, "manila.backends.lvm.DRIVER_HANDLES_SHARE_SERVERS"), False)
+
+    is_dhss_enabled = is_generic and is_generic_dhss_enabled or is_lvm_dhss_enabled
 
     if not os.path.exists("/usr/share/openstack-dashboard"):
         print(
