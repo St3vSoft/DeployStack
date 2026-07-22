@@ -10,7 +10,7 @@ from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
 from ....utils.config.helpers import parse_bool
 
-from .helpers import wait_manila_backend, wait_share_available
+from .helpers import wait_manila_backend, wait_dhss_share_available
 
 from ....utils.core import colors
 
@@ -234,7 +234,7 @@ def finalize_generic_backend(config, env):
             ], f"Creating share '{share_name}'...", env=env):
                 return False
 
-            share_info = wait_share_available(share_name, env)
+            share_info = wait_dhss_share_available(share_name, env=env)
             if not share_info:
                 return False
 

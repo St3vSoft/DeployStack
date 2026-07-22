@@ -59,3 +59,32 @@ def wait_share_available(share_name, env, timeout=120, interval=5):
     )
 
     return None
+
+def wait_dhss_share_available(share_name, env, timeout=600, interval=10):
+    print(f"\nWaiting for share '{share_name}' to become available", end="", flush=True)
+
+    deadline = time.time() + timeout
+
+    while time.time() < deadline:
+        try:
+            share_info = json.loads(
+                os_run_output(["openstack", "share", "show", share_name, "-f", "json"], env=env) or "{}"
+            )
+            status = share_info.get("status", "").lower()
+
+            if status == "available":
+                print(f" {colors.GREEN}[ DONE ]{colors.RESET}")
+                return share_info
+
+            if status == "error":
+                print(f"\n{colors.RED}Error: share '{share_name}' is in error state{colors.RESET}")
+                return None
+
+        except Exception:
+            pass
+
+        print(".", end="", flush=True)
+        time.sleep(interval)
+
+    print(f"\n{colors.RED}Error: timeout waiting for share '{share_name}'{colors.RESET}")
+    return None
