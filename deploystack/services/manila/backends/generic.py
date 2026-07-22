@@ -230,6 +230,7 @@ def finalize_generic_backend(config, env):
                 "openstack", "share", "create",
                 "--name", share_name,
                 "--share-type", share_type,
+                "--share-network", service_network_name,
                 share_protocol, str(share_size)
             ], f"Creating share '{share_name}'...", env=env):
                 return False
