@@ -45,7 +45,7 @@ def conf_generic_backend(config):
     service_password = get(config, "passwords.SERVICE_PASSWORD")
     os_region_name = get(config, "openstack.REGION_NAME")
 
-    generic_service_instance_flavor = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR_NAME")
+    generic_service_instance_flavor_id = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR.ID")
     generic_interface_driver = get(config, "manila.backends.generic.INTERFACE_DRIVER")
     generic_service_image_name = get(config, "manila.backends.generic.SERVICE_IMAGE_NAME")
 
@@ -66,7 +66,7 @@ def conf_generic_backend(config):
     set_conf_option(manila_conf, "generic", "share_driver", "manila.share.drivers.generic.GenericShareDriver")
     set_conf_option(manila_conf, "generic", "driver_handles_share_servers", str(generic_driver_handles_share_servers))
     set_conf_option(manila_conf, "generic", "connect_share_server_to_tenant_network", str(generic_share_server_to_tenant_network))
-    set_conf_option(manila_conf, "generic", "service_instance_flavor", generic_service_instance_flavor)
+    set_conf_option(manila_conf, "generic", "service_instance_flavor", str(generic_service_instance_flavor_id))
     set_conf_option(manila_conf, "generic", "service_image_name", generic_service_image_name)
     set_conf_option(manila_conf, "generic", "service_instance_user", "manila")
     set_conf_option(manila_conf, "generic", "service_instance_password", "manila")
