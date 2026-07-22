@@ -29,6 +29,8 @@ def conf_manila(config):
     db_password = get(config, "passwords.DATABASE_PASSWORD")
     service_password = get(config, "passwords.SERVICE_PASSWORD")
     rabbitmq_password = get(config, "passwords.RABBITMQ_PASSWORD")
+    
+    default_share_type_name = get(config, "manila.DEFAULT_SHARE_TYPE_NAME") or "default_share_type"
 
     os_region_name = get(config, "openstack.REGION_NAME")
 
@@ -42,7 +44,7 @@ def conf_manila(config):
 
     set_conf_option(manila_conf, "DEFAULT", "my_ip", ip_address)
 
-    set_conf_option(manila_conf, "DEFAULT", "default_share_type", "default_share_type")
+    set_conf_option(manila_conf, "DEFAULT", "default_share_type", default_share_type_name)
     set_conf_option(manila_conf, "DEFAULT", "share_name_template", 'share-%s', interpolation=False)
     set_conf_option(manila_conf, "DEFAULT", "rootwrap_config", "/etc/manila/rootwrap.conf")
     set_conf_option(manila_conf, "DEFAULT", "api_paste_config", "/etc/manila/api-paste.ini")

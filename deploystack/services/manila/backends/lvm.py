@@ -199,19 +199,21 @@ def finalize_lvm_backend(config, env):
     backend_name = get(config, "manila.backends.lvm.BACKEND_NAME").lower()
     shares = get(config, "manila.shares") or []
 
+    default_share_type_name = get(config, "manila.DEFAULT_SHARE_TYPE_NAME") or "default_share_type"
+
     share_type_list = json.loads(os_run_output(["openstack", "share", "type", "list", "-f", "json"], env=env) or "[]")
 
-    default_share_type_exists = any(share_type.get("Name", share_type.get("name")) == "default_share_type" for share_type in share_type_list)
+    default_share_type_exists = any(share_type.get("Name", share_type.get("name")) == default_share_type_name for share_type in share_type_list)
 
     if not default_share_type_exists:
-        if not os_run(["openstack", "share", "type", "create", "default_share_type", "False", "--extra-specs", f"share_backend_name={backend_name}"], "Creating default share type...", env=env):
+        if not os_run(["openstack", "share", "type", "create", default_share_type_name, "False", "--extra-specs", f"share_backend_name={backend_name}"], "Creating default share type...", env=env):
             return False
 
     share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env) or "[]")
 
     for share in shares:
         share_name = share["name"]
-        share_type = share.get("share_type", "default_share_type")
+        share_type = share.get("share_type", default_share_type_name)
         share_protocol = share["share_protocol"]
         share_size = share["share_size"]
 

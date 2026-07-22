@@ -104,15 +104,15 @@ manila:
   SHARE_PROTOCOLS:
     - NFS
 
+  DEFAULT_SHARE_TYPE_NAME: default_share_type
+
   backends:
 
     generic:
       BACKEND_NAME: "generic"
 
       SERVICE_NETWORK_NAME: "manila-service-network"
-
       SERVICE_INSTANCE_FLAVOR_NAME: "manila-service-flavor"
-
       SERVICE_IMAGE_NAME: "manila-service-image"
 
       DRIVER_HANDLES_SHARE_SERVERS: "yes"
