@@ -73,7 +73,7 @@ def wait_dhss_share_available(share_name, env, timeout=600, interval=10):
             status = share_info.get("status", "").lower()
 
             if status == "available":
-                print(f" [ {colors.GREEN}DONE{colors.RESET} ]")
+                print(f" [ {colors.YELLOW}DONE{colors.RESET} ]")
                 return share_info
 
             if status == "error":
