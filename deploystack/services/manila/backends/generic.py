@@ -182,11 +182,11 @@ def finalize_generic_backend(config, env):
         print()
         if not os_run([
             "openstack", "flavor", "create",
-            generic_service_instance_flavor_name,
-            "--id", generic_service_instance_flavor_id,
+            "--id", str(generic_service_instance_flavor_id),
             "--ram", str(generic_service_instance_flavor_ram),
             "--disk", str(generic_service_instance_flavor_disk),
-            "--vcpus", str(generic_service_instance_flavor_vcpus)
+            "--vcpus", str(generic_service_instance_flavor_vcpus),
+            generic_service_instance_flavor_name,
         ], "Creating Manila service flavor...", env=env):
             return False
 
