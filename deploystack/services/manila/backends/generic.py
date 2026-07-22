@@ -45,7 +45,7 @@ def conf_generic_backend(config):
     service_password = get(config, "passwords.SERVICE_PASSWORD")
     os_region_name = get(config, "openstack.REGION_NAME")
 
-    generic_service_instance_flavor = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR")
+    generic_service_instance_flavor = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR_NAME")
     generic_interface_driver = get(config, "manila.backends.generic.INTERFACE_DRIVER")
     generic_service_image_name = get(config, "manila.backends.generic.SERVICE_IMAGE_NAME")
 
