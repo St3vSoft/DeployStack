@@ -203,8 +203,8 @@ def finalize_generic_backend(config, env):
         if not os_run([
             "openstack", "share", "network", "create",
             "--name", service_network_name,
-            "--neutron-net-id", internal_network_id,
-            "--neutron-subnet-id", internal_subnet_id
+            "--neutron-net-id", str(internal_network_id),
+            "--neutron-subnet-id", str(internal_subnet_id),
         ], "Creating tenant share network...", env=env):
             return False
 

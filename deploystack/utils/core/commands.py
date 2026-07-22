@@ -175,7 +175,7 @@ def run_command(
         except Exception as e:
             if spinner:
                 spinner.stop("ERROR", color="red", width=50)
-            print(f"\n{colors.RED}Exception: {e}{colors.RESET}")
+            print(f"\n{colors.RED}Exception: {e}{colors.RESET}\n")
             return False
 
     if spinner:
