@@ -29,6 +29,8 @@ def _set_service_auth(conf, section, username, ip_address, region, password):
 
 def install_pkgs():
 
+    print()
+
     if not apt_install(["manila-share"], "Installing Manila Share package..."):
         return False
 
