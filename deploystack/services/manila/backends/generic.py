@@ -290,7 +290,7 @@ def finalize_generic_backend(config, env):
                 "openstack", "share", "access", "create",
                 "--access-level", rule_level,
                 share_id, rule_type, rule_access
-            ], f"Adding access rule {rule_access} to '{share_name}'...", env=env):
+            ], f"Adding access rule {rule_access} to '{share_name}'... ", env=env):
                 return False
 
             for _ in range(10):
