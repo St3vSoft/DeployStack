@@ -104,8 +104,6 @@ manila:
   SHARE_PROTOCOLS:
     - NFS
 
-  DEFAULT_SHARE_TYPE_NAME: default_share_type
-
   backends:
 
     generic:
@@ -160,15 +158,29 @@ manila:
 
 
   # Shares to create automatically after deployment.
+  share_types:
+    - name: "default_share_type"
+      is_public: yes
+      extra_specs:
+        - driver_handles_share_servers: no
+        - snapshot_support: no
+        - create_share_from_snapshot_support: no
+        - revert_to_snapshot_support: no
+        - mount_snapshot_support: no
+
   shares:
     # Share name.
     - name: default_share
       share_type: default_share_type
       share_protocol: NFS
       share_size: 1
+      is_public: no
       access_rules:
       - type: "ip"
         access: "10.0.0.0/24"
+        level: "rw"
+      - type: "ip"
+        access: "10.10.0.0/24"
         level: "rw"
 
 cinder:

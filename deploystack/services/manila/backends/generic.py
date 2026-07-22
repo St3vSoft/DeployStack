@@ -171,6 +171,8 @@ def finalize_generic_backend(config, env):
             "--public"
         ], "Uploading Manila image to Glance...", env=env):
             return False
+        
+        os.remove(manila_temp_image_path)
 
     # --- Flavor ---
     manila_service_flavor_exists = any(
