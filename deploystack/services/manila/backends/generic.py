@@ -310,7 +310,7 @@ def run_setup_generic_backend(config, env):
 
     if not install_pkgs(): return False
 
-    conf_generic_backend(config, env)
+    conf_generic_backend(config)
 
     if not finalize(env): return False
 
