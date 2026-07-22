@@ -66,7 +66,7 @@ def conf_generic_backend(config):
     set_conf_option(manila_conf, "generic", "share_driver", "manila.share.drivers.generic.GenericShareDriver")
     set_conf_option(manila_conf, "generic", "driver_handles_share_servers", str(generic_driver_handles_share_servers))
     set_conf_option(manila_conf, "generic", "connect_share_server_to_tenant_network", str(generic_share_server_to_tenant_network))
-    set_conf_option(manila_conf, "generic", "service_instance_flavor", str(generic_service_instance_flavor_id))
+    set_conf_option(manila_conf, "generic", "service_instance_flavor_id", str(generic_service_instance_flavor_id))
     set_conf_option(manila_conf, "generic", "service_image_name", generic_service_image_name)
     set_conf_option(manila_conf, "generic", "service_instance_user", "manila")
     set_conf_option(manila_conf, "generic", "service_instance_password", "manila")
@@ -81,7 +81,7 @@ def finalize(env):
 
     print()
 
-    if not run_command(["systemctl", "restart", "manila-share"], "Restarting Manila Share services..."):
+    if not run_command(["systemctl", "restart", "manila-api", "manila-scheduler", "manila-share"], "Restarting Manila Share services..."):
         return False
 
     if not wait_manila_backend(env=env):
