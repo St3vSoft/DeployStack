@@ -81,7 +81,7 @@ def finalize(env):
 
     print()
 
-    if not run_command(["systemctl", "restart", "manila-share"], "Restarting Manila services..."):
+    if not run_command(["systemctl", "restart", "manila-share"], "Restarting Manila Share services..."):
         return False
 
     if not wait_manila_backend(env=env):
@@ -160,7 +160,7 @@ def finalize_generic_backend(config, env):
             if not run_command([
                 "wget", "--tries=3", "--timeout=30", "--read-timeout=60",
                 "-O", manila_temp_image_path, manila_image_url
-            ], "Downloading Manila service image... (this may take a while)", timeout=600):
+            ], "Downloading Manila service image... (this may take a while) ", timeout=3600):
                 return False
 
         if not os_run([
