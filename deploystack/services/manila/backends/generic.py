@@ -95,7 +95,7 @@ def finalize_generic_backend(config, env):
     manila_temp_image_path = "/tmp/manila-service-image.qcow2"
     manila_image_url = "https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-master.qcow2"
 
-    service_network_name = get(config, "manila.SERVICE_NETWORK_NAME")
+    service_network_name = get(config, "manila.backends.generic.SERVICE_NETWORK_NAME")
     generic_service_image_name = get(config, "manila.backends.generic.SERVICE_IMAGE_NAME")
     generic_service_instance_flavor_name = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR_NAME")
     default_share_type_name = get(config, "manila.DEFAULT_SHARE_TYPE_NAME") or "default_share_type"
