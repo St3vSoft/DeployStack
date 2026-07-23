@@ -9,41 +9,63 @@ from .....utils.core import colors
 
 def create_share_types(default_type_shares, env):
 
-    share_type_list = json.loads(os_run_output(["openstack", "share", "type", "list", "-f", "json"], env=env) or "[]")
+    share_type_list = json.loads(
+        os_run_output(
+            ["openstack", "share", "type", "list", "-f", "json"],
+            env=env
+        ) or "[]"
+    )
 
     for share_type in default_type_shares:
         share_type_name = share_type["name"]
         is_share_public = parse_bool(share_type["is_public"], False)
 
         extra_specs = {}
+        driver_handles_share_servers = None
 
         for extra_spec in share_type.get("extra_specs", []):
+            if "driver_handles_share_servers" in extra_spec:
+                driver_handles_share_servers = (
+                    "True"
+                    if parse_bool(extra_spec.get("driver_handles_share_servers"), False)
+                    else "False"
+                )
+
             for key in [
-                "driver_handles_share_servers",
                 "snapshot_support",
                 "create_share_from_snapshot_support",
-                "revert_to_snapshot_support",
+                "revert_to_share_snapshot_support",
                 "mount_snapshot_support",
             ]:
                 if parse_bool(extra_spec.get(key), False):
                     extra_specs[key] = "True"
 
-            share_type_exists = any(
-            st.get("Name") == share_type_name for st in share_type_list
+        share_type_exists = any(
+            st.get("Name") == share_type_name
+            for st in share_type_list
         )
 
-        if not share_type_exists: 
-            share_create_cmd = ["openstack", "share", "type", "create", share_type_name]
+        if not share_type_exists:
+            if driver_handles_share_servers is None:
+                driver_handles_share_servers = "False"
+
+            share_create_cmd = [
+                "openstack",
+                "share",
+                "type",
+                "create",
+                share_type_name,
+                driver_handles_share_servers,
+            ]
 
             if is_share_public:
                 share_create_cmd += ["--public", "True"]
 
-            share_create_cmd.append("--extra-specs")
+            if extra_specs:
+                share_create_cmd.append("--extra-specs")
 
-            for key, value in extra_specs.items():
-                share_create_cmd.extend([
-                    f"{key}={value}"
-                ])
+                for key, value in extra_specs.items():
+                    share_create_cmd.append(f"{key}={value}")
 
             if not os_run(
                 share_create_cmd,
@@ -51,6 +73,10 @@ def create_share_types(default_type_shares, env):
                 env=env
             ):
                 return False
+
+            share_type_list.append({"Name": share_type_name})
+
+    return True
 
 def create_shares(shares, env, service_network_name: str, dhss: bool = False):
 
