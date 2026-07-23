@@ -18,7 +18,9 @@ from ....utils.lvm import get_vg_for_pv, ensure_system_user_with_run_command
 
 from ....templates import MANILA_LVM_NETWORK_SERVICE, MANILA_BRIDGE_IP_SCRIPT
 
-from .helpers import wait_manila_backend, wait_share_available
+from .helpers import wait_manila_backend
+from .helpers.shares import create_shares, create_share_types
+
 from ....utils.config.helpers import parse_bool
 
 from ....utils.core import colors
@@ -196,105 +198,16 @@ def finalize_lvm_backend(config, env):
 
     print()
 
-    backend_name = get(config, "manila.backends.lvm.BACKEND_NAME").lower()
+    # backend_name = get(config, "manila.backends.lvm.BACKEND_NAME").lower()
+
     shares = get(config, "manila.shares") or []
+    default_type_shares = get(config, "manila.share_types") or []
 
-    default_share_type_name = get(config, "manila.DEFAULT_SHARE_TYPE_NAME") or "default_share_type"
+    if not create_share_types(default_type_shares=default_type_shares, env=env):
+        return False
 
-    share_type_list = json.loads(os_run_output(["openstack", "share", "type", "list", "-f", "json"], env=env) or "[]")
-
-    default_share_type_exists = any(share_type.get("Name", share_type.get("name")) == default_share_type_name for share_type in share_type_list)
-
-    if not default_share_type_exists:
-        if not os_run(["openstack", "share", "type", "create", default_share_type_name, "False", "--extra-specs", f"share_backend_name={backend_name}"], "Creating default share type...", env=env):
-            return False
-
-    share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env) or "[]")
-
-    for share in shares:
-        share_name = share["name"]
-        share_type = share.get("share_type", default_share_type_name)
-        share_protocol = share["share_protocol"]
-        share_size = share["share_size"]
-
-        existing_share = next((item for item in share_list if item.get("Name", item.get("name")) == share_name), None)
-
-        if existing_share:
-            print(f"{colors.YELLOW}{share_name} already exists, checking status...{colors.RESET}")
-            share_id = existing_share.get("ID", existing_share.get("id"))
-        else:
-            if not os_run(["openstack", "share", "create", "--name", share_name, "--share-type", share_type, share_protocol, str(share_size)], f"Creating share '{share_name}'...", env=env):
-                return False
-
-            share_info = wait_share_available(share_name, env)
-
-            if not share_info:
-                return False
-
-            share_id = share_info.get("id")
-
-        if not share_id:
-            print(f"\n{colors.RED}ERROR: unable to retrieve {share_name} id{colors.RESET}")
-            return False
-
-        export_path = None
-
-        for _ in range(10):
-            share_info = json.loads(os_run_output(["openstack", "share", "show", share_id, "-f", "json"], env=env) or "{}")
-            export_locations = share_info.get("export_locations", "")
-
-            if export_locations:
-                if isinstance(export_locations, str):
-                    for line in export_locations.splitlines():
-                        if line.strip().startswith("path ="):
-                            export_path = line.split("=", 1)[1].strip()
-                            break
-
-                elif isinstance(export_locations, list):
-                    first_location = export_locations[0]
-
-                    if isinstance(first_location, dict):
-                        export_path = first_location.get("path")
-                    elif isinstance(first_location, str):
-                        export_path = first_location
-
-                if export_path:
-                    break
-
-            time.sleep(3)
-
-        if not export_path:
-            print(f"\n{colors.RED}ERROR: {share_name} has no export location available{colors.RESET}")
-            return False
-        
-        print()
-
-        for rule in share.get("access_rules", []):
-            rule_access_type = rule["type"]
-            rule_access = rule["access"]
-            rule_access_level = rule["level"]
-
-            access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env) or "[]")
-
-            rule_exists = any(access.get("access_type", access.get("Access Type")) == rule_access_type and access.get("access_to", access.get("Access To")) == rule_access for access in access_list)
-
-            if rule_exists:
-                print(f"{colors.YELLOW}Access rule {rule_access} already exists, skipping creation.{colors.RESET}")
-                continue
-
-            if not os_run(["openstack", "share", "access", "create", "--access-level", rule_access_level, share_id, rule_access_type, rule_access], f"Adding access rule {rule_access} to '{share_name}'...", env=env):
-                return False
-
-            for _ in range(10):
-                access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env) or "[]")
-
-                if any(access.get("access_type", access.get("Access Type")) == rule_access_type and access.get("access_to", access.get("Access To")) == rule_access for access in access_list):
-                    break
-
-                time.sleep(2)
-            else:
-                print(f"\n{colors.RED}ERROR: access rule {rule_access} is not created{colors.RESET}")
-                return False
+    if not create_shares(shares=shares, env=env, dhss=False):
+        return False
 
     return True
 

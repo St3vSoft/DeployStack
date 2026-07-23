@@ -10,7 +10,8 @@ from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
 from ....utils.config.helpers import parse_bool
 
-from .helpers import wait_manila_backend, wait_dhss_share_available
+from .helpers import wait_manila_backend
+from .helpers.shares import create_shares, create_share_types
 
 from ....utils.core import colors
 
@@ -106,10 +107,10 @@ def finalize_generic_backend(config, env):
     generic_service_instance_flavor_disk = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR.DISK")
 
     shares = get(config, "manila.shares") or []
+    default_type_shares = get(config, "manila.share_types") or []
 
     networks_list = json.loads(os_run_output(["openstack", "network", "list", "-f", "json"], env=env) or "[]")
     subnets_list = json.loads(os_run_output(["openstack", "subnet", "list", "-f", "json"], env=env) or "[]")
-    share_type_list = json.loads(os_run_output(["openstack", "share", "type", "list", "-f", "json"], env=env) or "[]")
     images_list = json.loads(os_run_output(["openstack", "image", "list", "-f", "json"], env=env) or "[]")
     flavors_list = json.loads(os_run_output(["openstack", "flavor", "list", "-f", "json"], env=env) or "[]")
 
@@ -133,20 +134,8 @@ def finalize_generic_backend(config, env):
         print(f"{colors.RED}Error: internal subnet not found{colors.RESET}")
         return False
 
-    # --- Share type ---
-    default_share_type_exists = any(
-        share_type.get("Name") == default_share_type_name
-        for share_type in share_type_list
-    )
-
-    if not default_share_type_exists:
-        print()
-        if not os_run(
-            ["openstack", "share", "type", "create", default_share_type_name, "True"],
-            "Creating default share type...",
-            env=env
-        ):
-            return False
+    if not create_share_types(default_type_shares=default_type_shares, env=env):
+        return False
 
     # --- Immagine ---
     manila_service_image_exists = any(
@@ -210,103 +199,8 @@ def finalize_generic_backend(config, env):
         ], "Creating tenant share network...", env=env):
             return False
 
-    # --- Shares ---
-    share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env) or "[]")
-
-    for share in shares:
-        share_name = share["name"]
-        share_type = share.get("share_type", default_share_type_name)
-        share_protocol = share["share_protocol"]
-        share_size = share["share_size"]
-
-        existing_share = next(
-            (item for item in share_list if item.get("Name", item.get("name")) == share_name),
-            None
-        )
-
-        if existing_share:
-            print(f"{colors.YELLOW}{share_name} already exists, checking status...{colors.RESET}")
-            share_id = existing_share.get("ID", existing_share.get("id"))
-        else:
-            if not os_run([
-                "openstack", "share", "create",
-                "--name", share_name,
-                "--share-type", share_type,
-                "--share-network", service_network_name,
-                share_protocol, str(share_size)
-            ], f"Creating share '{share_name}'...", env=env):
-                return False
-
-            share_info = wait_dhss_share_available(share_name, env=env)
-            if not share_info:
-                return False
-
-            share_id = share_info.get("id")
-
-        if not share_id:
-            print(f"\n{colors.RED}ERROR: unable to retrieve {share_name} id{colors.RESET}")
-            return False
-
-        export_path = None
-        for _ in range(10):
-            share_info = json.loads(os_run_output(["openstack", "share", "show", share_id, "-f", "json"], env=env) or "{}")
-            export_locations = share_info.get("export_locations", "")
-
-            if isinstance(export_locations, str):
-                for line in export_locations.splitlines():
-                    if line.strip().startswith("path ="):
-                        export_path = line.split("=", 1)[1].strip()
-                        break
-            elif isinstance(export_locations, list):
-                first = export_locations[0]
-                export_path = first.get("path") if isinstance(first, dict) else first
-
-            if export_path:
-                break
-            time.sleep(3)
-
-        if not export_path:
-            print(f"\n{colors.RED}ERROR: {share_name} has no export location available{colors.RESET}")
-            return False
-
-        # Access rules
-        print()
-        access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env) or "[]")
-
-        for rule in share.get("access_rules", []):
-            rule_type = rule["type"]
-            rule_access = rule["access"]
-            rule_level = rule["level"]
-
-            rule_exists = any(
-                access.get("access_type", access.get("Access Type")) == rule_type
-                and access.get("access_to", access.get("Access To")) == rule_access
-                for access in access_list
-            )
-
-            if rule_exists:
-                print(f"{colors.YELLOW}Access rule {rule_access} already exists, skipping.{colors.RESET}")
-                continue
-
-            if not os_run([
-                "openstack", "share", "access", "create",
-                "--access-level", rule_level,
-                share_id, rule_type, rule_access
-            ], f"Adding access rule {rule_access} to '{share_name}'... ", env=env):
-                return False
-
-            for _ in range(10):
-                access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env) or "[]")
-                if any(
-                    access.get("access_type", access.get("Access Type")) == rule_type
-                    and access.get("access_to", access.get("Access To")) == rule_access
-                    for access in access_list
-                ):
-                    break
-                time.sleep(2)
-            else:
-                print(f"\n{colors.RED}ERROR: access rule {rule_access} not created{colors.RESET}")
-                return False
+    if not create_shares(shares=shares, env=env, dhss=True, service_network_name=service_network_name):
+        return False
 
     return True
 

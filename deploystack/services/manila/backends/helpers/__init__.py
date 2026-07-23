@@ -1,8 +1,8 @@
 import json
 import time
 
-from ....utils.core.commands import os_run_output
-from ....utils.core import colors
+from .....utils.core.commands import os_run_output
+from .....utils.core import colors
 
 def wait_manila_backend(env, timeout=120):
     elapsed = 0
@@ -83,7 +83,7 @@ def wait_dhss_share_available(share_name, env, timeout=600, interval=10):
         except Exception:
             pass
 
-        print(".", end="", flush=True)
+        print("...")
         time.sleep(interval)
 
     print(f"\n{colors.RED}Error: timeout waiting for share '{share_name}'{colors.RESET}")
