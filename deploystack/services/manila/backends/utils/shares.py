@@ -36,7 +36,7 @@ def create_share_types(default_type_shares, env):
             share_create_cmd = ["openstack", "share", "type", "create", share_type_name]
 
             if is_share_public:
-                share_create_cmd.append("--public")
+                share_create_cmd += ["--public", "True"]
 
             share_create_cmd.append("--extra-specs")
 
