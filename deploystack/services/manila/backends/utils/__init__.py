@@ -29,7 +29,7 @@ def wait_manila_backend(env, timeout=120):
     return False
 
 def wait_share_available(share_name, env, timeout=120, interval=5):
-    print(f"\nWaiting for share '{share_name}' to become available ", end="", flush=True)
+    print(f"\nWaiting for share '{share_name}' to become available  ", end="", flush=True)
 
     deadline = time.time() + timeout
     spinner = "|/-\\"
@@ -54,8 +54,20 @@ def wait_share_available(share_name, env, timeout=120, interval=5):
 
             if status in ("error", "error_deleting"):
                 print(
-                    f"\n{colors.RED}ERROR: {share_name} entered error state: {status}{colors.RESET}"
+                    f"\n\n{colors.RED}"
+                    f"ERROR: {share_name} entered error state: {status}"
+                    f"{colors.RESET}\n"
                 )
+
+                print(
+                    f"{colors.YELLOW}"
+                    "Check Manila logs for more details:\n"
+                    "  journalctl -u manila-share -n 100 --no-pager\n"
+                    "or:\n"
+                    "  /var/log/manila/manila-share.log"
+                    f"{colors.RESET}\n"
+                )
+
                 return None
 
         except Exception:

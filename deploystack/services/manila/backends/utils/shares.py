@@ -87,6 +87,8 @@ def create_shares(shares, env, service_network_name: str, dhss: bool = False):
                 print(f"{colors.YELLOW}{share_name} already exists, checking status...{colors.RESET}")
                 share_id = existing_share.get("ID", existing_share.get("id"))
             else:
+                print()
+                
                 share_create_cmd = ["openstack", "share", "create", "--name", share_name, "--share-type", share_type]
 
                 if dhss:
