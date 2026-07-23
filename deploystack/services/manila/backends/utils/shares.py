@@ -33,16 +33,17 @@ def create_share_types(default_type_shares, env):
         )
 
         if not share_type_exists: 
-            share_create_cmd = ["openstack", "share", "type", "create", share_type_name, str(is_share_public)]
+            share_create_cmd = ["openstack", "share", "type", "create", share_type_name]
+
+            if is_share_public:
+                share_create_cmd.append("--public")
+
+            share_create_cmd.append("--extra-specs")
 
             for key, value in extra_specs.items():
                 share_create_cmd.extend([
-                    "--extra-specs",
                     f"{key}={value}"
                 ])
-
-            if is_share_public:
-                share_create_cmd.append("True")
 
             if not os_run(
                 share_create_cmd,
