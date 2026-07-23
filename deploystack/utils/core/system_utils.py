@@ -12,19 +12,21 @@ from time import sleep, time
 from ...utils.core import colors
 from ...utils.config.parser import get
 
-def is_package_installed(package_name: str) -> bool:
-    return are_packages_installed([package_name])
-
-def are_packages_installed(package_names: list[str]) -> bool:
+def is_package_installed(package_name: str | list[str]) -> bool:
     try:
-        return all(
-            subprocess.run(
-                ["dpkg", "-s", package],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            ).returncode == 0
-            for package in package_names
+        if isinstance(package_name, list):
+            return all(
+                is_package_installed(pkg)
+                for pkg in package_name
+            )
+
+        result = subprocess.run(
+            ["dpkg", "-s", package_name],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
         )
+
+        return result.returncode == 0
 
     except FileNotFoundError:
         return False
