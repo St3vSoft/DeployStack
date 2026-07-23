@@ -13,15 +13,19 @@ from ...utils.core import colors
 from ...utils.config.parser import get
 
 def is_package_installed(package_name: str) -> bool:
+    return are_packages_installed([package_name])
 
+def are_packages_installed(package_names: list[str]) -> bool:
     try:
-
-        result = subprocess.run(["dpkg", "-s", package_name], 
-                                stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL
+        return all(
+            subprocess.run(
+                ["dpkg", "-s", package],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            ).returncode == 0
+            for package in package_names
         )
 
-        return result.returncode == 0
     except FileNotFoundError:
         return False
     

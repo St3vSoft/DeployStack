@@ -1,7 +1,7 @@
 import json
 import time
 
-from .....utils.core.commands import run_command, os_run_output, os_run
+from .....utils.core.commands import os_run_output, os_run
 from ..utils import wait_share_available, wait_dhss_share_available
 
 from .....utils.config.helpers import parse_bool
@@ -49,14 +49,7 @@ def create_share_types(default_type_shares, env):
             if driver_handles_share_servers is None:
                 driver_handles_share_servers = "False"
 
-            share_create_cmd = [
-                "openstack",
-                "share",
-                "type",
-                "create",
-                share_type_name,
-                driver_handles_share_servers,
-            ]
+            share_create_cmd = ["openstack", "share", "type", "create", share_type_name, driver_handles_share_servers]
 
             if is_share_public:
                 share_create_cmd += ["--public", "True"]
@@ -69,7 +62,7 @@ def create_share_types(default_type_shares, env):
 
             if not os_run(
                 share_create_cmd,
-                f"Creating '{share_type_name}' share type...",
+                f"Creating '{share_type_name}' share type... ",
                 env=env
             ):
                 return False
@@ -101,7 +94,7 @@ def create_shares(shares, env, service_network_name: str, dhss: bool = False):
                 
                 share_create_cmd += [share_protocol, str(share_size)]
 
-                if not os_run(share_create_cmd, f"Creating share '{share_name}'...", env=env):
+                if not os_run(share_create_cmd, f"Creating share '{share_name}'... ", env=env):
                     return False
 
                 if dhss:
@@ -163,7 +156,7 @@ def create_shares(shares, env, service_network_name: str, dhss: bool = False):
                     print(f"{colors.YELLOW}Access rule {rule_access} already exists, skipping creation.{colors.RESET}")
                     continue
     
-                if not os_run(["openstack", "share", "access", "create", "--access-level", rule_access_level, share_id, rule_access_type, rule_access], f"Adding access rule {rule_access} to '{share_name}'...", env=env):
+                if not os_run(["openstack", "share", "access", "create", "--access-level", rule_access_level, share_id, rule_access_type, rule_access], f"Adding access rule {rule_access} to '{share_name}'... ", env=env):
                     return False
     
                 for _ in range(10):

@@ -2,7 +2,6 @@
 
 import os
 import json
-import time
 
 from ....utils.core.commands import run_command, os_run, os_run_output
 from ....utils.apt.apt import apt_install
@@ -12,6 +11,11 @@ from ....utils.config.helpers import parse_bool
 
 from .utils import wait_manila_backend
 from .utils.shares import create_shares, create_share_types
+
+from .protocols.nfs import run_setup_nfs
+from .protocols.cifs import run_setup_cifs
+
+from ....utils.core.system_utils import is_package_installed
 
 from ....utils.core import colors
 
@@ -54,6 +58,12 @@ def conf_generic_backend(config):
     generic_share_server_to_tenant_network = parse_bool(get(config, "manila.backends.generic.CONNECT_SHARE_SERVER_TO_TENANT_NETWORK", False))
 
     enabled_share_protocols = ",".join(protocols)
+
+    if "NFS" in protocols and not is_package_installed(["nfs-kernel-server", "nfs-common"]):
+        if not run_setup_nfs(): return False
+
+    if "CIFS" in protocols and not is_package_installed(["samba", "samba-common-bin"]):
+        if not run_setup_cifs(): return False
 
     set_conf_option(manila_conf, "DEFAULT", "enabled_share_backends", "generic")
     set_conf_option(manila_conf, "DEFAULT", "enabled_share_protocols", enabled_share_protocols)
@@ -99,7 +109,6 @@ def finalize_generic_backend(config, env):
     service_network_name = get(config, "manila.backends.generic.SERVICE_NETWORK_NAME")
     generic_service_image_name = get(config, "manila.backends.generic.SERVICE_IMAGE_NAME")
     generic_service_instance_flavor_name = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR_NAME")
-    default_share_type_name = get(config, "manila.DEFAULT_SHARE_TYPE_NAME") or "default_share_type"
 
     generic_service_instance_flavor_id = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR.ID")
     generic_service_instance_flavor_ram = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR.RAM")

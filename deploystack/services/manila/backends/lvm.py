@@ -19,7 +19,13 @@ from ....utils.lvm import get_vg_for_pv, ensure_system_user_with_run_command
 from ....templates import MANILA_LVM_NETWORK_SERVICE, MANILA_BRIDGE_IP_SCRIPT
 
 from .utils import wait_manila_backend
+
 from .utils.shares import create_shares, create_share_types
+
+from .protocols.nfs import run_setup_nfs
+from .protocols.cifs import run_setup_cifs
+
+from ....utils.core.system_utils import is_package_installed
 
 from ....utils.config.helpers import parse_bool
 
@@ -139,6 +145,12 @@ def conf_lvm_manila(config):
     public_cidr = get(config, "neutron.public_network.PUBLIC_SUBNET_CIDR")
 
     share_export_ip = get(config, "manila.backends.lvm.SHARE_EXPORT_IP")
+
+    if "NFS" in protocols and not is_package_installed(["nfs-kernel-server", "nfs-common"]):
+        if not run_setup_nfs(): return False
+
+    if "CIFS" in protocols and not is_package_installed(["samba", "samba-common-bin"]):
+        if not run_setup_cifs(): return False
 
     set_conf_option(manila_conf, "DEFAULT", "enabled_share_backends", "lvm")
     set_conf_option(manila_conf, "DEFAULT", "enabled_share_protocols", enabled_share_protocols)
