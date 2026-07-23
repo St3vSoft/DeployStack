@@ -29,51 +29,70 @@ def wait_manila_backend(env, timeout=120):
     return False
 
 def wait_share_available(share_name, env, timeout=120, interval=5):
-    elapsed = 0
+    print(f"\nWaiting for share '{share_name}' to become available ", end="", flush=True)
 
-    while elapsed < timeout:
-        share_info = json.loads(
-            os_run_output(
-                ["openstack", "share", "show", share_name, "-f", "json"],
-                env=env
+    deadline = time.time() + timeout
+    spinner = "|/-\\"
+    spinner_index = 0
+
+    status = ""
+
+    while time.time() < deadline:
+        try:
+            share_info = json.loads(
+                os_run_output(
+                    ["openstack", "share", "show", share_name, "-f", "json"],
+                    env=env
+                ) or "{}"
             )
-        )
 
-        status = share_info.get("status")
+            status = share_info.get("status", "").lower()
 
-        if status == "available":
-            return share_info
+            if status == "available":
+                print(f"\rWaiting for share '{share_name}' to become available [ {colors.YELLOW}DONE{colors.RESET} ]")
+                return share_info
 
-        if status in ("error", "error_deleting"):
-            print(
-                f"{colors.RED}ERROR: {share_name} entered error state: {status}{colors.RESET}"
-            )
-            return None
+            if status in ("error", "error_deleting"):
+                print(
+                    f"\n{colors.RED}ERROR: {share_name} entered error state: {status}{colors.RESET}"
+                )
+                return None
+
+        except Exception:
+            pass
+
+        print(f"\b{spinner[spinner_index]}", end="", flush=True)
+        spinner_index = (spinner_index + 1) % len(spinner)
 
         time.sleep(interval)
-        elapsed += interval
 
     print(
-        f"{colors.RED}ERROR: {share_name} did not become available "
+        f"\n{colors.RED}ERROR: {share_name} did not become available "
         f"within {timeout}s (last status: {status}){colors.RESET}"
     )
 
     return None
 
 def wait_dhss_share_available(share_name, env, timeout=600, interval=10):
-    print(f"\nWaiting for share '{share_name}' to become available", end="", flush=True)
+    print(f"\nWaiting for share '{share_name}' to become available ", end="", flush=True)
 
     deadline = time.time() + timeout
+    spinner = "|/-\\"
+    spinner_index = 0
 
     while time.time() < deadline:
         try:
             share_info = json.loads(
-                os_run_output(["openstack", "share", "show", share_name, "-f", "json"], env=env) or "{}"
+                os_run_output(
+                    ["openstack", "share", "show", share_name, "-f", "json"],
+                    env=env
+                ) or "{}"
             )
+
             status = share_info.get("status", "").lower()
 
             if status == "available":
-                print(f" [ {colors.YELLOW}DONE{colors.RESET} ]")
+                print(f"\b {colors.YELLOW}DONE{colors.RESET}")
                 return share_info
 
             if status == "error":
@@ -83,7 +102,9 @@ def wait_dhss_share_available(share_name, env, timeout=600, interval=10):
         except Exception:
             pass
 
-        print("...")
+        print(f"\b{spinner[spinner_index]}", end="", flush=True)
+        spinner_index = (spinner_index + 1) % len(spinner)
+
         time.sleep(interval)
 
     print(f"\n{colors.RED}Error: timeout waiting for share '{share_name}'{colors.RESET}")

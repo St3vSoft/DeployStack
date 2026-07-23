@@ -206,7 +206,7 @@ def finalize_lvm_backend(config, env):
     if not create_share_types(default_type_shares=default_type_shares, env=env):
         return False
 
-    if not create_shares(shares=shares, env=env, dhss=False):
+    if not create_shares(shares=shares, env=env, dhss=False, service_network_name=None):
         return False
 
     return True
