@@ -2,7 +2,7 @@ import json
 import time
 
 from .....utils.core.commands import run_command, os_run_output, os_run
-from ..helpers import wait_share_available, wait_dhss_share_available
+from ..utils import wait_share_available, wait_dhss_share_available
 
 from .....utils.config.helpers import parse_bool
 from .....utils.core import colors

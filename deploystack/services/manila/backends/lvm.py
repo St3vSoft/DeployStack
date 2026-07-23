@@ -18,8 +18,8 @@ from ....utils.lvm import get_vg_for_pv, ensure_system_user_with_run_command
 
 from ....templates import MANILA_LVM_NETWORK_SERVICE, MANILA_BRIDGE_IP_SCRIPT
 
-from .helpers import wait_manila_backend
-from .helpers.shares import create_shares, create_share_types
+from .utils import wait_manila_backend
+from .utils.shares import create_shares, create_share_types
 
 from ....utils.config.helpers import parse_bool
 

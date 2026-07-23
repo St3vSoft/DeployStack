@@ -10,8 +10,8 @@ from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
 from ....utils.config.helpers import parse_bool
 
-from .helpers import wait_manila_backend
-from .helpers.shares import create_shares, create_share_types
+from .utils import wait_manila_backend
+from .utils.shares import create_shares, create_share_types
 
 from ....utils.core import colors
 
