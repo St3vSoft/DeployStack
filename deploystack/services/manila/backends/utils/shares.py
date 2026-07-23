@@ -47,7 +47,7 @@ def create_share_types(default_type_shares, env):
 
             if not os_run(
                 share_create_cmd,
-                "Creating default share type...",
+                f"Creating '{share_type_name}' share type...",
                 env=env
             ):
                 return False
