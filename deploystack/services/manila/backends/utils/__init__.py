@@ -65,7 +65,7 @@ def wait_manila_backend(env, timeout=120):
     return False
 
 def wait_share_available(share_name, env, timeout=120, interval=5):
-    print(f"\nWaiting for share '{share_name}' to become available  ", end="", flush=True)
+    print(f"\nWaiting for share '{share_name}' to become available... ", end="", flush=True)
 
     deadline = time.time() + timeout
     spinner = "|/-\\"
@@ -122,7 +122,7 @@ def wait_share_available(share_name, env, timeout=120, interval=5):
     return None
 
 def wait_dhss_share_available(share_name, env, timeout=600, interval=10):
-    print(f"\nWaiting for share '{share_name}' to become available ", end="", flush=True)
+    print(f"\nWaiting for share '{share_name}' to become available... ", end="", flush=True)
 
     deadline = time.time() + timeout
     spinner = "|/-\\"
