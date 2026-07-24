@@ -38,7 +38,8 @@ setup(
         "requests",
         "tqdm",
         "bs4",
-        "passlib"
+        "passlib",
+        "pexpect"
     ],
     python_requires=">=3.10",
     entry_points={

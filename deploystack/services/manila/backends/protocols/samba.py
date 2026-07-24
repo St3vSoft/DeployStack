@@ -1,7 +1,5 @@
-import pwd
-import grp
+import pexpect
 import os
-import subprocess
 
 from .....utils.apt.apt import apt_install, apt_update
 from .....utils.core.commands import run_command
@@ -14,6 +12,27 @@ from ..utils import user_exists, samba_user_exists, user_in_group
 from .....utils.core import colors
 
 smbd_conf = "/etc/samba/smbd.conf"
+
+def smbpasswd_add(username, password):
+    child = pexpect.spawn(
+        f"smbpasswd -a {username}",
+        encoding="utf-8"
+    )
+
+    try:
+        child.expect("New SMB password:")
+        child.sendline(password)
+
+        child.expect("Retype new SMB password:")
+        child.sendline(password)
+
+        child.expect(pexpect.EOF)
+
+        return child.exitstatus == 0
+
+    except pexpect.ExceptionPexpect as e:
+        print(f"smbpasswd error: {e}")
+        return False
 
 def install_pkgs():
     print()
@@ -31,6 +50,8 @@ def conf_samba():
 
 def add_samba_user(config):
 
+    print()
+
     samba_username = get(config, "manila.samba.SAMBA_SERVER_USER")
     samba_password = get(config, "manila.samba.SAMBA_SERVER_USER_PASSWORD")
 
@@ -38,7 +59,8 @@ def add_samba_user(config):
         if not run_command(["useradd", "-m", "-s", "/usr/sbin/nologin", samba_username], "Adding Samba User...") : return False
 
     if not samba_user_exists(samba_username):
-        if not run_command(["smbpasswd", "-a", samba_username], stdin_data=f"{samba_password}\n{samba_password}\n", message="Creating Samba User..."): return False
+        if not smbpasswd_add(samba_username, samba_password):
+            return False
 
     if not user_in_group(samba_username, "manila"):
         if not run_command(["usermod", "-aG", "manila", samba_username], "Adding Samba user to Manila group...") : return False
