@@ -1,14 +1,12 @@
 # Configure the LVM Backend (Share Node)
 
 import os
-import json
 import pwd
 import grp
 import subprocess
 import shutil
-import time
 
-from ....utils.core.commands import run_command, os_run_output, os_run
+from ....utils.core.commands import run_command
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
@@ -23,7 +21,7 @@ from .utils import wait_manila_backend
 from .utils.shares import create_shares, create_share_types
 
 from .protocols.nfs import run_setup_nfs
-from .protocols.cifs import run_setup_cifs
+from .protocols.samba import run_setup_samba
 
 from ....utils.core.system_utils import is_package_installed
 
@@ -146,11 +144,24 @@ def conf_lvm_manila(config):
 
     share_export_ip = get(config, "manila.backends.lvm.SHARE_EXPORT_IP")
 
-    if "NFS" in protocols and not is_package_installed(["nfs-kernel-server", "nfs-common"]):
+    samba_username = get(config, "manila.samba.SAMBA_SERVER_USER")
+
+    share_helpers = get(config, "manila.SHARE_HELPERS") or []
+
+    helpers = []
+
+    if "NFS" in protocols:
         if not run_setup_nfs(): return False
 
-    if "CIFS" in protocols and not is_package_installed(["samba", "samba-common-bin"]):
-        if not run_setup_cifs(): return False
+    if "CIFS" in protocols:
+        if not run_setup_samba(config): return False
+
+    for helper in share_helpers:
+        for helper_type, config in helper.items():
+            helper_name = config.get("name")
+            helpers.append(f"{helper_type}={helper_name}")
+
+    set_conf_option(manila_conf, "DEFAULT", "share_helpers", f"{helper_type}={helper_name}")
 
     set_conf_option(manila_conf, "DEFAULT", "enabled_share_backends", "lvm")
     set_conf_option(manila_conf, "DEFAULT", "enabled_share_protocols", enabled_share_protocols)
@@ -209,8 +220,6 @@ def finalize(env):
 def finalize_lvm_backend(config, env):
 
     print()
-
-    # backend_name = get(config, "manila.backends.lvm.BACKEND_NAME").lower()
 
     shares = get(config, "manila.shares") or []
     default_type_shares = get(config, "manila.share_types") or []

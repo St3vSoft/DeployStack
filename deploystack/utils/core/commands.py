@@ -78,6 +78,7 @@ def run_command(
     retries=0,
     delay=1,
     env=None,
+    stdin_data=None,
     timeout=120,
     silent=False,
     context=None
@@ -92,6 +93,7 @@ def run_command(
         try:
             process = subprocess.Popen(
                 cmd,
+                stdin=subprocess.PIPE if stdin_data is not None else None,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,

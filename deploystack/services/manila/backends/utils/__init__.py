@@ -1,8 +1,44 @@
 import json
 import time
+import pwd
+import grp
+import subprocess
 
 from .....utils.core.commands import os_run_output
 from .....utils.core import colors
+
+def user_in_group(username, groupname):
+    try:
+        user = pwd.getpwnam(username)
+        group = grp.getgrnam(groupname)
+
+        return (
+            user.pw_gid == group.gr_gid or
+            username in group.gr_mem
+        )
+    except KeyError:
+        return False
+
+def user_exists(username):
+    try:
+        pwd.getpwnam(username)
+        return True
+    except KeyError:
+        return False
+
+def samba_user_exists(username):
+    try:
+        result = subprocess.run(
+            ["pdbedit", "-L"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        return False
+
+    return any(line.partition(":")[0] == username for line in result.stdout.splitlines())
+
 
 def wait_manila_backend(env, timeout=120):
     elapsed = 0

@@ -13,7 +13,7 @@ from .utils import wait_manila_backend
 from .utils.shares import create_shares, create_share_types
 
 from .protocols.nfs import run_setup_nfs
-from .protocols.cifs import run_setup_cifs
+from .protocols.samba import run_setup_samba
 
 from ....utils.core.system_utils import is_package_installed
 
@@ -59,11 +59,22 @@ def conf_generic_backend(config):
 
     enabled_share_protocols = ",".join(protocols)
 
-    if "NFS" in protocols and not is_package_installed(["nfs-kernel-server", "nfs-common"]):
-        if not run_setup_nfs(): return False
+    share_helpers = get(config, "manila.SHARE_HELPERS") or []
+    
+    helpers = []
 
-    if "CIFS" in protocols and not is_package_installed(["samba", "samba-common-bin"]):
-        if not run_setup_cifs(): return False
+    if "NFS" in protocols:
+        if not run_setup_nfs(): return False
+    
+    if "CIFS" in protocols:
+        if not run_setup_samba(config): return False
+
+    for helper in share_helpers:
+            for helper_type, config in helper.items():
+                helper_name = config.get("name")
+                helpers.append(f"{helper_type}={helper_name}")
+
+    set_conf_option(manila_conf, "DEFAULT", "share_helpers", f"{helper_type}={helper_name}")
 
     set_conf_option(manila_conf, "DEFAULT", "enabled_share_backends", "generic")
     set_conf_option(manila_conf, "DEFAULT", "enabled_share_protocols", enabled_share_protocols)

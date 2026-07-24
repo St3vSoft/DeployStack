@@ -1,12 +1,13 @@
 from .....utils.apt.apt import apt_install, apt_update
 from .....utils.core.commands import run_command
+from .....utils.core.system_utils import is_package_installed
 
 def install_pkgs():
     print()
 
     if not apt_update() : return False
 
-    if not apt_install(["nfs-kernel-server", "nfs-common"], "Installing Samba CIFS Protocol packages..."):
+    if not apt_install(["nfs-kernel-server", "nfs-common"], "Installing NFS Server packages..."):
         return False
 
     return True
@@ -25,7 +26,9 @@ def finalize():
 
 def run_setup_nfs():
 
-    if not install_pkgs() : return False
+    if not is_package_installed(["nfs-kernel-server", "nfs-common"]):
+        if not install_pkgs() : return False
+
     if not finalize(): return False
 
     return True

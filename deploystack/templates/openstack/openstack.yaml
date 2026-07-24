@@ -103,6 +103,12 @@ manila:
 
   SHARE_PROTOCOLS:
     - NFS
+  
+  SHARE_HELPERS:
+      - NFS:
+        name: "manila.share.drivers.helpers.NFSHelper"
+  #   - CIFS:
+  #     name: "manila.share.drivers.helpers.NASHelper"
 
   backends:
 
@@ -139,7 +145,6 @@ manila:
 
       SHARE_EXPORT_IP: ""
 
-
       # -------------------------
       # Physical volume configuration
       # -------------------------
@@ -155,7 +160,14 @@ manila:
       MANILA_LVM_IMAGE_SIZE_IN_GB: "10"
 
       MANILA_LVM_LOOP_PATH: "/dev/loop0"
+  
+  samba:
+    SAMBA_SERVER_USER: "samba-user"
+    SAMBA_SERVER_USER_PASSWORD: "secret"
 
+    #CIFS:
+    #  FORCE_USER: no
+    #  FORCE_USER_NAME: "samba-user"
 
   # Shares to create automatically after deployment.
   share_types:
