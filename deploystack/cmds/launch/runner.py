@@ -57,6 +57,32 @@ def is_external_network_by_id(network_id: str) -> bool:
     net = json.loads(_os("network", "show", network_id, "-f", "json"))
     return net.get("router:external", False)
 
+
+def get_external_network(preferred: str | None = None) -> str:
+
+    out = _os("network", "list", "-f", "json")
+    networks = json.loads(out)
+
+    if preferred:
+        for net in networks:
+            if preferred.lower() in net["Name"].lower() or net["Name"].lower() in preferred.lower():
+                if is_external_network_by_id(net["ID"]):
+                    return net["ID"]
+
+    external_nets = [n for n in networks if is_external_network_by_id(n["ID"])]
+
+    if not external_nets:
+        logger.error(f"{colors.RED}No external network (router:external=True) found in the project/cloud.{colors.RESET}")
+        sys.exit(1)
+
+    if len(external_nets) > 1:
+        logger.warning(
+            f"{colors.YELLOW}Find more external networks:"
+            f"{[n['Name'] for n in external_nets]}. Using the first: {external_nets[0]['Name']}{colors.RESET}"
+        )
+
+    return external_nets[0]["ID"]
+
 def ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
 
     keypair_name = f"{name}-keypair"
@@ -126,7 +152,6 @@ def get_default_flavor(preferred: str = DEFAULT_FLAVOR) -> str:
     return out.splitlines()[0].split()[0] if out else "1"
 
 def delete_instance(instance_id: str):
-
     try:
         subprocess.run(
             ["openstack", "server", "delete", instance_id],
@@ -192,7 +217,7 @@ def get_default_network(preferred: str | None = None) -> str:
     sys.exit(1)
 
 def get_server_id(name: str) -> str:
-    """Resolve server name to ID. Fails if multiple servers share the same name."""
+
     out = _os("server", "list", "--name", f"^{name}$",
               "-f", "value", "-c", "ID", "-c", "Name")
     matches = [line.split(None, 1) for line in out.splitlines() if line.strip()]
@@ -516,6 +541,8 @@ def launch(
     os_distro    = (props.get("os_distro") or "").lower()
     image_name   = (props.get("name") or "").lower()
     os_admin_user = (props.get("os_admin_user") or "")
+
+    external_net_id = get_external_network(external_net if external_net != EXTERNAL_NET else None)
 
     password_enabled = True
     show_access = True
