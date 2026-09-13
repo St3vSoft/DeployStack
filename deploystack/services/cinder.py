@@ -14,7 +14,7 @@ from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
 from ..utils.core.system_utils import nc_wait
 from ..utils.core import colors
-from ..utils.core.system_utils import service_exists, is_debian, is_package_installed, get_device_for_path, get_physical_disk, get_vg_physical_disks
+from ..utils.core.system_utils import service_exists, is_debian, is_package_installed, get_physical_disk, get_vg_physical_disks
 from ..utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service
 from ..utils.lvm import get_vg_for_pv, ensure_system_user_with_run_command
 
@@ -346,25 +346,82 @@ def conf_cinder_backup(config):
 
             if not run_command(["exportfs", "-ra"], "Applying NFS exports...") : return False
 
-        backup_server, backup_export = parse_nfs_source(nfs_share)
-        
-        vol_nfs_share = get(config, f"cinder.backends.nfs.NFS_SHARE")
-        vol_server, vol_export = parse_nfs_source(vol_nfs_share)
+            if "lvm" in enabled_cinder_backends:
+                vg_name = get(config, "cinder.backends.lvm.VOLUME_GROUP")
 
-        if backup_server and vol_server:
-            if backup_server == vol_server and backup_export == vol_export:
-                print(
-                    f"{colors.YELLOW}Warning: 'cinder.backup.drivers.nfs.NFS_SHARE' "
-                    f"points to the same NFS export ({nfs_share}) as the Cinder volume "
-                    f"backend NFS. In the event of a storage failure, the backups "
-                    f"will not be recoverable.{colors.RESET}"
-                )
-            elif backup_server == vol_server:
-                print(
-                    f"{colors.YELLOW}Warning: 'cinder.backup.drivers.nfs.NFS_SHARE' uses the "
-                    f"same NFS server ({backup_server}) as the Cinder volume backend "
-                    f"NFS, on a different export.{colors.RESET}"
-                )
+                backup_disk = get_physical_disk(export_path)
+                vg_disks = get_vg_physical_disks(vg_name)
+
+                if backup_disk and vg_disks:
+                    if backup_disk in vg_disks:
+                        print(
+                            f"{colors.YELLOW}Warning: 'cinder.backup.drivers.nfs.NFS_SHARE' "
+                            f"export path is located on the same physical disk ({backup_disk}) "
+                            f"as the Cinder LVM volume group ('{vg_name}'). In the event of a disk "
+                            f"failure, the backups will not be recoverable.{colors.RESET}"
+                        )
+                else:
+                    print(
+                        f"{colors.YELLOW}Warning: unable to determine if "
+                        f"'cinder.backup.drivers.nfs.NFS_SHARE' shares the physical disk "
+                        f"with the Cinder volume group ('{vg_name}').{colors.RESET}"
+                    )
+
+            if "nfs" in enabled_cinder_backends:
+                vol_nfs_share = get(config, "cinder.backends.nfs.NFS_SHARE")
+                vol_server, vol_export = parse_nfs_source(vol_nfs_share)
+                backup_server, backup_export = parse_nfs_source(nfs_share)
+
+                if backup_server and vol_server:
+                    if backup_server == vol_server and backup_export == vol_export:
+                        print(
+                            f"{colors.YELLOW}Warning: 'cinder.backup.drivers.nfs.NFS_SHARE' "
+                            f"points to the same NFS export ({nfs_share}) as the Cinder volume "
+                            f"backend NFS. In the event of a storage failure, the backups "
+                            f"will not be recoverable.{colors.RESET}"
+                        )
+                    elif backup_server == vol_server:
+
+                        vol_export_local = get(config, "cinder.backends.nfs.MOUNT_POINT_BASE") or vol_export
+                        backup_disk = get_physical_disk(export_path)
+                        vol_disk = get_physical_disk(vol_export_local)
+
+                        if backup_disk and vol_disk and backup_disk == vol_disk:
+                            print(
+                                f"{colors.YELLOW}Warning: 'cinder.backup.drivers.nfs.NFS_SHARE' "
+                                f"and the Cinder volume NFS backend use the same server "
+                                f"({backup_server}) and the same physical disk ({backup_disk}), "
+                                f"on different exports. In the event of a disk failure, the "
+                                f"backups will not be recoverable.{colors.RESET}"
+                            )
+                        else:
+                            print(
+                                f"{colors.YELLOW}Warning: 'cinder.backup.drivers.nfs.NFS_SHARE' uses "
+                                f"the same NFS server ({backup_server}) as the Cinder volume backend "
+                                f"NFS, on a different export.{colors.RESET}"
+                            )
+        else:
+
+            if "nfs" in enabled_cinder_backends:
+                vol_nfs_share = get(config, "cinder.backends.nfs.NFS_SHARE")
+                vol_server, vol_export = parse_nfs_source(vol_nfs_share)
+                backup_server, backup_export = parse_nfs_source(nfs_share)
+
+                if backup_server and vol_server:
+                    if backup_server == vol_server and backup_export == vol_export:
+                        print(
+                            f"{colors.YELLOW}Warning: 'cinder.backup.drivers.nfs.NFS_SHARE' "
+                            f"points to the same NFS export ({nfs_share}) as the Cinder volume "
+                            f"backend NFS. In the event of a storage failure, the backups "
+                            f"will not be recoverable.{colors.RESET}"
+                        )
+                    elif backup_server == vol_server:
+                        print(
+                            f"{colors.YELLOW}Warning: 'cinder.backup.drivers.nfs.NFS_SHARE' uses the "
+                            f"same NFS server ({backup_server}) as the Cinder volume backend "
+                            f"NFS, on a different export.{colors.RESET}"
+                        )   
+
 
         set_conf_option(cinder_conf, "DEFAULT", "backup_driver", "cinder.backup.drivers.nfs.NFSBackupDriver")
 
