@@ -597,7 +597,7 @@ def launch(
     if is_private:
 
         if internal_router_has_gateway() and not is_local_network:
-            fip = allocate_floating_ip(external_net)
+            fip = allocate_floating_ip(external_net_id)
             attach_floating_ip(server_id, fip)
 
             instance_ip_address = fip
