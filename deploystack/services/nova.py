@@ -62,7 +62,7 @@ def conf_nova(config):
     set_conf_option(nova_conf, "vnc", "enabled", "true")
     set_conf_option(nova_conf, "vnc", "server_listen", ip_address)
     set_conf_option(nova_conf, "vnc", "server_proxyclient_address", ip_address)
-    set_conf_option(nova_conf, "vnc", "novncproxy_base_url", f"http://{ip_address}:6080/vnc_auto.html")
+    set_conf_option(nova_conf, "vnc", "novncproxy_base_url", f"http://{ip_address}:6080/vnc_lite.html")
 
     set_conf_option(nova_conf, "scheduler", "workers", "2")
 
