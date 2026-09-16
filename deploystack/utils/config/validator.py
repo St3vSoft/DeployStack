@@ -85,8 +85,8 @@ def validate_host_network(config) -> bool:
     host_domain = get(config, "network.HOST_DOMAIN") or ""
 
     if host_domain:
-        if not validators.domain(host_domain):
-            print(f"{colors.RED}Error: Field 'network.HOST_DOMAIN' as invalid domain name{colors.RESET}")
+        if not validators.domain(host_domain) and not validators.hostname(host_domain):
+            print(f"{colors.RED}Error: Field 'network.HOST_DOMAIN' has invalid domain name{colors.RESET}")
             ok = False
 
     return ok
