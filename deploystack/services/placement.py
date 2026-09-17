@@ -58,6 +58,7 @@ def finalize(config):
     ip_address = get(config, "network.HOST_IP")    
 
     if service_exists("placement-api.service") and is_debian():
+        if not run_command(["systemctl", "enable", "placement-api"], "Enabling Placement API Service...") : return False
         if not run_command(["systemctl", "restart", "placement-api"], "Restarting Placement API..."): return False
     else:
         if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2..."): return False
