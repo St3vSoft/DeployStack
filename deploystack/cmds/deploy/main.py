@@ -369,6 +369,8 @@ def deploy(parser, args) -> None:
             os_release = "caracal"
         elif is_ubuntu_release("26.04"):
             os_release = "gazpacho"
+        else:
+            os_release = "caracal"
 
         config_openstack(
             config_file_path=config_file_path,
