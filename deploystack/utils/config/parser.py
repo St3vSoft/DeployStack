@@ -28,7 +28,7 @@ def get_conf_option(conf_file, section, option, interpolation=True):
         interpolation=None if not interpolation else configparser.BasicInterpolation()
     )
 
-    config.optionxform = str  # mantiene maiuscole/minuscole
+    config.optionxform = str  
     config.read(conf_file)
 
     if section in config and option in config[section]:

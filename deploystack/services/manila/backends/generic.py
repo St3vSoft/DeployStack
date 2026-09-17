@@ -116,7 +116,7 @@ def finalize_generic_backend(config, env):
     create_shares_enabled = parse_bool(get(config, "manila.CREATE_SHARES") , False)
 
     manila_temp_image_file = "/tmp/manila-service-image.qcow2"
-    manila_image_url = "https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-lustre-master.qcow2"
+    manila_image_url = "https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-master.qcow2"
 
     generic_service_image_name = get(config, "manila.backends.generic.SERVICE_IMAGE_NAME")
 
