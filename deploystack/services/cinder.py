@@ -607,6 +607,11 @@ def create_volume_types(config, env):
 
     enabled_backends = get(config, "cinder.ENABLED_BACKENDS", []) or []
 
+    if service_exists("cinder-api.service") and is_debian():
+        print()
+        
+        if not run_command(["systemctl", "restart", "cinder-api"], "Restarting Cinder API...") : return False
+
     volumes_types = json.loads(run_command_output(["openstack", "volume", "type", "list", "-f", "json"], env=env))
 
     def configure_volume_type(backend):
