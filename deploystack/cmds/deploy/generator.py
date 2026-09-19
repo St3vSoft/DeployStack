@@ -269,24 +269,27 @@ def config_openstack(
             config_dict["cinder"]["ENABLE_CINDER_BACKUP"] = "no"
             config_dict["cinder"].pop("backup", None)
         
-        if "lvm" in cinder_enabled_backends :
-            if not cinder_physical_volume or cinder_physical_volume.strip() == "":
-                config_dict["cinder"]["backends"]["lvm"] = {
-                    "BACKEND_NAME": "lvm",
-                    "VOLUME_TYPE_NAME": "iscsi",
+        if "lvm" in cinder_enabled_backends:
+
+            lvm_config = {
+                "BACKEND_NAME": "lvm",
+                "VOLUME_TYPE_NAME": "iscsi",
+                "VOLUME_GROUP": cinder_lvm_vg,
+                "TARGET_IP_ADDRESS": mgmt_ip,
+                "VOLUME_CLEAR": "zero",
+                "VOLUME_CLEAR_SIZE": 1
+            }
+
+            if not cinder_physical_volume or not cinder_physical_volume.strip():
+                lvm_config.update({
                     "CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH": str(cinder_loop),
                     "CINDER_VOLUME_LVM_IMAGE_FILE_PATH": "/var/lib/cinder/images/cinder-volumes.img",
                     "CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB": cinder_lvm_image_size_in_gb,
-                    "VOLUME_GROUP": cinder_lvm_vg,
-                    "TARGET_IP_ADDRESS": mgmt_ip,
-                    "VOLUME_CLEAR": "zero",
-                    "VOLUME_CLEAR_SIZE": 1
-                }
+                })
             else:
-                config_dict["cinder"]["backends"]["lvm"] = {
-                    "PHYSICAL_VOLUME": cinder_physical_volume,
-                    "VOLUME_GROUP": cinder_lvm_vg,
-                }
+                lvm_config["PHYSICAL_VOLUME"] = cinder_physical_volume
+
+            config_dict["cinder"]["backends"]["lvm"] = lvm_config
 
         if "nfs" in cinder_enabled_backends:
             config_dict["cinder"]["backends"]["nfs"] = {
