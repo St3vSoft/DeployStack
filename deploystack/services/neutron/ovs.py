@@ -137,6 +137,8 @@ def conf_ovs_bridges(config):
     if host_default_gateway:
     
         host_dns_servers = get(config, "network.HOST_DNS_SERVERS")
+
+        subnet_address_gateway = f"    gateway {host_default_gateway}"
         
         public_bridge_ip_config = (
             f"    address {public_iface_ip}\n"
