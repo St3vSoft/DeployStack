@@ -136,23 +136,6 @@ def finalize_generic_backend(config, env):
     networks_list = json.loads(os_run_output(["openstack", "network", "list", "-f", "json"], env=env) or "[]")
     images_list = json.loads(os_run_output(["openstack", "image", "list", "-f", "json"], env=env) or "[]")
     flavors_list = json.loads(os_run_output(["openstack", "flavor", "list", "-f", "json"], env=env) or "[]")
-
-    os.makedirs("/etc/manila/ssh", exist_ok=True)
-
-    if not os.path.exists(manila_ssh_key_path):
-        print()
-        if not run_command(["ssh-keygen", "-t", "rsa", "-b", "2048", "-N", "", "-f", manila_ssh_key_path], "Generating Manila SSH Key...") : return False
-
-    try:
-        shutil.chown("/etc/manila/ssh", user="manila", group="manila")
-        shutil.chown("/etc/manila/ssh/id_manila", user="manila", group="manila")
-        shutil.chown("/etc/manila/ssh/id_manila.pub", user="manila", group="manila")
-
-        os.chmod("/etc/manila/ssh", 0o700)
-        os.chmod("/etc/manila/ssh/id_manila", 0o600)
-        os.chmod("/etc/manila/ssh/id_manila.pub", 0o644)
-    except Exception as e:
-        pass
     
     if not create_share_types(default_type_shares=default_type_shares, env=env): return False
 
@@ -171,6 +154,24 @@ def finalize_generic_backend(config, env):
             os.remove(manila_temp_image_file)
         except FileNotFoundError:
             pass
+
+
+    os.makedirs("/etc/manila/ssh", exist_ok=True)
+
+    if not os.path.exists(manila_ssh_key_path):
+        print()
+        if not run_command(["ssh-keygen", "-t", "rsa", "-b", "2048", "-N", "", "-f", manila_ssh_key_path], "Generating Manila SSH Key...") : return False
+
+    try:
+        shutil.chown("/etc/manila/ssh", user="manila", group="manila")
+        shutil.chown("/etc/manila/ssh/id_manila", user="manila", group="manila")
+        shutil.chown("/etc/manila/ssh/id_manila.pub", user="manila", group="manila")
+
+        os.chmod("/etc/manila/ssh", 0o700)
+        os.chmod("/etc/manila/ssh/id_manila", 0o600)
+        os.chmod("/etc/manila/ssh/id_manila.pub", 0o644)
+    except Exception as e:
+        pass
 
     manila_service_flavor_exists = any(flavor.get("Name") == generic_service_instance_flavor_name for flavor in flavors_list)
 
