@@ -64,7 +64,14 @@ def config_openstack(
     compression_algorithm = "",
     backup_file_size_in_bytes = 0,
     backup_sha_block_size_in_bytes = 0,
-    backup_workers = 0
+    backup_workers = 0,
+
+    nova_virt_type: str = "",
+    cpu_allocation_ratio: float = 0,
+    ram_allocation_ratio: float = 0,
+    disk_allocation_ratio: float = 0,
+
+    allow_resize_to_same_host: str = ""
 ):
 
     try:
@@ -97,7 +104,10 @@ def config_openstack(
 
     dns_list = []
 
-    virt_type = "kvm" if has_hw_virtualization() else "qemu"
+    if nova_virt_type == "kvm" and has_hw_virtualization():
+        virt_type = "kvm"
+    else:
+        virt_type = "qemu"
 
     start_ip = str(ipaddress.IPv4Address(int(ipaddress.IPv4Address(ip)) + 50))
 
@@ -533,9 +543,10 @@ def config_openstack(
     # Compute
     config_dict.setdefault("compute", {})
     config_dict["compute"]["NOVA_COMPUTE_VIRT_TYPE"] = virt_type
-    config_dict["compute"]["CPU_ALLOCATION_RATIO"] = 4.0
-    config_dict["compute"]["RAM_ALLOCATION_RATIO"] = 1.5
-    config_dict["compute"]["DISK_ALLOCATION_RATIO"] = 1.5
+    config_dict["compute"]["CPU_ALLOCATION_RATIO"] = cpu_allocation_ratio
+    config_dict["compute"]["RAM_ALLOCATION_RATIO"] = ram_allocation_ratio
+    config_dict["compute"]["DISK_ALLOCATION_RATIO"] = disk_allocation_ratio
+    config_dict["compute"]["ALLOW_RESIZE_TO_SAME_HOST"] = allow_resize_to_same_host
 
     # OpenStack
     config_dict.setdefault("openstack", {})

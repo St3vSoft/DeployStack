@@ -45,10 +45,10 @@ def conf_placement(config):
     set_conf_option(placement_conf, "api", "auth_strategy", "keystone")
 
     if not run_command([
-    "sudo", "-u", "placement",
-    "placement-manage", "db", "sync"
-    ], "Running Placement DB Migrations...") : return False
-    
+        "sudo", "-u", "placement",
+        "placement-manage", "db", "sync"
+        ], "Running Placement DB Migrations...") : return False
+        
     return True
 
 def finalize(config):

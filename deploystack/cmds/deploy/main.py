@@ -28,6 +28,8 @@ def init_parser(subparsers):
     manila = parser.add_argument_group("Manila Options")
     cinder = parser.add_argument_group("Cinder Options")
 
+    nova_compute = parser.add_argument_group("Nova Compute Options")
+
     cinder_backup = parser.add_argument_group("Cinder Backup Options")
 
     deployment_group.add_argument(
@@ -63,6 +65,43 @@ def init_parser(subparsers):
         choices=["yes", "no"],
         default="yes",
         help="Choosing whether to install Horizon (Dashboard) service (yes/no)"
+    )
+
+    nova_compute.add_argument(
+        "--virt-type",
+        type=str,
+        choices=["qemu", "kvm"],
+        default="kvm",
+        help="Virtualization type. Use kvm on bare metal, qemu inside a virtual machine (nested virtualization). (default: kvm)"
+    )
+
+    nova_compute.add_argument(
+        "--cpu-allocation-ratio",
+        type=float,
+        default=2.0,
+        help="Overcommit ratio for vCPUs (default: 2.0)"
+    )
+
+    nova_compute.add_argument(
+        "--ram-allocation-ratio",
+        type=float,
+        default=1.5,
+        help="Overcommit ratio for RAM. (default: 1.5)"
+    )
+
+    nova_compute.add_argument(
+        "--disk-allocation-ratio",
+        type=float,
+        default=1.5,
+        help="Overcommit ratio for disk. (default: 1.5)"
+    )
+
+    nova_compute.add_argument(
+        "--allow-resize-to-same-host",
+        type=str,
+        choices=["yes", "no"],
+        default="no",
+        help="Allow resize operations to be performed on the same compute host. (default: no)"
     )
 
     manila.add_argument(
@@ -409,6 +448,13 @@ def deploy(parser, args) -> None:
             os_mgmt_gateway=args.os_management_gateway,
 
             os_release=os_release,
+
+            nova_virt_type=args.virt_type,
+            cpu_allocation_ratio=args.cpu_allocation_ratio,
+            ram_allocation_ratio=args.ram_allocation_ratio,
+            disk_allocation_ratio=args.disk_allocation_ratio,
+
+            allow_resize_to_same_host=args.allow_resize_to_same_host
         )
 
         if args.generate_only:
