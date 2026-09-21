@@ -14,7 +14,7 @@ from ..patches.manila.manilaclient import install_manilaclient_in_venv
 
 from ...utils.core import colors
 
-from .. import is_os_release
+from ..utils import is_os_release
 
 manila_conf = "/etc/manila/manila.conf"
 
