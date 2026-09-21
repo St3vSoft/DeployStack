@@ -23,7 +23,7 @@ from ...services.neutron import run_setup_neutron
 from ...services.manila import run_setup_manila
 from ...services.horizon import run_setup_horizon
 
-from ...services import get_base_host
+from ...services.utils import get_base_host
 
 from ...utils.config.helpers import parse_bool
 
