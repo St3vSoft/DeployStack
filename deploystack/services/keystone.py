@@ -12,7 +12,7 @@ from ..utils.core import colors
 
 from ..utils.config.helpers import parse_bool
 
-from . import get_base_host, is_os_release
+from .utils import get_base_host, is_os_release
 
 keystone_conf = "/etc/keystone/keystone.conf"
 

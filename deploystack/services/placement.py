@@ -4,9 +4,8 @@ from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
-from ..utils.core.system_utils import nc_wait
 from ..utils.core import colors
-from ..utils.core.system_utils import service_exists, is_debian
+from ..utils.core.system_utils import service_exists, is_debian, nc_wait
 
 placement_conf = "/etc/placement/placement.conf"
 

@@ -4,11 +4,10 @@ import os
 import stat
 
 from ..utils.core.commands import run_command, run_command_sync, os_run
-from ..utils.core.system_utils import service_exists
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option, set_service_option
-from ..utils.core.system_utils import nc_wait, is_debian, is_ubuntu_release
+from ..utils.core.system_utils import nc_wait, is_debian, is_ubuntu_release, service_exists
 from ..utils.core import colors
 
 from .patches.novncproxy import run_novncproxy_setup_patches

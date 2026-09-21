@@ -7,7 +7,7 @@ from pathlib import Path
 from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install, apt_update
 from ..utils.config.parser import get
-from ..utils.core.system_utils import nc_wait, is_ubuntu_release, is_package_installed
+from ..utils.core.system_utils import nc_wait, is_ubuntu_release
 from ..utils.core import colors
 
 from ..utils.config.setter import set_conf_option, toml_string
@@ -15,7 +15,7 @@ from ..utils.config.setter import set_conf_option, toml_string
 from ..utils.lvm.loopback import set_lvm_filter
 from ..utils.config.helpers import parse_bool
 
-from . import is_os_release
+from .utils import is_os_release
 
 from .patches.openstackclient import create_venv_and_install_openstackclient
 
@@ -120,7 +120,7 @@ def _setup_debian_repo(distro_codename: str, release: str):
         f.write('DPkg::Options {"--force-confdef"; "--force-confold"; };')
 
     print(f"{colors.YELLOW}Debian: OpenStack packages from backports. "
-          f"Version '{release}' may not be guaranteed.{colors.RESET}")
+          f"Release '{release}' may not be guaranteed.{colors.RESET}")
 
 
 UBUNTU_CLOUD_ARCHIVE = {

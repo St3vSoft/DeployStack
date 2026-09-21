@@ -6,8 +6,10 @@ import json
 
 import platform
 import subprocess
-import sys
 import os
+
+import urllib.request
+import urllib.error
 
 from time import sleep, time
 
@@ -121,6 +123,7 @@ def get_vg_physical_disks(vg_name):
             stderr=subprocess.DEVNULL,
         )
     except subprocess.CalledProcessError:
+
         pass
 
     try:
@@ -190,21 +193,48 @@ def iface_exists(iface: str) -> bool:
                             stderr=subprocess.DEVNULL)
     return result.returncode == 0
 
-def nc_wait(addr: str, port: int, timeout: int = 30) -> bool:
-
+def http_wait(addr: str, path: str, timeout: int = 30) -> bool:
     start_time = time()
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    
-    while True:
-        if sock.connect_ex((addr, port)) == 0:
-            sock.close()
-            return True
-        elif time() - start_time > timeout:
-            print(f"\n{colors.RED}ERROR:{colors.RESET} Service at {addr}:{port} did not respond within {timeout} seconds.")
-            sock.close()
 
-            sys.exit(1);
+    url = f"http://{addr}{path}"
+
+    while True:
+        try:
+            with urllib.request.urlopen(url, timeout=5) as response:
+                if 200 <= response.status < 400:
+                    return True
+
+        except (urllib.error.URLError, TimeoutError, OSError):
+            pass
+
+        if time() - start_time > timeout:
+            print(
+                f"\n{colors.RED}ERROR:{colors.RESET} "
+                f"Horizon URL {url} did not respond "
+                f"within {timeout} seconds."
+            )
             return False
+
+        sleep(1)
+
+def nc_wait(addr: str, port: int, timeout: int = 30) -> bool:
+    start_time = time()
+
+    while True:
+        try:
+            with socket.create_connection((addr, port), timeout=2):
+                return True
+        except (OSError, TimeoutError):
+            pass
+
+        if time() - start_time > timeout:
+            print(
+                f"\n{colors.RED}ERROR:{colors.RESET} "
+                f"Service at {addr}:{port} did not respond "
+                f"within {timeout} seconds."
+            )
+            return False
+
         sleep(1)
 
 def is_module_loaded(module_name):

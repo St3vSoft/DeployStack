@@ -10,14 +10,14 @@ from pprint import pformat
 from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install, apt_update
 from ..utils.config.parser import get
-from ..utils.core.system_utils import nc_wait, is_debian
+from ..utils.core.system_utils import http_wait, is_debian
 from ..utils.core import colors
 
 from ..utils.config.helpers import parse_bool
 
 from .manila.horizon import setup_manila_horizon
 
-from . import get_base_host
+from .utils import get_base_host
 
 settings_file = "/etc/openstack-dashboard/local_settings.py"
 
@@ -85,8 +85,7 @@ def enable_cinder_backup_panel():
             + "\n"
         )
 
-        with open(settings_file, "w") as f:
-            f.write(content)
+        atomic_write(settings_file, content)
 
         return True
 
@@ -111,8 +110,8 @@ def atomic_write(path, content):
     shutil.move(tmp_path, path)
 
 def set_memcached(settings_file=settings_file, host="127.0.0.1", port=11211):
-
     content = ""
+
     if os.path.exists(settings_file):
         with open(settings_file, "r") as f:
             content = f.read()
@@ -126,9 +125,29 @@ CACHES = {{
 }}
 """
 
-    pattern = r"CACHES\s*=\s*\{.*?\}\s*\}"
-    if re.search(pattern, content, flags=re.DOTALL):
-        content = re.sub(pattern, memcached_block, content, flags=re.DOTALL)
+    match = re.search(r"^CACHES\s*=\s*\{", content, flags=re.MULTILINE)
+
+    if match:
+        start = match.start()
+        brace_start = content.find("{", match.start())
+
+        depth = 0
+        end = None
+
+        for i in range(brace_start, len(content)):
+            if content[i] == "{":
+                depth += 1
+            elif content[i] == "}":
+                depth -= 1
+
+                if depth == 0:
+                    end = i + 1
+                    break
+
+        if end is None:
+            raise ValueError("Unable to find end of CACHES configuration")
+
+        content = content[:start] + memcached_block.strip() + content[end:]
     else:
         content += "\n" + memcached_block + "\n"
 
@@ -162,8 +181,7 @@ def write_resolv_conf(config):
 
 def install_pkgs():
 
-    if not apt_update():
-        return False
+    if not apt_update(): return False
 
     packages = ["openstack-dashboard-apache"] if is_debian() else ["openstack-dashboard"]
 
@@ -173,12 +191,7 @@ def install_pkgs():
 
 def conf_horizon(config):
 
-    ip_address = get(config, "network.HOST_IP")
     install_cinder_backup = parse_bool(get(config, "cinder.ENABLE_CINDER_BACKUP", False))
-
-    if not ip_address:
-        print(f"{colors.RED}Missing HOST_IP{colors.RESET}")
-        return False
 
     settings_to_set = {
         "OPENSTACK_HOST": f'"{get_base_host(config)}"',
@@ -219,20 +232,20 @@ def conf_horizon(config):
     return True
 
 def finalize(config):
-    ip_address = get(config, "network.HOST_IP")
 
     if is_debian():
         print()
 
-        run_command(["a2enmod", "ssl"], "Enabling SSL Module...")
-        run_command(["make-ssl-cert", "generate-default-snakeoil", "--force-overwrite"],
-                    "Regenerating SSL Certificates...")
+        if not run_command(["a2enmod", "ssl"], "Enabling SSL Module...") : return False
+        if not run_command(["make-ssl-cert", "generate-default-snakeoil", "--force-overwrite"], "Regenerating SSL Certificates...") : return False
         
     print()
 
-    run_command(["systemctl", "restart", "apache2"], "Restarting Apache2...")
+    if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2...") : return False
 
-    return nc_wait(ip_address, 80)
+    webroot = "/horizon/" if is_debian() else "/dashboard/"
+
+    return http_wait(get_base_host(config), webroot)
 
 def run_setup_horizon(config):
     
