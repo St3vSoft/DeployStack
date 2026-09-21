@@ -1,13 +1,11 @@
 import os
 import sys
 
-from ...utils.apt.apt import apt_update, apt_install
-from ...utils.config.parser import parse_config, get, to_bool
 from ...utils.config.parser import parse_config, get, resolve_vars
 from ...utils.core import colors
 from ...utils.core.system_utils import has_hw_virtualization, check_ifupdown
 from ...utils.network.net_utils import get_active_interface
-from ...utils.tasks.check_deployment import mark_deployment_complete, MARKER_FILE
+from ...utils.tasks.check_deployment import mark_deployment_complete
 from ...utils.core.system_utils import is_debian
 from ...utils.core.commands import build_openstack_env
 
@@ -66,8 +64,6 @@ def deploy(config_file):
 
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
     install_horizon = parse_bool(get(config, "optional_services.INSTALL_HORIZON", False))
-
-    ip_address = get(config, "network.HOST_IP")
 
     print("OpenStack Deployment Started\n")
     

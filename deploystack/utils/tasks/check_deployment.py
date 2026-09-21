@@ -12,7 +12,7 @@ from ..core.commands import run_command_output
 
 from ..core.system_utils import service_exists, is_debian
 
-from ...services import validate_os_release_available
+from ...services.utils import validate_os_release_available
 
 from ..core import colors
 
