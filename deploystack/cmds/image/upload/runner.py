@@ -7,8 +7,6 @@ import sys
 import itertools
 import termios
 
-from tqdm import tqdm
-
 from ....utils.core import colors
 
 from ...shell import _run

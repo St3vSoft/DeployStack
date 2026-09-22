@@ -396,6 +396,7 @@ export OS_AUTH_URL=http://{get_base_host(config)}:5000/v3
 export OS_IDENTITY_API_VERSION=3
 export OS_IMAGE_API_VERSION=2
 """
+    
     try:
         paths = [
             "/root/admin-openrc.sh",

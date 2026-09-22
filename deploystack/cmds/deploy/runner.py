@@ -64,6 +64,8 @@ def deploy(config_file):
 
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
     install_horizon = parse_bool(get(config, "optional_services.INSTALL_HORIZON", False))
+    
+    os.makedirs("/var/lib/deploystack/", exist_ok=True)
 
     print("OpenStack Deployment Started\n")
     
