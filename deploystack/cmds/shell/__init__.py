@@ -5,10 +5,10 @@ import re
 
 logger = logging.getLogger(__name__)
 
-def _run(args: list[str], check=True) -> subprocess.CompletedProcess:
+def _run(args: list[str], check=True, env=None) -> subprocess.CompletedProcess:
     try:
         return subprocess.run(
-            args, capture_output=True, text=True, timeout=60, check=check
+            args, capture_output=True, text=True, timeout=60, check=check, env=env
         )
     except FileNotFoundError:
         logger.error("'openstack' CLI not found in PATH")

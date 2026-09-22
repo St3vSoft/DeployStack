@@ -318,3 +318,17 @@ def build_openstack_env(config):
     })
 
     return env
+
+def build_openstack_env_from_file(file_path):
+    env = os.environ.copy()
+
+    result = subprocess.run(["bash", "-c", f"source '{file_path}' && env"], capture_output=True, text=True, check=True)
+
+    for line in result.stdout.splitlines():
+        key, separator, value = line.partition("=")
+
+        if separator and key.startswith("OS_"):
+            env[key] = value
+
+    return env
+

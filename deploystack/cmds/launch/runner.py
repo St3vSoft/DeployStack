@@ -6,8 +6,8 @@ import uuid
 import shutil
 import base64
 import json
-import json
 import ipaddress
+
 from passlib.hash import sha512_crypt
 
 from ...utils.config.helpers import prohibited_pw_chars
@@ -15,9 +15,11 @@ from ...utils.config.helpers import prohibited_pw_chars
 from ...utils.core import colors
 from ...templates import CLOUD_CONFIG_LINUX, CLOUD_CONFIG_LINUX_NO_ROOT
 
-from ...utils.core.system_utils import is_debian
+from ...utils.core.system_utils import is_debian, build_openstack_env_from_file
 
 from ..shell import _run, _os, _os_value, logger
+
+from ...utils.tasks.check_deployment import internal_admin_openrc_file
 
 CIRROS_IMAGE_CHECKSUM = "87617e24a5e30cb3b87fda8c0764838f"
 
@@ -160,7 +162,7 @@ def delete_instance(instance_id: str):
     except subprocess.CalledProcessError as e:
             print(f"Error when deleting instance {instance_id}: {e}")
 
-def internal_router_has_gateway() -> bool:
+def internal_router_has_gateway(env=None) -> bool:
 
     field_name: str
 
@@ -169,7 +171,7 @@ def internal_router_has_gateway() -> bool:
     else:
         field_name = "external_gateway_info"
 
-    result = _run(["openstack", "router", "show", "internal_router", "-f", "json", "-c", field_name])
+    result = _run(["openstack", "router", "show", "internal_router", "-f", "json", "-c", field_name], env=env)
     external_gateways = json.loads(result.stdout)
 
     gateways = external_gateways.get(field_name, [])
@@ -544,6 +546,8 @@ def launch(
 
     external_net_id = get_external_network(external_net if external_net != EXTERNAL_NET else None)
 
+    admin_internal_env = build_openstack_env_from_file(internal_admin_openrc_file)
+
     password_enabled = True
     show_access = True
 
@@ -596,7 +600,7 @@ def launch(
 
     if is_private:
 
-        if internal_router_has_gateway() and not is_local_network:
+        if internal_router_has_gateway(env=admin_internal_env) and not is_local_network:
             fip = allocate_floating_ip(external_net_id)
             attach_floating_ip(server_id, fip)
 
