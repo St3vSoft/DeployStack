@@ -24,6 +24,17 @@ internal_admin_openrc_file = "/var/lib/deploystack/admin-openrc"
 # In production it should be left unset (or =0), so the logger stays at WARNING level.
 DEBUG_ENV_VAR = "DEPLOYSTACK_DEPLOYMENT_CHECK_ENABLE_DEBUG"
 
+required_vars = [
+    "OS_PROJECT_DOMAIN_NAME",
+    "OS_USER_DOMAIN_NAME",
+    "OS_PROJECT_NAME",
+    "OS_USERNAME",
+    "OS_PASSWORD",
+    "OS_AUTH_URL",
+    "OS_IDENTITY_API_VERSION",
+    "OS_IMAGE_API_VERSION"
+]
+
 logger = logging.getLogger(__name__)
 
 def load_openrc(path: str):
@@ -284,19 +295,6 @@ def check_deployment(include_endpoints: bool = True):
 
 def check_env_variables():
 
-    load_openrc(internal_admin_openrc_file)
-    
-    required_vars = [
-        "OS_PROJECT_DOMAIN_NAME",
-        "OS_USER_DOMAIN_NAME",
-        "OS_PROJECT_NAME",
-        "OS_USERNAME",
-        "OS_PASSWORD",
-        "OS_AUTH_URL",
-        "OS_IDENTITY_API_VERSION",
-        "OS_IMAGE_API_VERSION"
-    ]
-
     missing = []
     empty = []
 
@@ -383,6 +381,13 @@ def is_openstack_ready() -> bool:
         print(f"  {colors.YELLOW}source /root/admin-openrc.sh{colors.RESET}  or")
         print(f"  {colors.GREEN}source /root/demo-openrc.sh{colors.RESET}\n")
         return False
+
+    old_env = {
+        var: os.environ.get(var)
+        for var in required_vars
+    }
+
+    load_openrc(internal_admin_openrc_file)
  
     auth_ok, auth_error = check_keystone_auth()
 
@@ -410,6 +415,12 @@ def is_openstack_ready() -> bool:
         print(f"{colors.RED}OpenStack is deployed but services are not fully operational:{colors.RESET}\n")
         print(f"{endpoint_check}\n")
         return False
+
+    for var, value in old_env.items():
+        if value is None:
+            os.environ.pop(var, None)
+        else:
+            os.environ[var] = value
 
     return True
 
