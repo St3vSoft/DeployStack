@@ -142,6 +142,12 @@ def create_projects_and_demo_user(config, env):
     if ("demo", "demo", "user") not in existing_assignments:
         create_demo_user_cmds.append(["openstack", "role", "add", "--project", "demo", "--user", "demo", "user"])
 
+    if ("demo", "demo", "reader") not in existing_assignments:
+        create_demo_user_cmds.append(["openstack", "role", "add", "--project", "demo", "--user", "demo", "reader"])
+
+    if ("demo", "demo", "member") not in existing_assignments:
+        create_demo_user_cmds.append(["openstack", "role", "add", "--project", "demo", "--user", "demo", "member"])
+
     if not run_command(create_service_project_cmd, "Creating service project...", env=env): return False
 
     if not run_commands(create_demo_user_cmds, "Creating demo user...", env=env): return False  
