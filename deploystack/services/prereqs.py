@@ -132,8 +132,8 @@ def _setup_debian_repo(distro_codename: str, release: str):
     ]
 
     if release not in supported_releases:
-        print(f"ERROR: Unsupported OpenStack release: '{release}'")
-        print("Supported OpenStack releases:")
+        print(f"{colors.RED}ERROR: Unsupported OpenStack release: '{release}'{colors.RESET}")
+        print("\nSupported OpenStack releases:")
 
         for supported_release in supported_releases:
             print(f"  - {supported_release}")
@@ -202,13 +202,12 @@ def set_openstack_release(config):
             return False
 
     elif distro_id == "debian":
-        _setup_debian_repo(distro_codename, release)
+        if not _setup_debian_repo(distro_codename, release) : return False
     else:
         print(f"{colors.YELLOW}Warning: Unknown distribution '{distro_id}'. "
               f"Skipping repository setup.{colors.RESET}")
 
-    if not apt_update():
-        return False
+    if not apt_update(): return False
 
     return True
 
