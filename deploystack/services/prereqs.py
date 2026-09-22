@@ -4,10 +4,10 @@ import sys
 
 from pathlib import Path
 
-from ..utils.core.commands import run_command
+from ..utils.core.commands import run_command, run_command_output
 from ..utils.apt.apt import apt_install, apt_update
 from ..utils.config.parser import get
-from ..utils.core.system_utils import nc_wait, is_ubuntu_release
+from ..utils.core.system_utils import nc_wait, is_ubuntu_release, is_package_installed
 from ..utils.core import colors
 
 from ..utils.config.setter import set_conf_option, toml_string
@@ -119,9 +119,30 @@ def _setup_debian_repo(distro_codename: str, release: str):
     with open(dpkg_conf, "w") as f:
         f.write('DPkg::Options {"--force-confdef"; "--force-confold"; };')
 
-    print(f"{colors.YELLOW}Debian: OpenStack packages from backports. "
-          f"Release '{release}' may not be guaranteed.{colors.RESET}")
+    if not is_package_installed("extrepo"):
+        print()
+        if not apt_install(["extrepo"], "Installing extrepo Package...") : return False
 
+    available_releases_repos = run_command_output(["extrepo", "search", "openstack"])
+
+    supported_releases = [
+        line.removeprefix("Found openstack_").removesuffix(":")
+        for line in available_releases_repos.splitlines()
+        if line.startswith("Found openstack_")
+    ]
+
+    if release not in supported_releases:
+        print(f"ERROR: Unsupported OpenStack release: '{release}'")
+        print("Supported OpenStack releases:")
+
+        for supported_release in supported_releases:
+            print(f"  - {supported_release}")
+
+        return False
+
+    if not run_command(["extrepo", "enable", f"openstack_{release}"], f"Enabling OpenStack {release} repo...") : return False
+
+    return True
 
 UBUNTU_CLOUD_ARCHIVE = {
     ("focal",   "wallaby"),
