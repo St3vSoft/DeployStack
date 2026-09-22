@@ -16,7 +16,8 @@ from ...services.utils import validate_os_release_available
 
 from ..core import colors
 
-MARKER_FILE = "/var/lib/openstack_installer/deploy_complete"
+MARKER_FILE = "/var/lib/deploystack/deploy_complete"
+internal_admin_openrc_file = "/var/lib/deploystack/admin-openrc"
 
 # Name of the environment variable that enables debugging.
 # Set DEPLOYSTACK_DEBUG=1 (or "true"/"yes") to turn it on.
@@ -25,6 +26,19 @@ DEBUG_ENV_VAR = "DEPLOYSTACK_DEPLOYMENT_CHECK_ENABLE_DEBUG"
 
 logger = logging.getLogger(__name__)
 
+def load_openrc(path: str):
+    result = subprocess.run(
+        ["bash", "-c", f"source {path} && env"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    for line in result.stdout.splitlines():
+        key, sep, value = line.partition("=")
+
+        if sep:
+            os.environ[key] = value
 
 def _env_flag_enabled(var_name: str) -> bool:
     """Return True if the given environment variable represents a 'true' value."""
@@ -269,6 +283,9 @@ def check_deployment(include_endpoints: bool = True):
     return result
 
 def check_env_variables():
+
+    load_openrc(internal_admin_openrc_file)
+    
     required_vars = [
         "OS_PROJECT_DOMAIN_NAME",
         "OS_USER_DOMAIN_NAME",

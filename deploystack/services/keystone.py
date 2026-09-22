@@ -397,12 +397,20 @@ export OS_IDENTITY_API_VERSION=3
 export OS_IMAGE_API_VERSION=2
 """
     try:
-        with open("/root/admin-openrc.sh", "w") as fadmin:
-            fadmin.write(admin_openrc_content.strip())
+        paths = [
+            "/root/admin-openrc.sh",
+            "/var/lib/deploystack/admin-openrc"
+        ]
+        for path in paths:
+            with open(path, "w") as fadmin:
+                fadmin.write(admin_openrc_content.strip())
+                os.chmod(path, 0o600)
+
         with open("/root/demo-openrc.sh", "w") as fdemo:
             fdemo.write(demo_openrc_content.strip())
+            
         os.chmod("/root/admin-openrc.sh", 0o600)
-        os.chmod("/root/demo-openrc.sh", 0o600)
+        
     except Exception as e:
         print(f"{colors.RED}Failed to generate credentials scripts: {e}{colors.RESET}")
         return False
