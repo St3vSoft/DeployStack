@@ -64,7 +64,7 @@ def finalize():
     if service_exists("nova-api.service"):
         services_to_restart.insert(0, "nova-api")
 
-    if not run_command(["systemctl", "restart"] + services_to_restart, "Restarting Nova Compute services..."): return False
+    if not run_command(["systemctl", "restart"] + services_to_restart, "Restarting Nova Compute services...", retries=5, timeout=5000): return False
     
     print()
 
