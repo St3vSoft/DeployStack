@@ -361,6 +361,10 @@ def conf_ovn_neutron(config):
 
     set_conf_option(neutron_ovn_metadata_agent_conf, "DEFAULT", "metadata_proxy_shared_secret", service_password)
 
+    if is_debian():
+        set_conf_option(neutron_ovn_metadata_agent_conf, "ovs", "ovsdb_connection", "unix:/var/run/openvswitch/db.sock")
+        set_conf_option(neutron_conf, "ovn", "ovn_sb_connection", f"tcp:{ip_address}:{ovn_sb_port}")
+
     set_conf_option(neutron_ovn_metadata_agent_conf, "ovn", "ovn_sb_connection", f"tcp:{ip_address}:{ovn_sb_port}")
 
     if create_ovn_bridges:
