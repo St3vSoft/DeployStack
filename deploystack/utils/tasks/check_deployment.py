@@ -158,7 +158,7 @@ def is_package_installed(pkg_name: str) -> bool:
     
 def check_endpoint(service_name: str) -> bool:
     try:
-        output = run_command_output(["openstack", "endpoint", "list", "--service", service_name, "-f", "json", "-c Enabled"])
+        output = run_command_output(["openstack", "endpoint", "list", "--service", service_name, "-f", "json", "-c", "Enabled"])
 
         result = bool(json.loads(output))
         logger.debug(f"Endpoint '{service_name}': {'present' if result else 'absent'}")
