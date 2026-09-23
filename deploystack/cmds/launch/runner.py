@@ -177,7 +177,6 @@ def internal_router_has_gateway(env=None) -> bool:
     gateways = external_gateways.get(field_name, [])
     return bool(gateways)
 
-
 def get_instance_ip(instance_name: str, network_name: str) -> str:
     result = _run(["openstack", "server list", "-f", "json"])
     servers = json.loads(result.stdout)

@@ -13,6 +13,9 @@ from ...shell import _run
 
 from .images import get_image_url
 
+from ....utils.core.system_utils import build_openstack_env_from_file
+from ....utils.tasks.check_deployment import internal_admin_openrc_file
+
 OS_ADMIN_USERS = {
     "ubuntu": "ubuntu",
     "debian": "debian",
@@ -91,12 +94,12 @@ def image_already_exists(image_name) -> bool:
         print(f"\n{colors.RED}Error while trying to listing images: {e}{colors.RESET}")
         sys.exit(1)
 
-def wait_for_image(image_name, timeout=300):
+def wait_for_image(image_name, timeout=300, env=None):
     start = time.time()
     while True:
         result = subprocess.run(
             ["openstack", "image", "show", image_name, "-f", "value", "-c", "status"],
-            capture_output=True, text=True
+            capture_output=True, text=True, env=env
         )
         status = result.stdout.strip()
         print(f"\rWaiting for image '{image_name}' to become active: {status}", end="")
@@ -112,7 +115,8 @@ def upload_glance_image(
         name: str,
         os: str,
         visibility: str,
-        timeout: int
+        timeout: int,
+        env: None
     ) -> bool:
     
     print(f"\nUploading image '{name}' ...\n")
@@ -139,9 +143,9 @@ def upload_glance_image(
     create_image_cmd.append(f"{name}")
     
     try:
-        _run(create_image_cmd)
+        _run(create_image_cmd, env=env)
 
-        wait_for_image(name, timeout)
+        wait_for_image(name, timeout, env=env)
 
         return True
     except subprocess.CalledProcessError as e:
@@ -165,6 +169,8 @@ def upload_image(
     print("Getting the Download URL for the image...\n")
     image_url = get_image_url(os, version, arch)
 
+    admin_internal_env = build_openstack_env_from_file(internal_admin_openrc_file)
+
     if not output_dir:
         output_dir = "/tmp"
 
@@ -185,7 +191,7 @@ def upload_image(
 
     download_image(image_url, temp_file_path)
 
-    if upload_glance_image(temp_file_path, glance_image_name, os, visibility, timeout):
+    if upload_glance_image(temp_file_path, glance_image_name, os, visibility, timeout, env=admin_internal_env):
 
         print(f"\n{colors.GREEN}Image successfully uploaded{colors.RESET}")
 
