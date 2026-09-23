@@ -550,23 +550,63 @@ def create_ovs_networks(config, env):
         if provider_networks:
             if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, tenant_bridge=internal_bridge, public_bridge=public_bridge, tunnel_bridge=tunnel_bridge, env=env) : return False
     
-    sg_list_json = os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env)
-    sg_list = json.loads(sg_list_json)
+        sg_list = json.loads(
+                os_run_output(
+                    ["openstack", "security", "group", "list", "-f", "json"],
+                    env=env
+                )
+            )
+    
+        sg_demo_list = json.loads(
+            os_run_output(
+                [
+                    "openstack", "security", "group", "list",
+                    "--project", "demo",
+                    "-f", "json"
+                ],
+                env=env
+            )
+        )
 
-    matching_sgs = [sg for sg in sg_list if sg["Name"] == "default"]
-    if not matching_sgs:
-        raise RuntimeError("No security group named 'default' found")
-    sg_id = matching_sgs[0]["ID"]
+        default_admin_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
+        default_demo_sg = next((sg for sg in sg_demo_list if sg["Name"] == "default"), None)
 
-    rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env=env)
-    rules = json.loads(rules_json)
+        if not default_admin_sg:
+            raise RuntimeError("No security group named 'default' found for admin")
 
-    services_rules = get(config, "neutron.default_security_group.services", {})
-    services_rules_remote_ip_prefix = get(config, "neutron.default_security_group.defaults.remote_ip_prefix")
+        if not default_demo_sg:
+            raise RuntimeError("No security group named 'default' found for project 'demo'")
 
-    if services_rules:
-        print()
-        if not add_rules_to_default_sg(create_bridges=create_ovs_bridges, rules_dict=services_rules, ip_prefix=services_rules_remote_ip_prefix, sg_id=sg_id, rules=rules, env=env) : return False
+        services_rules = get(config, "neutron.default_security_group.services", {})
+
+        services_rules_remote_ip_prefix = get(config,"neutron.default_security_group.defaults.remote_ip_prefix")
+
+        if services_rules:
+            print()
+
+            for sg in (default_admin_sg, default_demo_sg):
+                sg_id = sg["ID"]
+
+                rules_json = os_run_output(
+                    [
+                        "openstack",
+                        "security", "group", "rule", "list",
+                        sg_id,
+                        "-f", "json"
+                    ],
+                    env=env
+                )
+
+                rules = json.loads(rules_json)
+
+                if not add_rules_to_default_sg(
+                    create_bridges=create_ovs_bridges,
+                    rules_dict=services_rules,
+                    ip_prefix=services_rules_remote_ip_prefix,
+                    sg_id=sg_id,
+                    rules=rules,
+                    env=env
+                ): return False
 
     return True
 
