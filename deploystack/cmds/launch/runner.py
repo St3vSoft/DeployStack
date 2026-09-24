@@ -333,7 +333,14 @@ def create_server(name: str, image_id: str, flavor_id: str,
             if name in instance_name:
                 delete_instance(instance_id)
 
-        logger.error(f"{colors.RED}OpenStack server creation command failed: {e}{colors.RESET}\n\nFor more information about the error, please see the log: /var/log/nova/nova-compute.log")
+        logger.error(
+            f"{colors.RED}"
+            f"OpenStack server creation failed: {e.stderr}"
+            f"{colors.RESET}\n\n"
+            f"For more information about the error, please see the log: "
+            f"/var/log/nova/nova-compute.log"
+        )
+        
         sys.exit(1) 
 
 def create_server_with_password(
@@ -384,17 +391,11 @@ def create_server_with_password(
 
         logger.error(
             f"{colors.RED}"
-            f"OpenStack server creation failed.\n\n"
-            f"Return code: {e.returncode}\n\n"
-            f"Command:\n"
-            f"{' '.join(e.cmd)}\n\n"
-            f"STDOUT:\n"
-            f"{e.stdout or '(empty)'}\n\n"
-            f"STDERR:\n"
-            f"{e.stderr or '(empty)'}"
-            f"{colors.RESET}"
+            f"OpenStack server creation failed: {e.stderr}"
+            f"{colors.RESET}\n\n"
+            f"For more information about the error, please see the log: "
+            f"/var/log/nova/nova-compute.log"
         )
-        
         sys.exit(1) 
 
     finally:
