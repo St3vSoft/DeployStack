@@ -382,12 +382,28 @@ def create_server_with_password(
             if name in instance_name:
                  delete_instance(instance_id)
 
-        logger.error(f"{colors.RED}OpenStack server creation command failed: {e}{colors.RESET}\n\nFor more information about the error, please see the log: /var/log/nova/nova-compute.log")
+        logger.error(
+            f"{colors.RED}"
+            f"OpenStack server creation failed.\n\n"
+            f"Return code: {e.returncode}\n\n"
+            f"Command:\n"
+            f"{' '.join(e.cmd)}\n\n"
+            f"STDOUT:\n"
+            f"{e.stdout or '(empty)'}\n\n"
+            f"STDERR:\n"
+            f"{e.stderr or '(empty)'}"
+            f"{colors.RESET}"
+        )
+        
         sys.exit(1) 
 
     finally:
         if os.path.exists(config_drive_file_path):
-            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(config_drive_file_path)))
+            base_dir = os.path.dirname(
+                os.path.dirname(
+                    os.path.dirname(config_drive_file_path)
+                )
+            )
             shutil.rmtree(base_dir, ignore_errors=True)
 
 def allocate_floating_ip(external_net: str = EXTERNAL_NET) -> str:
