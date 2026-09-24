@@ -134,36 +134,33 @@ def conf_ovs_bridges(config):
             end = template.index(end_tag) + len(end_tag)
             template = template[:start] + template[end:]
 
-    if host_default_gateway:
-    
-        host_dns_servers = get(config, "network.HOST_DNS_SERVERS")
-
-        subnet_address_gateway = f"    gateway {host_default_gateway}"
-        
-        public_bridge_ip_config = (
-            f"    address {public_iface_ip}\n"
-            f"    gateway {host_default_gateway}\n"
-            f"    nameservers {" ".join(host_dns_servers)}"
-        )
-
-        is_l3_bridge = True
-        subnet_address_gateway = ""
-    elif mgmt_gateway:
-        public_bridge_ip_config = ""
-
-        is_l3_bridge = False
-
-        subnet_address_gateway = f"    gateway {mgmt_gateway}"
+    if is_dual_nic:
+        if host_default_gateway:
+            dns = " ".join(get(config, "network.HOST_DNS_SERVERS"))
+            public_bridge_ip_config = (
+                f"    address {public_iface_ip}\n"
+                f"    gateway {host_default_gateway}\n"
+                f"    dns-nameservers {dns}"
+            )
+            is_l3_bridge = True
+            subnet_address_gateway = ""
+        elif mgmt_gateway:
+            public_bridge_ip_config = ""
+            is_l3_bridge = False
+            subnet_address_gateway = f"    gateway {mgmt_gateway}\n"
+        else:
+            public_bridge_ip_config = ""
+            is_l3_bridge = False
+            subnet_address_gateway = f"    gateway {subnet_gateway}\n" if subnet_gateway else ""
     else:
+        gateway_value = host_default_gateway or mgmt_gateway or subnet_gateway
+        subnet_address_gateway = f"    gateway {gateway_value}\n" if gateway_value else ""
         public_bridge_ip_config = ""
-        
         is_l3_bridge = False
 
-        subnet_address_gateway = (
-            f"    gateway {subnet_gateway}\n"
-            if subnet_gateway
-            else ""
-        )
+        host_dns = get(config, "network.HOST_DNS_SERVERS", None)
+        if host_default_gateway and host_dns:
+            subnet_dns = " ".join(host_dns) if isinstance(host_dns, list) else host_dns
 
     bridges_interfaces_content = template.format(
         management_iface=management_iface if is_dual_nic else "",
@@ -600,6 +597,7 @@ def create_ovs_networks(config, env):
                 rules = json.loads(rules_json)
 
                 if not add_rules_to_default_sg(
+                    sg_id=sg_id
                     create_bridges=create_ovs_bridges,
                     rules_dict=services_rules,
                     ip_prefix=services_rules_remote_ip_prefix,
