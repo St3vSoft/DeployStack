@@ -597,7 +597,7 @@ def create_ovs_networks(config, env):
                 rules = json.loads(rules_json)
 
                 if not add_rules_to_default_sg(
-                    sg_id=sg_id
+                    sg_id=sg_id,
                     create_bridges=create_ovs_bridges,
                     rules_dict=services_rules,
                     ip_prefix=services_rules_remote_ip_prefix,
