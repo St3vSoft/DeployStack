@@ -13,7 +13,7 @@ from passlib.hash import sha512_crypt
 from ...utils.config.helpers import prohibited_pw_chars
 
 from ...utils.core import colors
-from ...templates import CLOUD_CONFIG_LINUX, CLOUD_CONFIG_LINUX_NO_ROOT
+from ...templates import CLOUD_CONFIG_LINUX, CLOUD_CONFIG_LINUX_NO_ROOT, CLOUD_CONFIG_WINDOWS
 
 from ...utils.core.system_utils import is_debian, build_openstack_env_from_file
 
@@ -219,8 +219,8 @@ def get_default_network(preferred: str | None = None) -> str:
 
 def get_server_id(name: str) -> str:
 
-    out = _os("server", "list", "--name", f"^{name}$",
-              "-f", "value", "-c", "ID", "-c", "Name")
+    out = _os("server", "list", "--name", f"^{name}$", "-f", "value", "-c", "ID", "-c", "Name")
+
     matches = [line.split(None, 1) for line in out.splitlines() if line.strip()]
 
     exact = [srv_id for srv_id, srv_name in matches if srv_name.strip() == name]
@@ -250,53 +250,34 @@ def get_floating_ip_id(fip_address: str) -> str:
 def generate_user_config(ostype: str, default_user: str, password: str,
                           public_key: str = None) -> str:
 
-    password_b64 = base64.b64encode(password.encode('utf-16-le')).decode('ascii')
-
-    windows_config_drive = f"""#ps1_sysnative
-
-$username = "{default_user}"
-$passwordB64 = "{password_b64}"
-
-$bytes = [System.Convert]::FromBase64String($passwordB64)
-$password = [System.Text.Encoding]::Unicode.GetString($bytes)
-
-Write-Output "Password decoded: $($password.Length) characters"
-
-$secure = ConvertTo-SecureString $password -AsPlainText -Force
-
-try {{
-    Get-LocalUser -Name $username -ErrorAction Stop
-
-    Set-LocalUser -Name $username -Password $secure -ErrorAction Stop
-    Write-Output "=== PASSWORD CHANGED ==="
-
-    Set-LocalUser -Name $username -PasswordNeverExpires $true -ErrorAction Stop
-    Enable-LocalUser -Name $username -ErrorAction Stop
-
-    Write-Output "=== COMPLETED ==="
-}}
-catch {{
-    Write-Error "ERROR: $($_.Exception.Message)"
-    Write-Error "DETAILS: $($_.Exception)"
-    exit 1
-}}
-"""
-
-    password_hash = sha512_crypt.hash(password)
-
-    template_path = (
-        CLOUD_CONFIG_LINUX_NO_ROOT
-        if default_user != "root"
-        else CLOUD_CONFIG_LINUX
-    )
-
-    with open(template_path, "r") as f:
-        template = f.read()
-        linux_config_drive = template.format(
-            default_user=default_user,
-            password_hash=password_hash,
-            public_key=public_key,
+    if ostype == "linux":
+        template_path = (
+            CLOUD_CONFIG_LINUX_NO_ROOT
+            if default_user != "root"
+            else CLOUD_CONFIG_LINUX
         )
+    else:
+        template_path = CLOUD_CONFIG_WINDOWS
+
+    if ostype == "linux":
+
+        password_hash = sha512_crypt.hash(password)
+
+        with open(template_path, "r") as f:
+            template = f.read()
+            linux_config_drive = template.format(
+                default_user=default_user,
+                password_hash=password_hash,
+                public_key=public_key,
+            )
+    elif ostype == "windows":
+        with open(template_path, "r") as f:
+            template = f.read()
+            windows_config_drive = template.format(
+                password=password,
+                public_key=public_key,
+                default_user=default_user
+            )
 
     code = uuid.uuid4().hex
     base_path = f"/tmp/config_drive_{code}"
@@ -509,11 +490,16 @@ def print_summary(name: str, fip: str, key_path: str | None, is_password: bool,
         )
 
     if is_password:
-        print(
-            f"You can log in with credentials:\n"
-            f"  username: {username}\n"
-            f"  password: {password}"
-        )
+        if os_type == "windows":
+            print(f"You can log in with credentials:\n"
+                f"  username: {username} or Administrator\n"
+                f"  password: {password}")
+        elif os_type == "linux":
+            print(
+                f"You can log in with credentials:\n"
+                f"  username: {username}\n"
+                f"  password: {password}"
+            )
 
 def launch(
     name: str           = "cirros-instance",

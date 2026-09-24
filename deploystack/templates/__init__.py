@@ -21,6 +21,7 @@ OVS_PERMISSIONS_SERVICE         = _t("openvswitch", "ovs_perms.service")
 # Cloud-init
 CLOUD_CONFIG_LINUX              = _t("cloud-config", "linux.yaml")
 CLOUD_CONFIG_LINUX_NO_ROOT      = _t("cloud-config", "linux_no_root.yaml")
+CLOUD_CONFIG_WINDOWS            = _t("cloud-config", "windows.yaml")
 
 # MySQL
 MYSQL_CONFIG                    = _t("mysql", "mysqld.tpl")

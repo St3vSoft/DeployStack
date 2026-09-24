@@ -1,11 +1,11 @@
 #cloud-config
 users:
-  - name: {default_user}
+  - name: "{default_user}"
     sudo: ALL=(ALL) NOPASSWD:ALL
     lock_passwd: false
     hashed_passwd: "{password_hash}"
     ssh_authorized_keys:
-      - {public_key}
+      - "{public_key}"
 
 disable_root: true
 allow_public_ssh_keys: true

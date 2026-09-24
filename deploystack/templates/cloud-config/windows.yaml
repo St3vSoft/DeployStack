@@ -1,0 +1,18 @@
+#cloud-config
+
+users:
+  - name: "{default_user}"
+    primary_group: Administrators
+    groups:
+      - Administrators
+    passwd: '{password}'
+
+    inactive: false
+
+runcmd:
+  - 'net user administrator "{password}" /active:yes'
+  - 'net user admin /active:no'
+  - 'powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path ''C:\Users\cloud-user\.ssh'' | Out-Null"'
+  - 'powershell -NoProfile -Command "Set-Content -Path ''C:\Users\cloud-user\.ssh\authorized_keys'' -Value ''{public_key}''"'
+  - 'powershell -NoProfile -Command "icacls ''C:\Users\cloud-user\.ssh'' /inheritance:r; icacls ''C:\Users\cloud-user\.ssh'' /grant ''cloud-user:(OI)(CI)F''; icacls ''C:\Users\cloud-user\.ssh\authorized_keys'' /inheritance:r; icacls ''C:\Users\cloud-user\.ssh\authorized_keys'' /grant ''cloud-user:F''"'
+  - 'shutdown /r /t 0'
