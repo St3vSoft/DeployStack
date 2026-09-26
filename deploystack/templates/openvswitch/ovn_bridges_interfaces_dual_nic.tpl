@@ -1,7 +1,7 @@
 auto lo
 iface lo inet loopback
 
-auto-hotplug {management_iface}
+auto {management_iface}
 iface {management_iface} inet static
     address {ip_address}
     netmask {ip_address_netmask}
