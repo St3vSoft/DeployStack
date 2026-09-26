@@ -1,7 +1,7 @@
 auto lo
 iface lo inet loopback
 
-auto {public_iface}
+auto-hotplug {public_iface}
 iface {public_iface} inet manual
     pre-up ovs-vsctl --may-exist add-br {public_bridge}
     pre-up ovs-vsctl --may-exist add-port {public_bridge} {public_iface}

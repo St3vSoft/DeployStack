@@ -1,14 +1,14 @@
 auto lo
 iface lo inet loopback
 
-auto {management_iface}
+auto-hotplug {management_iface}
 iface {management_iface} inet static
     address {ip_address}
     netmask {ip_address_netmask}
 {subnet_address_gateway}    
     dns-nameservers {subnet_address_dns_servers}
 
-auto {public_iface}
+auto-hotplug {public_iface}
 iface {public_iface} inet manual
     pre-up ovs-vsctl --may-exist add-br {public_bridge}
     pre-up ovs-vsctl --may-exist add-port {public_bridge} {public_iface}

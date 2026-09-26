@@ -14,7 +14,7 @@ OVS_DUAL_NIC_BRIDGES_INTERFACES = _t("openvswitch", "ovs_bridges_interfaces_dual
 
 # Neutron OVN
 OVN_BRIDGES_INTERFACES          = _t("openvswitch", "ovn_bridges_interfaces.tpl")
-OVN_DUAL_NIC_BRIDGES_INTERFACES          = _t("openvswitch", "ovn_bridges_interfaces_dual_nic.tpl")
+OVN_DUAL_NIC_BRIDGES_INTERFACES = _t("openvswitch", "ovn_bridges_interfaces_dual_nic.tpl")
 
 OVS_PERMISSIONS_SERVICE         = _t("openvswitch", "ovs_perms.service")
 
