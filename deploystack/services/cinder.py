@@ -130,8 +130,8 @@ def conf_lvm_backend(config, backend):
 
         if str(image_path) not in losetup_output:
             if not run_command(
-                ["losetup", str(image_path), str(image_path)],
-                f"Associating {str(image_path)} to {str(image_path)}..."
+                ["losetup", str(lvm_dev), str(image_path)],
+                f"Associating {str(lvm_dev)} to {str(image_path)}..."
             ):
                 return False
             
