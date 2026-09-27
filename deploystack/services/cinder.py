@@ -48,32 +48,54 @@ def install_pkgs(config):
     
     return True
 
-def conf_lvm_backend(config):
+def conf_lvm_backend(config, backend):
 
-    lvm_physical_volume = get(config, "cinder.backends.lvm.PHYSICAL_VOLUME")
-    lvm_image_file_path = get(config, "cinder.backends.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
-    lvm_loop_dev = get(config, "cinder.backends.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
-    lvm_image_size_in_gb = get(config, "cinder.backends.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB")
+    prefix = f"cinder.backends.{backend}"
+
+    physical_volume = get(
+        config,
+        f"{prefix}.PHYSICAL_VOLUME",
+    )
+
+    image_path = get(
+        config,
+        f"{prefix}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
+    )
+
+    loop_path = get(
+        config,
+        f"{prefix}.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",
+    )
+
+    image_size = get(
+        config,
+        f"{prefix}.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",
+    )
+
+    vg_name = get(
+        config,
+        f"{prefix}.VOLUME_GROUP",
+    )
 
     VG_NAME = get(config, "cinder.backends.lvm.VOLUME_GROUP")
 
-    if lvm_physical_volume:
-        lvm_dev = lvm_physical_volume
+    if physical_volume:
+        lvm_dev = physical_volume
     else:
-        lvm_dev = lvm_loop_dev
+        lvm_dev = loop_path
 
-        image_path = Path(lvm_image_file_path)
+        image_path = Path(image_path)
         image_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if not os.path.exists(lvm_image_file_path):
+        if not os.path.exists(image_path):
 
             print() 
 
             truncate_cmd = [
                 "truncate",
                 "-s",
-                f"{lvm_image_size_in_gb}G",
-                lvm_image_file_path
+                f"{image_size}G",
+                image_path
             ]
 
             if not run_command(truncate_cmd, "Allocating LVM disk image..."):
@@ -85,23 +107,23 @@ def conf_lvm_backend(config):
             uid = pwd.getpwnam("cinder").pw_uid
             gid = grp.getgrnam("cinder").gr_gid
 
-            os.chown(lvm_image_file_path, uid, gid)
-            os.chmod(lvm_image_file_path, 0o600)
+            os.chown(image_path, uid, gid)
+            os.chmod(image_path, 0o600)
 
             print()
 
         try:
             losetup_output = subprocess.check_output(
-                ["losetup", "-j", lvm_image_file_path],
+                ["losetup", "-j", image_path],
                 text=True
             )
         except subprocess.CalledProcessError:
             losetup_output = ""
 
-        if lvm_image_file_path not in losetup_output:
+        if image_path not in losetup_output:
             if not run_command(
-                ["losetup", lvm_loop_dev, lvm_image_file_path],
-                f"Associating {lvm_image_file_path} to {lvm_loop_dev}..."
+                ["losetup", image_path, image_path],
+                f"Associating {image_path} to {image_path}..."
             ):
                 return False
             
@@ -139,6 +161,12 @@ def conf_lvm_backend(config):
     if not os.path.exists(tgt_conf_path):
         with open(tgt_conf_path, "w") as f:
             f.write("include /var/lib/cinder/volumes/*")
+    
+    using_loopback = not physical_volume
+    
+    if using_loopback:
+        if not write_loopback_lvm_env("cinder", backend=backend, description=f"Cinder {backend} Loopback LVM", before_services="cinder-volume.service tgt.service"): return False   
+        if not setup_loopback_service("cinder", backend): return False   
 
     return True
 
@@ -473,60 +501,62 @@ def conf_cinder(config):
     set_conf_option(cinder_conf, "keystone_authtoken", "username", "cinder")
     set_conf_option(cinder_conf, "keystone_authtoken", "password", service_password)
 
-    if "lvm" in enabled_backends:
+    for backend in enabled_backends:
+        driver = get(config, f"cinder.backends.{backend}.DRIVER")
 
-        lvm_backend_name = get(config, "cinder.backends.lvm.BACKEND_NAME")
+        if driver == "lvm":
+            lvm_backend_name = get(config, f"cinder.backends.{backend}.BACKEND_NAME")
+        
+            volume_clear = get(config, f"cinder.backends.{backend}.VOLUME_CLEAR")
+            volume_clear_size = int(get(config, f"cinder.backends.{backend}.VOLUME_CLEAR_SIZE"))
+
+            target_scsi_ip_address = get(config, f"cinder.backends.{backend}.TARGET_IP_ADDRESS") or ip_address
     
-        volume_clear = get(config, "cinder.backends.lvm.VOLUME_CLEAR")
-        volume_clear_size = int(get(config, "cinder.backends.lvm.VOLUME_CLEAR_SIZE"))
+            VG_NAME = get(config, f"cinder.backends.{backend}.VOLUME_GROUP")
 
-        target_scsi_ip_address = get(config, "cinder.backends.lvm.TARGET_IP_ADDRESS") or ip_address
-  
-        VG_NAME = get(config, "cinder.backends.lvm.VOLUME_GROUP")
+            if isinstance(target_scsi_ip_address, dict) or target_scsi_ip_address is None or "{network.HOST_IP}" in str(target_scsi_ip_address):
+                    target_scsi_ip_address = ip_address 
+            
+            target_scsi_ip_address = str(target_scsi_ip_address)
+            
+            set_conf_option(cinder_conf, lvm_backend_name, "volume_driver", "cinder.volume.drivers.lvm.LVMVolumeDriver")
+            set_conf_option(cinder_conf, lvm_backend_name, "volume_group", VG_NAME)
+            set_conf_option(cinder_conf, lvm_backend_name, "volume_backend_name", lvm_backend_name)
+            set_conf_option(cinder_conf, lvm_backend_name, "iscsi_protocol", "iscsi")
+            set_conf_option(cinder_conf, lvm_backend_name, "iscsi_helper", "tgtadm")
+            set_conf_option(cinder_conf, lvm_backend_name, "volume_clear", volume_clear)
+            set_conf_option(cinder_conf, lvm_backend_name, "volume_clear_size", str(volume_clear_size))
+            set_conf_option(cinder_conf, lvm_backend_name, "target_ip_address", target_scsi_ip_address)
 
-        if isinstance(target_scsi_ip_address, dict) or target_scsi_ip_address is None or "{network.HOST_IP}" in str(target_scsi_ip_address):
-                target_scsi_ip_address = ip_address 
-        
-        target_scsi_ip_address = str(target_scsi_ip_address)
-        
-        set_conf_option(cinder_conf, "lvm", "volume_driver", "cinder.volume.drivers.lvm.LVMVolumeDriver")
-        set_conf_option(cinder_conf, "lvm", "volume_group", VG_NAME)
-        set_conf_option(cinder_conf, "lvm", "volume_backend_name", lvm_backend_name)
-        set_conf_option(cinder_conf, "lvm", "iscsi_protocol", "iscsi")
-        set_conf_option(cinder_conf, "lvm", "iscsi_helper", "tgtadm")
-        set_conf_option(cinder_conf, "lvm", "volume_clear", volume_clear)
-        set_conf_option(cinder_conf, "lvm", "volume_clear_size", str(volume_clear_size))
-        set_conf_option(cinder_conf, "lvm", "target_ip_address", target_scsi_ip_address)
+        elif driver == "nfs":
+            nfs_backend_name = get(config, f"cinder.backends.{backend}.BACKEND_NAME")
+            nfs_mount_point_base = get(config, f"cinder.backends.{backend}.MOUNT_POINT_BASE") or "/var/lib/cinder/mnt"
 
-    if "nfs" in enabled_backends:
-        nfs_backend_name = get(config, "cinder.backends.nfs.BACKEND_NAME")
-        nfs_mount_point_base = get(config, "cinder.backends.nfs.MOUNT_POINT_BASE") or "/var/lib/cinder/mnt"
+            nfs_mount_options = get(config, f"cinder.backends.{backend}.MOUNT_OPTIONS") or None
 
-        nfs_mount_options = get(config, "cinder.backends.nfs.MOUNT_OPTIONS") or None
+            sparsed_volumes = get(config, f"cinder.backends.{backend}.NFS_SPARSED_VOLUMES", "sparse")
+            sparsed_volumes = str(sparsed_volumes).lower() == "sparse"
 
-        sparsed_volumes = get(config, "cinder.backends.nfs.NFS_SPARSED_VOLUMES", "sparse")
-        sparsed_volumes = str(sparsed_volumes).lower() == "sparse"
+            nfs_used_ratio = get(config, f"cinder.backends.{backend}.NFS_USED_RATIO", 0.95) 
+            nfs_oversub_ratio = get(config, f"cinder.backends.{backend}.NFS_OVERSUB_RATIO", 1.0) 
 
-        nfs_used_ratio = get(config, "cinder.backends.nfs.NFS_USED_RATIO", 0.95) 
-        nfs_oversub_ratio = get(config, "cinder.backends.nfs.NFS_OVERSUB_RATIO", 1.0) 
+            enable_snapshots = parse_bool(get(config, f"cinder.backends.{backend}.ENABLE_SNAPSHOTS"), False)
 
-        enable_snapshots = parse_bool(get(config, "cinder.backends.nfs.ENABLE_SNAPSHOTS"), False)
+            set_conf_option(cinder_conf, nfs_backend_name, "volume_driver", "cinder.volume.drivers.nfs.NfsDriver")
+            set_conf_option(cinder_conf, nfs_backend_name, "volume_backend_name", nfs_backend_name)
+            set_conf_option(cinder_conf, nfs_backend_name, "nfs_shares_config", "/etc/cinder/nfs_shares")
+            set_conf_option(cinder_conf, nfs_backend_name, "nfs_mount_point_base", nfs_mount_point_base)
 
-        set_conf_option(cinder_conf, "nfs", "volume_driver", "cinder.volume.drivers.nfs.NfsDriver")
-        set_conf_option(cinder_conf, "nfs", "volume_backend_name", nfs_backend_name)
-        set_conf_option(cinder_conf, "nfs", "nfs_shares_config", "/etc/cinder/nfs_shares")
-        set_conf_option(cinder_conf, "nfs", "nfs_mount_point_base", nfs_mount_point_base)
+            if nfs_mount_options:
+                set_conf_option(cinder_conf, nfs_backend_name, "nfs_mount_options", nfs_mount_options)
 
-        if nfs_mount_options:
-            set_conf_option(cinder_conf, "nfs", "nfs_mount_options", nfs_mount_options)
+            set_conf_option(cinder_conf, nfs_backend_name, "nfs_sparsed_volumes", str(sparsed_volumes))
 
-        set_conf_option(cinder_conf, "nfs", "nfs_sparsed_volumes", str(sparsed_volumes))
+            set_conf_option(cinder_conf, nfs_backend_name, "nfs_used_ratio", str(nfs_used_ratio))
+            set_conf_option(cinder_conf, nfs_backend_name, "nfs_oversub_ratio", str(nfs_oversub_ratio))
 
-        set_conf_option(cinder_conf, "nfs", "nfs_used_ratio", str(nfs_used_ratio))
-        set_conf_option(cinder_conf, "nfs", "nfs_oversub_ratio", str(nfs_oversub_ratio))
-
-        if enable_snapshots:
-            set_conf_option(cinder_conf, "nfs", "nfs_snapshot_support", "True")
+            if enable_snapshots:
+                set_conf_option(cinder_conf, nfs_backend_name, "nfs_snapshot_support", "True")
 
     set_conf_option(cinder_conf, "service_user", "project_domain_name", "Default")
     set_conf_option(cinder_conf, "service_user", "project_name", "service")
@@ -564,9 +594,9 @@ def conf_cinder(config):
     set_conf_option(cinder_conf, "os_brick", "lock_path", "/var/lib/cinder/os-brick")
 
     db_migration_cmd = [
-    "sudo", "-u", "cinder",
-    "cinder-manage", "db", "sync"
-    ]
+        "sudo", "-u", "cinder",
+        "cinder-manage", "db", "sync"
+        ]
 
     if not run_command(db_migration_cmd, "Running Cinder DB Migrations...") : return False
     
@@ -636,9 +666,8 @@ def create_volume_types(config, env):
         return True
 
     for backend in enabled_backends:
-        if backend in ("lvm", "nfs"):
-            if not configure_volume_type(backend):
-                return False
+        if not configure_volume_type(backend):
+            return False
 
     return True
 
@@ -650,17 +679,14 @@ def run_setup_cinder(config, env):
 
     if not install_pkgs(config): return False 
 
-    if "lvm" in enabled_backends:
-        if not conf_lvm_backend(config): return False
+    for backend in enabled_backends:
+        driver = get(config, f"cinder.backends.{backend}.DRIVER")
 
-        using_loopback = not get(config, "cinder.backends.lvm.PHYSICAL_VOLUME")
-        
-        if using_loopback:
-            if not write_loopback_lvm_env("cinder", backend="lvm-loopback", description="Cinder Loopback LVM", before_services="cinder-volume.service tgt.service"): return False   
-            if not setup_loopback_service("cinder"): return False   
+    if driver == "lvm":
+        if not conf_lvm_backend(config, backend): return False
 
-    if "nfs" in enabled_backends:
-        if not conf_nfs_backend(config) : return False
+    if driver == "nfs":
+        if not conf_nfs_backend(config, backend) : return False
 
     if install_cinder_backup:
         if not conf_cinder_backup(config) : return False

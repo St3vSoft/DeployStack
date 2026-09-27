@@ -374,13 +374,16 @@ cinder:
   # List of active Cinder volume backends.
   # Each backend is configured as a separate backend in cinder.conf.
   ENABLED_BACKENDS:
-    - lvm
+    - lvm-1
 
   # Default Cinder volume type used when no volume type is explicitly specified.
   DEFAULT_VOLUME_TYPE: "iscsi"
 
   backends:
-    lvm:
+    lvm-1:
+    
+      DRIVER: "lvm"
+
       # Backend identifier used by Cinder and referenced by volume types.
       BACKEND_NAME: "lvm"
 

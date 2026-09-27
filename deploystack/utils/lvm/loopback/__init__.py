@@ -120,12 +120,12 @@ def write_loopback_lvm_env(service, backend, description, before_services):
 
     return True
 
-def setup_loopback_service(service):
+def setup_loopback_service(service, backend):
 
     print()
 
     if not run_command(["systemctl", "daemon-reload"], "Reloading systemd daemon..."): return False
 
-    if not run_command(["systemctl", "enable", f"{service}-loopback.service"], f"Enabling {service}-loopback service..."): return False
+    if not run_command(["systemctl", "enable", f"{service}-{backend}-loopback.service"], f"Enabling {service}-{backend}-loopback service..."): return False
 
     return True

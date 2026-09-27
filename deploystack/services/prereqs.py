@@ -221,15 +221,17 @@ def _print_supported_combinations(current_codename: str, native: str):
 
 def create_loopback_config(config):
 
-    install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA", False))
-    install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
+    install_manila = parse_bool(
+        get(config, "optional_services.INSTALL_MANILA", False)
+    )
 
-    enabled_backends = get(config, "cinder.ENABLED_BACKENDS", []) or []
+    install_cinder = parse_bool(
+        get(config, "optional_services.INSTALL_CINDER", False)
+    )
 
-    is_lvm_manila_backend_enabled = get(config, "manila.BACKEND") == "lvm"
-
-    cinder_loop_dev = get(config, "cinder.backends.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
-    manila_loop_dev = get(config, "manila.backends.lvm.storage.MANILA_LVM_LOOP_PATH")
+    is_lvm_manila_backend_enabled = (
+        get(config, "manila.BACKEND") == "lvm"
+    )
 
     source = Path(sys.prefix) / "bin" / "deploystack_loopback"
     target = Path("/usr/bin/deploystack_loopback")
@@ -241,48 +243,40 @@ def create_loopback_config(config):
 
     target.symlink_to(source)
 
-    if ((install_cinder and cinder_loop_dev and "lvm" in enabled_backends) or (install_manila and is_lvm_manila_backend_enabled and manila_loop_dev)):
-        if not os.path.exists(deploystack_loopback_conf_file):
-            open(deploystack_loopback_conf_file, "w").close()
+    resources = []
 
-    set_conf_option(
-        deploystack_loopback_conf_file,
-        "lvm",
-        "config",
-        toml_string("/etc/lvm/lvm.conf"),
-    )
+    if install_cinder:
 
-    if install_cinder and cinder_loop_dev and "lvm" in enabled_backends:
-        vg = get(config, "cinder.backends.lvm.VOLUME_GROUP")
-        lvm_image_path = get(
-            config,
-            "cinder.backends.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
-        )
+        enabled_backends = get(config, "cinder.ENABLED_BACKENDS", []) or []
 
-        set_conf_option(
-            deploystack_loopback_conf_file,
-            "cinder.lvm-loopback",
-            "image",
-            toml_string(lvm_image_path),
-        )
-        set_conf_option(
-            deploystack_loopback_conf_file,
-            "cinder",
-            "vg",
-            toml_string(vg),
-        )
-        set_conf_option(
-            deploystack_loopback_conf_file,
-            "cinder",
-            "state_file",
-            toml_string("/var/lib/deploystack/cinder_loop_dev"),
-        )
+        for backend in enabled_backends:
+            
+            vg = get(config, f"cinder.backends.{backend}.VOLUME_GROUP")
 
-    if (
-        install_manila
-        and is_lvm_manila_backend_enabled
-        and manila_loop_dev
-    ):
+            lvm_image_path = get(
+                config,
+                f"cinder.backends.{backend}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
+            )
+
+            physical_volume = get(
+                config,
+                f"cinder.backends.{backend}.PHYSICAL_VOLUME"
+            )
+
+            if physical_volume:
+                continue
+
+            resources.append(
+                (
+                    f"cinder.{backend}",
+                    lvm_image_path,
+                    vg,
+                    f"/var/lib/deploystack/{backend}_loop_dev",
+                )
+            )
+
+
+    if install_manila and is_lvm_manila_backend_enabled:
         vg = get(
             config,
             "manila.backends.lvm.storage.SHARE_VOLUME_GROUP",
@@ -300,17 +294,56 @@ def create_loopback_config(config):
         )
         set_conf_option(
             deploystack_loopback_conf_file,
-            "manila",
+            "manila.lvm-loopback",
             "vg",
             toml_string(vg),
         )
         set_conf_option(
             deploystack_loopback_conf_file,
-            "manila",
+            "manila.lvm-loopback",
             "state_file",
             toml_string("/var/lib/deploystack/manila_loop_dev"),
         )
 
+    if not resources:
+        return
+
+    Path(deploystack_loopback_conf_file).parent.mkdir(parents=True, exist_ok=True)
+
+    if not os.path.exists(deploystack_loopback_conf_file):
+        Path(deploystack_loopback_conf_file).touch()
+
+    set_conf_option(
+        deploystack_loopback_conf_file,
+        "lvm",
+        "config",
+        toml_string("/etc/lvm/lvm.conf"),
+    )
+
+    for resource, image_path, vg, state_file in resources:
+
+        set_conf_option(
+            deploystack_loopback_conf_file,
+            resource,
+            "image",
+            toml_string(image_path),
+        )
+
+        set_conf_option(
+            deploystack_loopback_conf_file,
+            resource,
+            "vg",
+            toml_string(vg),
+        )
+
+        set_conf_option(
+            deploystack_loopback_conf_file,
+            resource,
+            "state_file",
+            toml_string(state_file),
+        )
+
+    
 def install_pkgs(config):
 
     print()
@@ -327,10 +360,15 @@ def install_pkgs(config):
     manila_loop_dev = None
 
     if install_cinder:
-        cinder_pv = get(config, "cinder.backends.lvm.PHYSICAL_VOLUME")
-        cinder_loop_dev = get(config, "cinder.backends.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
 
-        devices.append(cinder_pv or cinder_loop_dev)
+        enabled_backends = get(config, f"cinder.ENABLED_BACKENDS", []) or []
+
+        for backend in enabled_backends:
+            
+            cinder_pv = get(config, f"cinder.backends.{backend}.PHYSICAL_VOLUME")
+            cinder_loop_dev = get(config, f"cinder.backends.{backend}.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
+
+            devices.append(cinder_pv or cinder_loop_dev)
 
     if install_manila and is_lvm_manila_backend_enabled:
         manila_pv = get(config, "manila.backends.lvm.storage.PHYSICAL_VOLUME")
