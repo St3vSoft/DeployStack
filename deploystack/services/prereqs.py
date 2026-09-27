@@ -261,7 +261,7 @@ def create_loopback_config(config):
 
         set_conf_option(
             deploystack_loopback_conf_file,
-            "cinder",
+            "cinder.lvm-loopback",
             "image",
             toml_string(lvm_image_path),
         )
@@ -294,7 +294,7 @@ def create_loopback_config(config):
 
         set_conf_option(
             deploystack_loopback_conf_file,
-            "manila",
+            "manila.lvm-loopback",
             "image",
             toml_string(lvm_image_path),
         )

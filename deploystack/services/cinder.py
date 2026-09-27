@@ -656,7 +656,7 @@ def run_setup_cinder(config, env):
         using_loopback = not get(config, "cinder.backends.lvm.PHYSICAL_VOLUME")
         
         if using_loopback:
-            if not write_loopback_lvm_env("cinder", description="Cinder Loopback LVM", before_services="cinder-volume.service tgt.service"): return False   
+            if not write_loopback_lvm_env("cinder", backend="lvm-loopback", description="Cinder Loopback LVM", before_services="cinder-volume.service tgt.service"): return False   
             if not setup_loopback_service("cinder"): return False   
 
     if "nfs" in enabled_backends:

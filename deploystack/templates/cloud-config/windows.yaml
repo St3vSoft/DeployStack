@@ -12,7 +12,7 @@ users:
 runcmd:
   - 'net user administrator "{password}" /active:yes'
   - 'net user admin /active:no'
-  - 'powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path ''C:\Users\cloud-user\.ssh'' | Out-Null"'
-  - 'powershell -NoProfile -Command "Set-Content -Path ''C:\Users\cloud-user\.ssh\authorized_keys'' -Value ''{public_key}''"'
-  - 'powershell -NoProfile -Command "icacls ''C:\Users\cloud-user\.ssh'' /inheritance:r; icacls ''C:\Users\cloud-user\.ssh'' /grant ''cloud-user:(OI)(CI)F''; icacls ''C:\Users\cloud-user\.ssh\authorized_keys'' /inheritance:r; icacls ''C:\Users\cloud-user\.ssh\authorized_keys'' /grant ''cloud-user:F''"'
+  - 'powershell -NoProfile -Command "New-Item -ItemType Directory -Force -Path ''C:\Users\{default_user}\.ssh'' | Out-Null"'
+  - 'powershell -NoProfile -Command "Set-Content -Path ''C:\Users\{default_user}\.ssh\authorized_keys'' -Value ''{public_key}''"'
+  - 'powershell -NoProfile -Command "icacls ''C:\Users\{default_user}\.ssh'' /inheritance:r; icacls ''C:\Users\{default_user}\.ssh'' /grant ''{default_user}:(OI)(CI)F''; icacls ''C:\Users\{default_user}\.ssh\authorized_keys'' /inheritance:r; icacls ''C:\Users\{default_user}\.ssh\authorized_keys'' /grant ''{default_user}:F''"'
   - 'shutdown /r /t 0'

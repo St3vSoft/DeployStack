@@ -80,8 +80,8 @@ def cmd_filter_rebuild(args):
     config = Config()
 
     resources = [
-        Loopback(config.resource(name))
-        for name in config.resource_names()
+        Loopback(backend_config)
+        for _, _, backend_config in config.resolve_backends()
     ]
 
     lvm_filter = LVMFilter(config.lvm_config)

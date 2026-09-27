@@ -16,6 +16,11 @@ def build_start_parser(subparsers):
         help="Resource to start"
     )
 
+    parser.add_argument(
+        "backend",
+        help="Backend Loopback to start"
+    )
+
     parser.set_defaults(func=start)
 
     return parser
@@ -24,14 +29,20 @@ def start(args):
 
     config = Config()
 
-    resource = Loopback(config.resource(args.resource))
-
-    loop_dev = resource.attach()
-
     lvm_filter = LVMFilter(config.lvm_config)
-    lvm_filter.add(loop_dev)
 
-    resource.scan()
-    resource.activate()
+    for resource_name, backend_name, backend_config in (
+        config.resolve_backends(args.resource, args.backend)):
+        resource = Loopback(backend_config)
 
-    print(f"Started {args.resource}")
+        loop_dev = resource.attach()
+
+        lvm_filter.add(loop_dev)
+
+        resource.scan()
+        resource.activate()
+
+        print(
+            f"Started {resource_name}/{backend_name}: "
+            f"{loop_dev}"
+        )

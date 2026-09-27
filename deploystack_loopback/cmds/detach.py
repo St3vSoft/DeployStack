@@ -13,6 +13,13 @@ def build_detach_parser(subparsers):
         help="Resource to detach"
     )
 
+    parser.add_argument(
+        "backend",
+        nargs="?",
+        default=None,
+        help="Backend Loopback to detach"
+    )
+
     parser.set_defaults(func=detach)
 
     return parser
@@ -21,6 +28,13 @@ def detach(args):
 
     config = Config()
 
-    resource = Loopback(config.resource(args.resource))
+    for resource_name, backend_name, backend_config in (
+        config.resolve_backends(args.resource, args.backend)
+    ):
+        resource = Loopback(backend_config)
 
-    resource.detach()
+        resource.detach()
+
+        print(
+            f"Detached {resource_name}/{backend_name}"
+        )

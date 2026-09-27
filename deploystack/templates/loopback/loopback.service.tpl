@@ -9,8 +9,8 @@ After=local-fs.target
 Type=oneshot
 RemainAfterExit=yes
 
-ExecStart=/usr/bin/deploystack_loopback start {service}
-ExecStop=/usr/bin/deploystack_loopback stop {service}
+ExecStart=/usr/bin/deploystack_loopback start {service} {backend_name}
+ExecStop=/usr/bin/deploystack_loopback stop {service} {backend_name}
 
 [Install]
 WantedBy=multi-user.target

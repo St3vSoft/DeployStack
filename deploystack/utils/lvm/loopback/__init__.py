@@ -96,7 +96,7 @@ def set_lvm_filter(devices):
 
     return True
 
-def write_loopback_lvm_env(service, description, before_services):
+def write_loopback_lvm_env(service, backend, description, before_services):
 
     SERVICE_PATH = f"/etc/systemd/system/{service}-loopback.service"
 
@@ -106,6 +106,7 @@ def write_loopback_lvm_env(service, description, before_services):
             template = f.read()
             loopback_service_content = template.format(
                 description=description,
+                backend=backend,
                 before_services=before_services,
                 service=service
             )

@@ -3,6 +3,7 @@ from ..utils.resources.loopback import Loopback
 
 from ..utils import colors
 
+
 def print_status(name, status):
 
     image_exists = (
@@ -29,7 +30,9 @@ def print_status(name, status):
     print(f"  Attached: {attached}")
     print(f"  Loop device: {loop_device}")
 
+
 def build_check_parser(subparsers):
+
     parser = subparsers.add_parser(
         "check",
         help="Check loopback resources"
@@ -39,27 +42,33 @@ def build_check_parser(subparsers):
         "resource",
         nargs="?",
         choices=["cinder", "manila"],
-        default=None
+        default=None,
+        help="Resource to check"
+    )
+
+    parser.add_argument(
+        "backend",
+        nargs="?",
+        default=None,
+        help="Backend to check"
     )
 
     parser.set_defaults(func=check)
 
     return parser
 
+
 def check(args):
 
     config = Config()
 
-    if args.resource is None:
-        for name in ("cinder", "manila"):
-            resource = Loopback(config.resource(name))
-            status = resource.check()
+    for resource_name, backend_name, backend_config in (
+        config.resolve_backends(args.resource, args.backend)
+    ):
+        resource = Loopback(backend_config)
+        status = resource.check()
 
-            print_status(name, status)
-
-        return
-            
-    resource = Loopback(config.resource(args.resource))
-    status = resource.check()
-
-    print_status(args.resource, status)
+        print_status(
+            f"{resource_name}/{backend_name}",
+            status,
+        )

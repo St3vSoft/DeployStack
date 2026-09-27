@@ -17,6 +17,11 @@ def build_stop_parser(subparsers):
         help="Resource to stop"
     )
 
+    parser.add_argument(
+        "backend",
+        help="Backend Loopback to start"
+    )
+
     parser.set_defaults(func=stop)
 
     return parser
@@ -25,19 +30,14 @@ def stop(args):
 
     config = Config()
 
-    resource = Loopback(config.resource(args.resource))
+    for resource_name, backend_name, backend_config in (
+        config.resolve_backends(args.resource, args.backend)
+    ):
+        resource = Loopback(backend_config)
 
-    resource.deactivate()
-
-    status = resource.check()
-
-    if status["attached"]:
-
-        loop_dev = status["loop_device"]
-
-        lvm_filter = LVMFilter(config.lvm_config)
-        lvm_filter.remove(loop_dev)
-
+        resource.deactivate()
         resource.detach()
 
-    print(f"Stopped {args.resource}")
+        print(
+            f"Powered off {resource_name}/{backend_name}"
+        )

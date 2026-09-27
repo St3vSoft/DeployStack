@@ -17,30 +17,28 @@ def build_reconcile_parser(subparsers):
 def reconcile(args):
 
     config = Config()
+    resources = []
 
-    resources = [
-        Loopback(config.resource(name))
-        for name in config.resource_names()
-    ]
+    for resource_name, backend_name, backend_config in (
+        config.resolve_backends()
+    ):
+        resource = Loopback(backend_config)
 
-    for resource in resources:
-        status = resource.check()
-
-        if not status["image_exists"]:
+        if not resource.image.exists():
             continue
 
-        if not status["attached"]:
-            resource.attach()
+        loop_dev = resource.attach()
+
+        resources.append(resource)
+
+        print(
+            f"Reconciled {resource_name}/{backend_name}: "
+            f"{loop_dev}"
+        )
 
     lvm_filter = LVMFilter(config.lvm_config)
     lvm_filter.rebuild(resources)
 
     for resource in resources:
-
-        loop_dev = resource.loop_device()
-
-        if not loop_dev:
-            continue
-        
         resource.scan()
         resource.activate()

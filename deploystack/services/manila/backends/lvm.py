@@ -481,7 +481,7 @@ def run_setup_lvm_backend(config, env):
     using_loopback = not get(config, "manila.backends.lvm.storage.PHYSICAL_VOLUME")
 
     if using_loopback:
-        if not write_loopback_lvm_env("manila", description="Manila Loopback LVM", before_services="manila-share.service"): return False   
+        if not write_loopback_lvm_env("manila", backend="lvm-loopback", description="Manila Loopback LVM", before_services="manila-share.service"): return False   
         if not setup_loopback_service("manila"): return False   
 
         if not is_debian() and is_ubuntu_release("26.04"):

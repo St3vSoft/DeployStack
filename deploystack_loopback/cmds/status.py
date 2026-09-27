@@ -18,26 +18,26 @@ def build_status_parser(subparsers):
         help="Resource to show"
     )
 
+    parser.add_argument(
+        "backend",
+        nargs="?",
+        default=None,
+        help="Backend Loopback to show"
+    )
+
     parser.set_defaults(func=status)
 
     return parser
 
 def status(args):
-
     config = Config()
 
-    if args.resource:
-        resources = {
-            args.resource: Loopback(config.resource(args.resource))
-        }
-    else:
-        resources = {
-            name: Loopback(config.resource(name))
-            for name in config.resource_names()
-        }
+    for resource_name, backend_name, backend_config in (
+        config.resolve_backends(args.resource, args.backend)
+    ):
+        resource = Loopback(backend_config)
 
-    for name, resource in resources.items():
-        status = resource.check()
-
-        print_status(name, status)
-
+        print_status(
+            f"{resource_name}/{backend_name}",
+            resource.check(),
+        )
