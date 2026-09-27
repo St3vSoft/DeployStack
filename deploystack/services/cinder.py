@@ -79,8 +79,6 @@ def conf_lvm_backend(config, backend):
         f"{prefix}.VOLUME_GROUP",
     )
 
-    VG_NAME = get(config, "cinder.backends.lvm.VOLUME_GROUP")
-
     if physical_volume:
         lvm_dev = physical_volume
     else:
@@ -148,18 +146,18 @@ def conf_lvm_backend(config, backend):
             return False
 
         if not run_command(
-            ["vgcreate", VG_NAME, lvm_dev],
-            f"Creating volume group {VG_NAME}..."
+            ["vgcreate", vg_name, lvm_dev],
+            f"Creating volume group {vg_name}..."
         ):
             return False
 
-    elif vg == VG_NAME:
+    elif vg == vg_name:
         pass
 
     else:
         print(
             f"{colors.RED}"
-            f"{lvm_dev} already belongs to VG '{vg}', expected '{VG_NAME}'"
+            f"{lvm_dev} already belongs to VG '{vg}', expected '{vg_name}'"
             f"{colors.RESET}"
         )
         return False
@@ -522,7 +520,7 @@ def conf_cinder(config):
 
             target_scsi_ip_address = get(config, f"cinder.backends.{backend}.TARGET_IP_ADDRESS") or ip_address
     
-            VG_NAME = get(config, f"cinder.backends.{backend}.VOLUME_GROUP")
+            vg_name = get(config, f"cinder.backends.{backend}.VOLUME_GROUP")
 
             if isinstance(target_scsi_ip_address, dict) or target_scsi_ip_address is None or "{network.HOST_IP}" in str(target_scsi_ip_address):
                     target_scsi_ip_address = ip_address 
@@ -530,7 +528,7 @@ def conf_cinder(config):
             target_scsi_ip_address = str(target_scsi_ip_address)
             
             set_conf_option(cinder_conf, lvm_backend_name, "volume_driver", "cinder.volume.drivers.lvm.LVMVolumeDriver")
-            set_conf_option(cinder_conf, lvm_backend_name, "volume_group", VG_NAME)
+            set_conf_option(cinder_conf, lvm_backend_name, "volume_group", vg_name)
             set_conf_option(cinder_conf, lvm_backend_name, "volume_backend_name", lvm_backend_name)
             set_conf_option(cinder_conf, lvm_backend_name, "iscsi_protocol", "iscsi")
             set_conf_option(cinder_conf, lvm_backend_name, "iscsi_helper", "tgtadm")
