@@ -106,7 +106,7 @@ def write_loopback_lvm_env(service, backend, description, before_services):
             template = f.read()
             loopback_service_content = template.format(
                 description=description,
-                backend=backend,
+                backend_name=backend,
                 before_services=before_services,
                 service=service
             )
