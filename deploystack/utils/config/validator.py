@@ -578,258 +578,646 @@ def validate_cinder(config) -> bool:
 
     allowed_backends = {"lvm", "nfs"}
     volume_type_names = []
+    backend_names = []
 
     default_volume_type = (get(config, "cinder.DEFAULT_VOLUME_TYPE" or "")).strip()
 
     OPENSTACK_RESERVED_PORTS.add(8776)
 
+    if not cinder_config:
+        print(
+            f"{colors.RED}"
+            f"Error: cinder section is missing"
+            f"{colors.RESET}"
+        )
+        return False
+
+    # ---------------------------------------------------------
+    # Global Cinder validation
+    # ---------------------------------------------------------
+
     if not isinstance(enabled_backends, list):
         print(f"{colors.RED}Error: 'cinder.ENABLED_BACKENDS' must be a list{colors.RESET}")
+        ok = False
+
+    if not enabled_backends:
+        print(
+            f"{colors.RED}"
+            f"Error: 'cinder.ENABLED_BACKENDS' must contain at least one backend"
+            f"{colors.RESET}"
+        )
         ok = False
 
     if not all(isinstance(backend, str) and backend.strip() for backend in enabled_backends):
         print(f"{colors.RED}Error: 'cinder.ENABLED_BACKENDS' must contain non-empty strings{colors.RESET}")
         ok = False
 
-    invalid = set(enabled_backends) - allowed_backends
-
-    if invalid:
-        print(f"{colors.RED}Error: Unsupported Cinder backends: '{invalid}'{colors.RESET}")
+    if len(enabled_backends) != len(set(enabled_backends)):
+        print(
+            f"{colors.RED}"
+            f"Error: 'cinder.ENABLED_BACKENDS' contains duplicate backend names"
+            f"{colors.RESET}"
+        )
         ok = False
 
     if not default_volume_type:
-        print(f"{colors.RED}Error: 'cinder.DEFAULT_VOLUME_TYPE' is not set{colors.RESET}")
+        print(
+            f"{colors.RED}"
+            f"Error: 'cinder.DEFAULT_VOLUME_TYPE' is not set"
+            f"{colors.RESET}"
+        )
         ok = False
 
-    if "lvm" in enabled_backends:
+    if enable_cinder_backup not in ("yes", "no"):
+        print(
+            f"{colors.RED}"
+            f"Error: 'cinder.ENABLE_CINDER_BACKUP' must be 'yes' or 'no'"
+            f"{colors.RESET}"
+        )
+        ok = False
 
-        size_raw = (get(config, "cinder.backends.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB") or "")
-        path = (get(config, "cinder.backends.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH") or "").strip().lower()
-        pv = (get(config, "cinder.backends.lvm.PHYSICAL_VOLUME") or "").strip().lower()
-        volume_clear = (get(config, "cinder.backends.lvm.VOLUME_CLEAR") or "").lower()
-        volume_clear_size = get(config, "cinder.backends.lvm.VOLUME_CLEAR_SIZE")
+    # ---------------------------------------------------------
+    # Backend validation
+    # ---------------------------------------------------------
 
-        volume_type_name = get(config, "cinder.backends.lvm.VOLUME_TYPE_NAME")
+    for backend in enabled_backends:
 
-        size = None
+        backend = backend.strip()
+        backend_prefix = f"cinder.backends.{backend}"
 
-        required_fields = [
-            "cinder.backends.lvm.BACKEND_NAME",
-            "cinder.backends.lvm.VOLUME_TYPE_NAME",
-            "cinder.backends.lvm.VOLUME_GROUP",
-            "cinder.backends.lvm.VOLUME_CLEAR",
-            "cinder.backends.lvm.VOLUME_CLEAR_SIZE",
-            "cinder.backends.lvm.TARGET_IP_ADDRESS"
-        ]
+        driver = get(
+            config,
+            f"{backend_prefix}.DRIVER"
+        )
 
-        if not cinder_config:
-            print(f"{colors.RED}Error: cinder section is missing{colors.RESET}")
-            return False
-
-        if enable_cinder_backup not in ("yes", "no"):
-            print(f"{colors.RED}Error: 'cinder.ENABLE_CINDER_BACKUP' must be 'yes' or 'no'{colors.RESET}")
+        if not driver:
+            print(
+                f"{colors.RED}"
+                f"Error: '{backend_prefix}.DRIVER' is not set"
+                f"{colors.RESET}"
+            )
             ok = False
+            continue
 
-        volume_type_names.append(volume_type_name)
+        driver = str(driver).strip().lower()
 
-        for field in required_fields:
-            if not get(config, field):
-                print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
-                ok = False
-                
-        if pv:
-            if not os.path.exists(pv):
-                print(f"{colors.RED}Error: PHYSICAL_VOLUME '{pv}' does not exist{colors.RESET}")
-                ok = False
-                return False
+        if driver not in allowed_backends:
+            print(
+                f"{colors.RED}"
+                f"Error: Unsupported Cinder driver '{driver}' "
+                f"for backend '{backend}'. "
+                f"Allowed drivers: lvm, nfs"
+                f"{colors.RESET}"
+            )
+            ok = False
+            continue
 
-            if not pv.startswith("/dev/") or pv.startswith("/dev/loop") or is_loop_device(pv):
-                print(f"{colors.RED}Error: loop devices are not allowed as Physical Volume ({pv}){colors.RESET}")
-                ok = False
-                return False
-            
-            if not is_safe_lvm_device(pv):
-                print(f"{colors.RED}Error: Unsafe LVM device blocked for security: {pv}{colors.RESET}")
-                ok = False
-                return False
-        
+        # -----------------------------------------------------
+        # Common backend fields
+        # -----------------------------------------------------
+
+        backend_name = get(
+            config,
+            f"{backend_prefix}.BACKEND_NAME"
+        )
+
+        volume_type_name = get(
+            config,
+            f"{backend_prefix}.VOLUME_TYPE_NAME"
+        )
+
+        if not backend_name:
+            print(
+                f"{colors.RED}"
+                f"Error: '{backend_prefix}.BACKEND_NAME' is not set"
+                f"{colors.RESET}"
+            )
+            ok = False
         else:
-            required_loopback_fields = [
-                "cinder.backends.lvm.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
-                "cinder.backends.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",
-                "cinder.backends.lvm.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",
-            ]
+            backend_names.append(
+                str(backend_name).strip()
+            )
 
-            for field in required_loopback_fields:
-                if not get(config, field) :
-                    print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
-                    ok = False
+        if not volume_type_name:
+            print(
+                f"{colors.RED}"
+                f"Error: '{backend_prefix}.VOLUME_TYPE_NAME' is not set"
+                f"{colors.RESET}"
+            )
+            ok = False
+        else:
+            volume_type_names.append(
+                str(volume_type_name).strip()
+            )
 
-            cinder_volume_lvm_image_file_path = get(config, required_loopback_fields[0])
-            cinder_lvm_loop_path = (get(config, required_loopback_fields[2]) or "").strip().lower()
+        # -----------------------------------------------------
+        # LVM backend
+        # -----------------------------------------------------
 
-            cinder_loopback_size_raw = validate_positive_int(size_raw, "cinder.backends.lvm.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB")
-
-            if not is_valid_path(cinder_volume_lvm_image_file_path, required_loopback_fields[0]):
-                ok = False
-
-            if not is_valid_path(cinder_lvm_loop_path, required_loopback_fields[2]):
-                ok = False
-
-            if cinder_loopback_size_raw is None:
-                ok = False
-            else:
-                size = cinder_loopback_size_raw
-
-            if cinder_lvm_loop_path:
-                if not cinder_lvm_loop_path.startswith("/dev/loop"):
-                    print(
-                        f"{colors.RED}Error: '{required_loopback_fields[2]}' must be a loop device, "
-                        f"found '{cinder_lvm_loop_path}'{colors.RESET}"
-                    )
-                    ok = False
-
-            if path:
-                directory = os.path.dirname(path) or "/"
-
-                while not os.path.exists(directory):
-                    parent = os.path.dirname(directory)
-                    if parent == directory:
-                        directory = "/"
-                        break
-                    directory = parent
-
-                try:
-                    _, _, free = shutil.disk_usage(directory)
-                    free_gb = free / (1024**3)
-
-                    if size is not None and size > free_gb:
-                        print(
-                            f"{colors.YELLOW}Warning: the requested Cinder LVM image size ({size} GB) exceeds "
-                            f"the available disk space ({free_gb:.2f} GB). "
-                            f"The sparse file will be created successfully, but the volume group may run out "
-                            f"of space as volumes are written.{colors.RESET}"
-                        )
-
-                except FileNotFoundError:
-                    print(f"{colors.RED}Error: cannot determine disk usage for {directory}{colors.RESET}")
-                    ok = False
-
-        if "nfs" in enabled_backends:
-
-            volume_type_name = get(config, "cinder.backends.nfs.VOLUME_TYPE_NAME")
+        if driver == "lvm":
 
             required_fields = [
-                "cinder.backends.nfs.BACKEND_NAME",
-                "cinder.backends.nfs.VOLUME_TYPE_NAME",
-                "cinder.backends.nfs.NFS_SHARE",
-                "cinder.backends.nfs.MOUNT_POINT_BASE",
-            ]
-
-            ratios_fields = [
-                "cinder.backends.nfs.NFS_USED_RATIO",
-                "cinder.backends.nfs.NFS_OVERSUB_RATIO",
+                f"{backend_prefix}.BACKEND_NAME",
+                f"{backend_prefix}.VOLUME_TYPE_NAME",
+                f"{backend_prefix}.VOLUME_GROUP",
+                f"{backend_prefix}.VOLUME_CLEAR",
+                f"{backend_prefix}.VOLUME_CLEAR_SIZE",
+                f"{backend_prefix}.TARGET_IP_ADDRESS",
             ]
 
             for field in required_fields:
                 if not get(config, field):
-                    print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
+                    print(
+                        f"{colors.RED}"
+                        f"Error: '{field}' is not set"
+                        f"{colors.RESET}"
+                    )
                     ok = False
 
-            mount_options = get(config, "cinder.backends.nfs.MOUNT_OPTIONS")
-            sparsed_volumes = get(config, "cinder.backends.nfs.NFS_SPARSED_VOLUMES")
+            # -------------------------------------------------
+            # Physical volume / loopback
+            # -------------------------------------------------
 
-            enabled_snapshots = get(config, "cinder.backends.nfs.ENABLE_SNAPSHOTS")
+            physical_volume = (
+                get(
+                    config,
+                    f"{backend_prefix}.PHYSICAL_VOLUME"
+                )
+                or ""
+            ).strip()
 
-            use_external_share = get(config, "cinder.backends.nfs.USE_EXTERNAL_SHARE")
+            if physical_volume:
 
-            nfs_share = get(config, required_fields[2])
-            mount_point_base = get(config, required_fields[3])
+                if not os.path.exists(physical_volume):
+                    print(
+                        f"{colors.RED}"
+                        f"Error: PHYSICAL_VOLUME '{physical_volume}' "
+                        f"does not exist"
+                        f"{colors.RESET}"
+                    )
+                    ok = False
 
-            volume_type_names.append(volume_type_name)
+                elif (
+                    not physical_volume.startswith("/dev/")
+                    or physical_volume.startswith("/dev/loop")
+                    or is_loop_device(physical_volume)
+                ):
+                    print(
+                        f"{colors.RED}"
+                        f"Error: loop devices are not allowed as "
+                        f"Physical Volume ({physical_volume})"
+                        f"{colors.RESET}"
+                    )
+                    ok = False
 
-            if not is_valid_nfs_share(nfs_share):
-                print(f"{colors.RED}Error: '{required_fields[2]}' is an invalid NFS Share syntax{colors.RESET}")
+                elif not is_safe_lvm_device(physical_volume):
+                    print(
+                        f"{colors.RED}"
+                        f"Error: Unsafe LVM device blocked for security: "
+                        f"{physical_volume}"
+                        f"{colors.RESET}"
+                    )
+                    ok = False
+
+            else:
+
+                image_path_field = (
+                    f"{backend_prefix}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH"
+                )
+
+                image_size_field = (
+                    f"{backend_prefix}.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB"
+                )
+
+                loop_path_field = (
+                    f"{backend_prefix}.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH"
+                )
+
+                required_loopback_fields = [
+                    image_path_field,
+                    image_size_field,
+                    loop_path_field,
+                ]
+
+                for field in required_loopback_fields:
+                    if not get(config, field):
+                        print(
+                            f"{colors.RED}"
+                            f"Error: '{field}' is not set"
+                            f"{colors.RESET}"
+                        )
+                        ok = False
+
+                image_path = get(
+                    config,
+                    image_path_field
+                )
+
+                loop_path = (
+                    get(config, loop_path_field) or ""
+                ).strip().lower()
+
+                image_size_raw = get(
+                    config,
+                    image_size_field
+                )
+
+                image_size = validate_positive_int(
+                    image_size_raw,
+                    image_size_field
+                )
+
+                if image_size is None:
+                    ok = False
+
+                if image_path:
+
+                    if not is_valid_path(
+                        image_path,
+                        image_path_field
+                    ):
+                        ok = False
+
+                    else:
+
+                        directory = (
+                            os.path.dirname(image_path) or "/"
+                        )
+
+                        while not os.path.exists(directory):
+
+                            parent = os.path.dirname(directory)
+
+                            if parent == directory:
+                                directory = "/"
+                                break
+
+                            directory = parent
+
+                        try:
+
+                            _, _, free = shutil.disk_usage(
+                                directory
+                            )
+
+                            free_gb = free / (1024 ** 3)
+
+                            if (
+                                image_size is not None
+                                and image_size > free_gb
+                            ):
+                                print(
+                                    f"{colors.YELLOW}"
+                                    f"Warning: the requested Cinder LVM "
+                                    f"image size ({image_size} GB) exceeds "
+                                    f"the available disk space "
+                                    f"({free_gb:.2f} GB). The sparse file "
+                                    f"will be created successfully, but "
+                                    f"the volume group may run out of "
+                                    f"space as volumes are written."
+                                    f"{colors.RESET}"
+                                )
+
+                        except FileNotFoundError:
+
+                            print(
+                                f"{colors.RED}"
+                                f"Error: cannot determine disk usage "
+                                f"for {directory}"
+                                f"{colors.RESET}"
+                            )
+
+                            ok = False
+
+                if loop_path:
+
+                    if not is_valid_path(
+                        loop_path,
+                        loop_path_field
+                    ):
+                        ok = False
+
+                    if not loop_path.startswith("/dev/loop"):
+                        print(
+                            f"{colors.RED}"
+                            f"Error: '{loop_path_field}' must be "
+                            f"a loop device, found '{loop_path}'"
+                            f"{colors.RESET}"
+                        )
+                        ok = False
+
+            # -------------------------------------------------
+            # iSCSI target IP
+            # -------------------------------------------------
+
+            target_ip = (
+                get(
+                    config,
+                    f"{backend_prefix}.TARGET_IP_ADDRESS"
+                )
+                or ""
+            )
+
+            if isinstance(target_ip, dict):
+
+                pass
+
+            elif (
+                isinstance(target_ip, str)
+                and "{network.HOST_IP}" in target_ip
+            ):
+
+                pass
+
+            elif target_ip:
+
+                if not validate_ip(
+                    target_ip,
+                    f"{backend_prefix}.TARGET_IP_ADDRESS"
+                ):
+                    ok = False
+
+            else:
+
+                print(
+                    f"{colors.RED}"
+                    f"Error: '{backend_prefix}.TARGET_IP_ADDRESS' "
+                    f"is not set"
+                    f"{colors.RESET}"
+                )
+
                 ok = False
-            
-            if not is_valid_path(mount_point_base, required_fields[3]):
+
+            # -------------------------------------------------
+            # Volume clearing
+            # -------------------------------------------------
+
+            volume_clear = (
+                get(
+                    config,
+                    f"{backend_prefix}.VOLUME_CLEAR"
+                )
+                or ""
+            ).lower()
+
+            if volume_clear not in (
+                "zero",
+                "shred",
+                "none",
+            ):
+                print(
+                    f"{colors.RED}"
+                    f"Error: Invalid value for "
+                    f"'{backend_prefix}.VOLUME_CLEAR'. "
+                    f"Allowed values are: zero, shred, none."
+                    f"{colors.RESET}"
+                )
+                ok = False
+
+            volume_clear_size = get(
+                config,
+                f"{backend_prefix}.VOLUME_CLEAR_SIZE"
+            )
+
+            if validate_positive_int(
+                volume_clear_size,
+                f"{backend_prefix}.VOLUME_CLEAR_SIZE"
+            ) is None:
+                ok = False
+
+        # -----------------------------------------------------
+        # NFS backend
+        # -----------------------------------------------------
+
+        elif driver == "nfs":
+
+            required_fields = [
+                f"{backend_prefix}.BACKEND_NAME",
+                f"{backend_prefix}.VOLUME_TYPE_NAME",
+                f"{backend_prefix}.NFS_SHARE",
+                f"{backend_prefix}.MOUNT_POINT_BASE",
+            ]
+
+            for field in required_fields:
+
+                if not get(config, field):
+
+                    print(
+                        f"{colors.RED}"
+                        f"Error: '{field}' is not set"
+                        f"{colors.RESET}"
+                    )
+
+                    ok = False
+
+            nfs_share = get(
+                config,
+                f"{backend_prefix}.NFS_SHARE"
+            )
+
+            mount_point_base = get(
+                config,
+                f"{backend_prefix}.MOUNT_POINT_BASE"
+            )
+
+            mount_options = get(
+                config,
+                f"{backend_prefix}.MOUNT_OPTIONS"
+            )
+
+            sparsed_volumes = get(
+                config,
+                f"{backend_prefix}.NFS_SPARSED_VOLUMES"
+            )
+
+            enabled_snapshots = get(
+                config,
+                f"{backend_prefix}.ENABLE_SNAPSHOTS"
+            )
+
+            use_external_share = get(
+                config,
+                f"{backend_prefix}.USE_EXTERNAL_SHARE"
+            )
+
+            if nfs_share and not is_valid_nfs_share(
+                nfs_share
+            ):
+                print(
+                    f"{colors.RED}"
+                    f"Error: '{backend_prefix}.NFS_SHARE' "
+                    f"is an invalid NFS Share syntax"
+                    f"{colors.RESET}"
+                )
+                ok = False
+
+            if mount_point_base and not is_valid_path(
+                mount_point_base,
+                f"{backend_prefix}.MOUNT_POINT_BASE"
+            ):
                 ok = False
 
             if mount_options:
-                if not is_valid_nfs_options(mount_options):
-                    print(f"{colors.RED}Error: 'cinder.backends.nfs.MOUNT_POINT_BASE' contains invalid options\n\nThe valid options list are: {', '.join(ALLOWED_NFS_OPTIONS)}{colors.RESET}")
+
+                if not is_valid_nfs_options(
+                    mount_options
+                ):
+                    print(
+                        f"{colors.RED}"
+                        f"Error: '{backend_prefix}.MOUNT_OPTIONS' "
+                        f"contains invalid options.\n\n"
+                        f"The valid options list are: "
+                        f"{', '.join(ALLOWED_NFS_OPTIONS)}"
+                        f"{colors.RESET}"
+                    )
                     ok = False
 
             if sparsed_volumes:
-                if sparsed_volumes not in ("sparse", "thick"):
-                    print(f"{colors.RED}Error: Invalid value for 'cinder.backends.nfs.NFS_SPARSED_VOLUMES'"
-                            f"Allowed values are: ('sparse', 'thick').{colors.RESET}"
+
+                sparsed_volumes = str(
+                    sparsed_volumes
+                ).lower()
+
+                if sparsed_volumes not in (
+                    "sparse",
+                    "thick",
+                ):
+                    print(
+                        f"{colors.RED}"
+                        f"Error: Invalid value for "
+                        f"'{backend_prefix}.NFS_SPARSED_VOLUMES'. "
+                        f"Allowed values are: sparse, thick."
+                        f"{colors.RESET}"
                     )
                     ok = False
 
             if use_external_share:
-                if use_external_share not in ("yes", "no", "true", "false"):
-                    print(f"{colors.RED}Error: 'cinder.backends.nfs.USE_EXTERNAL_SHARE' must be yes/no{colors.RESET}")
+
+                use_external_share = str(
+                    use_external_share
+                ).lower()
+
+                if use_external_share not in (
+                    "yes",
+                    "no",
+                    "true",
+                    "false",
+                ):
+                    print(
+                        f"{colors.RED}"
+                        f"Error: '{backend_prefix}.USE_EXTERNAL_SHARE' "
+                        f"must be yes/no"
+                        f"{colors.RESET}"
+                    )
                     ok = False
 
+            ratios_fields = [
+                f"{backend_prefix}.NFS_USED_RATIO",
+                f"{backend_prefix}.NFS_OVERSUB_RATIO",
+            ]
+
             for ratio_field in ratios_fields:
-                ratio = get(config, ratio_field, None)
 
-                if ratio:
-                    try:
-                        float_val = float(ratio)
+                ratio = get(
+                    config,
+                    ratio_field,
+                    None
+                )
 
-                        if not 0 <= float_val <= 1:
-                            print(
-                                f"{colors.RED}Error: "
-                                f"'{ratio_field}' must be between 0 and 1, "
-                                f"found: {ratio}{colors.RESET}"
-                            )
-                            ok = False
+                if ratio is None:
+                    continue
 
-                    except (TypeError, ValueError):
+                try:
+
+                    float_val = float(ratio)
+
+                    if not 0 <= float_val <= 1:
                         print(
-                            f"{colors.RED}Error: "
-                            f"'{ratio_field}' must be a decimal number, "
-                            f"found: {ratio}{colors.RESET}"
+                            f"{colors.RED}"
+                            f"Error: '{ratio_field}' must be "
+                            f"between 0 and 1, found: {ratio}"
+                            f"{colors.RESET}"
                         )
                         ok = False
 
-            if enabled_snapshots:
-                if enabled_snapshots not in ("yes", "no", "true", "false"):
-                    print(f"{colors.RED}Error: 'cinder.backends.nfs.ENABLE_SNAPSHOTS' must be 'yes' or 'no'{colors.RESET}")
+                except (TypeError, ValueError):
+
+                    print(
+                        f"{colors.RED}"
+                        f"Error: '{ratio_field}' must be "
+                        f"a decimal number, found: {ratio}"
+                        f"{colors.RESET}"
+                    )
                     ok = False
 
-        target_ip = get(config, "cinder.backends.lvm.TARGET_IP_ADDRESS") or ""
+            if enabled_snapshots:
+
+                enabled_snapshots = str(
+                    enabled_snapshots
+                ).lower()
+
+                if enabled_snapshots not in (
+                    "yes",
+                    "no",
+                    "true",
+                    "false",
+                ):
+                    print(
+                        f"{colors.RED}"
+                        f"Error: '{backend_prefix}.ENABLE_SNAPSHOTS' "
+                        f"must be yes/no"
+                        f"{colors.RESET}"
+                    )
+                    ok = False
+
+      
+    # ---------------------------------------------------------
+    # Cross-backend validation
+    # ---------------------------------------------------------
+
+    if len(backend_names) != len(set(backend_names)):
+
+        print(
+            f"{colors.RED}"
+            f"Error: Cinder BACKEND_NAME values must be unique"
+            f"{colors.RESET}"
+        )
+
+        ok = False
+
+    if len(volume_type_names) != len(set(volume_type_names)):
+
+        print(
+            f"{colors.RED}"
+            f"Error: Cinder VOLUME_TYPE_NAME values must be unique"
+            f"{colors.RESET}"
+        )
+
+        ok = False
+
+    if default_volume_type:
 
         if default_volume_type not in volume_type_names:
+
             print(
-                f"{colors.RED}Error: default volume type "
+                f"{colors.RED}"
+                f"Error: default volume type "
                 f"'{default_volume_type}' is not configured. "
-                f"Available types: {', '.join(volume_type_names)}{colors.RESET}"
+                f"Available types: "
+                f"{', '.join(volume_type_names)}"
+                f"{colors.RESET}"
             )
+
             ok = False
 
-        if isinstance(target_ip, dict) or (isinstance(target_ip, str) and "{network.HOST_IP}" in target_ip):
-            pass  
-        elif target_ip and isinstance(target_ip, str):
-            if not validate_ip(target_ip, "cinder.backends.lvm.TARGET_IP_ADDRESS"):
-                ok = False
-        else:
-            ok = False
-            
-        if volume_clear not in ("zero", "shred", "none"):
-            print(
-                f"{colors.RED}Error: Invalid value for 'cinder.volume_clear'. "
-                f"Allowed values are: 'zero', 'shred', 'none'.{colors.RESET}"
-            )
-            ok = False
-
-        if validate_positive_int(volume_clear_size, required_fields[2]) is None:
-            ok = False
+    # ---------------------------------------------------------
+    # Cinder backup
+    # ---------------------------------------------------------
 
     if enable_cinder_backup == "yes":
-        ok &= validate_cinder_backup(config)
+        if not validate_cinder_backup(config):
+            ok = False
+
     
     return ok
 
