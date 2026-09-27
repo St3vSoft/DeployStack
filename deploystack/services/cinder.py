@@ -692,11 +692,11 @@ def run_setup_cinder(config, env):
     for backend in enabled_backends:
         driver = get(config, f"cinder.backends.{backend}.DRIVER")
 
-    if driver == "lvm":
-        if not conf_lvm_backend(config, backend): return False
+        if driver == "lvm":
+            if not conf_lvm_backend(config, backend): return False
 
-    if driver == "nfs":
-        if not conf_nfs_backend(config, backend) : return False
+        if driver == "nfs":
+            if not conf_nfs_backend(config, backend) : return False
 
     if install_cinder_backup:
         if not conf_cinder_backup(config) : return False
