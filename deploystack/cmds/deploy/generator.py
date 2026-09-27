@@ -241,8 +241,8 @@ def config_openstack(
 
     if install_cinder.lower() == "yes":
 
-        config_dict["cinder"].pop("ENABLED_BACKENDS", None)
         config_dict["cinder"]["ENABLED_BACKENDS"] = []
+        config_dict["cinder"]["backends"] = {}
 
         if enable_cinder_backup.lower() == "yes":
             config_dict["cinder"]["ENABLE_CINDER_BACKUP"] = "yes"
