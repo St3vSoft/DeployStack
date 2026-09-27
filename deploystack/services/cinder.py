@@ -120,7 +120,7 @@ def conf_lvm_backend(config, backend):
         except subprocess.CalledProcessError:
             losetup_output = ""
 
-        if image_path not in losetup_output:
+        if str(image_path) not in losetup_output:
             if not run_command(
                 ["losetup", image_path, image_path],
                 f"Associating {image_path} to {image_path}..."
