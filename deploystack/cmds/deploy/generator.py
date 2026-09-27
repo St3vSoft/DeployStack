@@ -241,7 +241,7 @@ def config_openstack(
 
     if install_cinder.lower() == "yes":
 
-        config_dict["cinder"]["ENABLED_BACKENDS"] = cinder_enabled_backends or []
+        config_dict["cinder"]["ENABLED_BACKENDS"] or []
         config_dict["cinder"]["backends"] = {}
 
         if enable_cinder_backup.lower() == "yes":
@@ -271,8 +271,11 @@ def config_openstack(
         
         if "lvm" in cinder_enabled_backends:
 
+            config_dict["cinder"]["ENABLED_BACKENDS"].append("lvm-1")
+
             lvm_config = {
-                "BACKEND_NAME": "lvm",
+                "DRIVER": "lvm",
+                "BACKEND_NAME": "lvm-1",
                 "VOLUME_TYPE_NAME": "iscsi",
                 "VOLUME_GROUP": cinder_lvm_vg,
                 "TARGET_IP_ADDRESS": mgmt_ip,
@@ -289,11 +292,14 @@ def config_openstack(
             else:
                 lvm_config["PHYSICAL_VOLUME"] = cinder_physical_volume
 
-            config_dict["cinder"]["backends"]["lvm"] = lvm_config
+            config_dict["cinder"]["backends"]["lvm-1"] = lvm_config
 
         if "nfs" in cinder_enabled_backends:
-            config_dict["cinder"]["backends"]["nfs"] = {
-                "BACKEND_NAME": "nfs",
+            config_dict["cinder"]["ENABLED_BACKENDS"].append("nfs-1")
+
+            config_dict["cinder"]["backends"]["nfs-1"] = {
+                "DRIVER": "nfs",
+                "BACKEND_NAME": "nfs-1",
                 "VOLUME_TYPE_NAME": "nfs",
                 "USE_EXTERNAL_SHARE": "no",
                 "NFS_SHARE": f"{mgmt_ip}:/export/cinder-volumes",
