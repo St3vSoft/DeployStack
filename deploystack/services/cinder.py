@@ -50,8 +50,6 @@ def install_pkgs(config):
 
 def conf_lvm_backend(config, backend):
 
-    print()
-
     prefix = f"cinder.backends.{backend}"
 
     physical_volume = get(
