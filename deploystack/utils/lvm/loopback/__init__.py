@@ -98,7 +98,7 @@ def set_lvm_filter(devices):
 
 def write_loopback_lvm_env(service, backend, description, before_services):
 
-    SERVICE_PATH = f"/etc/systemd/system/{service}-loopback.service"
+    SERVICE_PATH = f"/etc/systemd/system/{service}-{backend}-loopback.service"
 
     try:
 
