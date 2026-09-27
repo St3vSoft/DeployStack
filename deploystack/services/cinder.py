@@ -25,28 +25,66 @@ lvm_conf_path = "/etc/lvm/lvm.conf"
 
 def install_pkgs(config):
 
-    install_cinder_backup = parse_bool(get(config, "cinder.ENABLE_CINDER_BACKUP", False))
-    enabled_backends = get(config, "cinder.ENABLED_BACKENDS", []) or []
-    
-    packages = ["cinder-scheduler", "cinder-api", "cinder-volume"]
+    install_cinder_backup = parse_bool(
+        get(config, "cinder.ENABLE_CINDER_BACKUP", False)
+    )
 
-    if "lvm" in enabled_backends:
+    enabled_backends = get(
+        config,
+        "cinder.ENABLED_BACKENDS",
+        []
+    ) or []
+
+    packages = [
+        "cinder-scheduler",
+        "cinder-api",
+        "cinder-volume",
+    ]
+
+    has_lvm_backend = False
+    has_nfs_backend = False
+    needs_nfs_server = False
+
+    for backend in enabled_backends:
+
+        driver = get(
+            config,
+            f"cinder.backends.{backend}.DRIVER"
+        )
+
+        if driver == "lvm":
+            has_lvm_backend = True
+
+        elif driver == "nfs":
+            has_nfs_backend = True
+
+            use_external_share = parse_bool(
+                get(
+                    config,
+                    f"cinder.backends.{backend}.USE_EXTERNAL_SHARE"
+                ),
+                False
+            )
+
+            if not use_external_share:
+                needs_nfs_server = True
+
+    if has_lvm_backend:
         packages.append("tgt")
 
-    if "nfs" in enabled_backends:
-        use_external_share = parse_bool(get(config, "cinder.backends.nfs.USE_EXTERNAL_SHARE"), False)
-
+    if has_nfs_backend:
         packages.append("nfs-common")
 
-        if not use_external_share:
+        if needs_nfs_server:
             packages.append("nfs-kernel-server")
 
     if install_cinder_backup:
         packages.append("cinder-backup")
 
-    if not apt_install(packages, ux_text=f"Installing Cinder packages...") : return False
-    
+    if not apt_install(packages, ux_text="Installing Cinder packages..."): return False
+
     return True
+
 
 def conf_lvm_backend(config, backend):
 
