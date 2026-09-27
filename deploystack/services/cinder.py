@@ -50,6 +50,8 @@ def install_pkgs(config):
 
 def conf_lvm_backend(config, backend):
 
+    print()
+
     prefix = f"cinder.backends.{backend}"
 
     physical_volume = get(
@@ -120,10 +122,16 @@ def conf_lvm_backend(config, backend):
         except subprocess.CalledProcessError:
             losetup_output = ""
 
+        image_path = Path(get(config, f"cinder.backends.{backend}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH"))
+
+        losetup_output = run_command_output(
+            ["losetup", "-a"]
+        )
+
         if str(image_path) not in losetup_output:
             if not run_command(
-                ["losetup", image_path, image_path],
-                f"Associating {image_path} to {image_path}..."
+                ["losetup", str(image_path), str(image_path)],
+                f"Associating {str(image_path)} to {str(image_path)}..."
             ):
                 return False
             
@@ -170,13 +178,15 @@ def conf_lvm_backend(config, backend):
 
     return True
 
-def conf_nfs_backend(config):
+def conf_nfs_backend(config, backend):
 
     print()
 
-    use_external_share = parse_bool(get(config, "cinder.backends.nfs.USE_EXTERNAL_SHARE"), False)
-    nfs_share = get(config, "cinder.backends.nfs.NFS_SHARE")
-    mount_point_base = get(config, "cinder.backends.nfs.MOUNT_POINT_BASE") or "/var/lib/cinder/mnt"
+    prefix = f"cinder.backends.{backend}"
+
+    use_external_share = parse_bool(get(config, f"{prefix}.USE_EXTERNAL_SHARE"), False)
+    nfs_share = get(config, f"{prefix}.NFS_SHARE")
+    mount_point_base = get(config, f"{prefix}.MOUNT_POINT_BASE") or "/var/lib/cinder/mnt"
 
     if not use_external_share:
         ip_address = get(config, "network.HOST_IP")
