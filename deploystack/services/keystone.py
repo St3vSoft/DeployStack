@@ -12,7 +12,7 @@ from ..utils.core import colors
 
 from ..utils.config.helpers import parse_bool
 
-from .utils import get_base_host, is_os_release
+from .utils import get_base_host, ensure_os_release
 
 keystone_conf = "/etc/keystone/keystone.conf"
 
@@ -222,7 +222,7 @@ def create_services_users(config, env):
 
         manila_services = [
             ("manilav2", "OpenStack Shared File Systems V2", "sharev2")
-        ] if is_os_release(config, "gazpacho") else [
+        ] if ensure_os_release(config, "gazpacho") else [
             ("manila", "OpenStack Shared File Systems", "share"),
             ("manilav2", "OpenStack Shared File Systems V2", "sharev2"),
         ]
@@ -321,7 +321,7 @@ def create_services_endpoints(config, env):
 
     if install_manila:
 
-        if is_os_release(config, "gazpacho"):
+        if ensure_os_release(config, "gazpacho"):
             manila_url = f"http://{get_base_host(config)}:8786/v2"
 
             if ("sharev2", "public", os_region_name, manila_url) not in existing_endpoints:

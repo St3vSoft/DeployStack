@@ -15,7 +15,7 @@ from ..utils.config.setter import set_conf_option, toml_string
 from ..utils.lvm.loopback import set_lvm_filter
 from ..utils.config.helpers import parse_bool
 
-from .utils import is_os_release
+from .utils import ensure_os_release
 
 from .patches.openstackclient import create_venv_and_install_openstackclient
 
@@ -376,7 +376,7 @@ def install_pkgs(config):
 
         devices.append(manila_pv or manila_loop_dev)
 
-    if is_ubuntu_release("24.04") and is_os_release(config, "gazpacho"):
+    if is_ubuntu_release("24.04") and ensure_os_release(config, "gazpacho"):
 
         print(f"{colors.YELLOW}Warning: Ubuntu 24.04 Gazpacho has been detected; "
               f"OpenStack Client will be installed in an isolated venv to avoid "

@@ -11,7 +11,6 @@ DEFAULT_UBUNTU_OPENSTACK_RELEASES = {
     "26.04": "gazpacho",
 }
 
-
 def get_base_host(config):
     ip = config.get("network", {}).get("HOST_IP")
     domain = config.get("network", {}).get("HOST_DOMAIN") or None
@@ -77,7 +76,6 @@ def validate_os_release_available(
 
     return False
 
-
 def _validate_via_policy(
     package_name: str,
     release_name: str,
@@ -105,6 +103,6 @@ def _validate_via_policy(
 
     return False
 
-def is_os_release(config, release):
+def ensure_os_release(config, release):
     os_release = get(config, "openstack.OPENSTACK_RELEASE").lower()
     return os_release == release and validate_os_release_available(release)

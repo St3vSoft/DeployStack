@@ -107,24 +107,25 @@ def conf_nova(config):
     set_conf_option(nova_conf, "service_user", "send_service_user_token", "True")
 
     api_db_migration_cmd = [
-    "sudo", "-u", "nova",
-    "nova-manage", "api_db", "sync"
-]
-    
+        "sudo", "-u", "nova",
+        "nova-manage", "api_db", "sync"
+    ]
+        
     register_cell0_migration_cmd = [
-    "sudo", "-u", "nova",
-    "nova-manage", "cell_v2", "map_cell0",
-]
-    
+        "sudo", "-u", "nova",
+        "nova-manage", "cell_v2", "map_cell0",
+    ]
+        
     create_cell1_migration_cmd = [
-    "sudo", "-u", "nova",
-    "nova-manage", "cell_v2", "create_cell",
-    "--name=cell1", "--verbose"
-]
+        "sudo", "-u", "nova",
+        "nova-manage", "cell_v2", "create_cell",
+        "--name=cell1", "--verbose"
+    ]
+    
     db_migration_cmd = [
-    "sudo", "-u", "nova",
-    "nova-manage", "db", "sync"
-]
+        "sudo", "-u", "nova",
+        "nova-manage", "db", "sync"
+    ]
      
     if not run_command(api_db_migration_cmd, "Running Nova API DB Migrations...") : return False
 

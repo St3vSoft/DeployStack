@@ -661,26 +661,9 @@ def create_ovn_networks(config, env):
             for sg in (default_admin_sg, default_demo_sg):
                 sg_id = sg["ID"]
 
-                rules_json = os_run_output(
-                    [
-                        "openstack",
-                        "security", "group", "rule", "list",
-                        sg_id,
-                        "-f", "json"
-                    ],
-                    env=env
-                )
+                rules = json.loads(os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env=env))
 
-                rules = json.loads(rules_json)
-
-                if not add_rules_to_default_sg(
-                    sg_id=sg_id,
-                    create_bridges=create_ovn_bridges,
-                    rules_dict=services_rules,
-                    ip_prefix=services_rules_remote_ip_prefix,
-                    rules=rules,
-                    env=env
-                ): return False
+                if not add_rules_to_default_sg(sg_id=sg_id,create_bridges=create_ovn_bridges,rules_dict=services_rules, ip_prefix=services_rules_remote_ip_prefix, rules=rules, env=env): return False
 
     print()
 

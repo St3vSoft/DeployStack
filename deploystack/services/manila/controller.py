@@ -14,7 +14,7 @@ from ..patches.manila.manilaclient import install_manilaclient_in_venv
 
 from ...utils.core import colors
 
-from ..utils import is_os_release
+from ..utils import ensure_os_release
 
 manila_conf = "/etc/manila/manila.conf"
 
@@ -25,7 +25,7 @@ def install_pkgs(config):
 
     manila_packages = ["manila-api", "manila-scheduler", "python3-manilaclient"]
 
-    if is_ubuntu_release("24.04") and is_os_release(config, "gazpacho"):
+    if is_ubuntu_release("24.04") and ensure_os_release(config, "gazpacho"):
 
         manila_packages.remove("python3-manilaclient")
 

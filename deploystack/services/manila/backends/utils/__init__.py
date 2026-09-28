@@ -90,20 +90,9 @@ def wait_manila_backend(env, timeout=120, interval=5):
 
         spinner.stop(done_message="TIMEOUT", color="red", width=50)
 
-        print(
-            f"\n{colors.RED}"
-            f"ERROR: Manila share service did not become UP within {timeout}s"
-            f"{colors.RESET}"
-        )
+        print(f"\n{colors.RED}ERROR: Manila share service did not become UP within {timeout}s {colors.RESET}\n")
 
-        print(
-            f"\n{colors.YELLOW}"
-            "Check Manila logs for more details:\n"
-            "  journalctl -u manila-share -n 100 --no-pager\n"
-            "or:\n"
-            "  /var/log/manila/manila-share.log"
-            f"{colors.RESET}\n"
-        )
+        print(f"{colors.YELLOW}See manila-share logs for details.{colors.RESET}")
 
         return None
 
@@ -144,15 +133,10 @@ def wait_share_available(share_name, env, timeout=120, interval=5):
                     if status in ("error", "error_deleting"):
                         spinner.stop(done_message="ERROR", color="red", width=60)
 
-                        print(f"\n{colors.RED}ERROR: {share_name} entered error state: {status}{colors.RESET}\n")
+                        print(f"\n{colors.RED}ERROR: share '{share_name}' entered error state:{colors.RESET}\n")
+                        
+                        print(f"{colors.YELLOW}See manila-share logs for details.{colors.RESET}")
 
-                        print(f"{colors.YELLOW}"
-                            "Check Manila logs for more details:\n"
-                            "  journalctl -u manila-share -n 100 --no-pager\n"
-                            "or:\n"
-                            "  /var/log/manila/manila-share.log"
-                            f"{colors.RESET}\n"
-                        )
                         return None
 
                 except Exception:
@@ -200,16 +184,9 @@ def wait_dhss_share_available(share_name, env, timeout=600, interval=10):
                     if status in ("error", "error_deleting"):
                         spinner.stop(done_message="ERROR", color="red", width=60)
 
-                        print(f"\n{colors.RED}ERROR: {share_name} entered error state: {status}{colors.RESET}\n")
+                        print(f"\n{colors.RED}ERROR: share '{share_name}' entered error state:{colors.RESET}\n")
 
-                        print(
-                            f"{colors.YELLOW}"
-                            "Check Manila logs for more details:\n"
-                            "  journalctl -u manila-share -n 100 --no-pager\n"
-                            "or:\n"
-                            "  /var/log/manila/manila-share.log"
-                            f"{colors.RESET}\n"
-                        )
+                        print(f"{colors.YELLOW}See manila-share logs for details.{colors.RESET}")
 
                         return None
 
