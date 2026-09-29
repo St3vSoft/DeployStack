@@ -919,7 +919,6 @@ def validate_cinder(config) -> bool:
             )
 
             if isinstance(target_ip, dict):
-
                 pass
 
             elif (

@@ -25,21 +25,11 @@ lvm_conf_path = "/etc/lvm/lvm.conf"
 
 def install_pkgs(config):
 
-    install_cinder_backup = parse_bool(
-        get(config, "cinder.ENABLE_CINDER_BACKUP", False)
-    )
+    install_cinder_backup = parse_bool(get(config, "cinder.ENABLE_CINDER_BACKUP", False))
 
-    enabled_backends = get(
-        config,
-        "cinder.ENABLED_BACKENDS",
-        []
-    ) or []
+    enabled_backends = get(config, "cinder.ENABLED_BACKENDS", []) or []
 
-    packages = [
-        "cinder-scheduler",
-        "cinder-api",
-        "cinder-volume",
-    ]
+    packages = [ "cinder-scheduler", "cinder-api", "cinder-volume"]
 
     has_lvm_backend = False
     has_nfs_backend = False
@@ -47,10 +37,7 @@ def install_pkgs(config):
 
     for backend in enabled_backends:
 
-        driver = get(
-            config,
-            f"cinder.backends.{backend}.DRIVER"
-        )
+        driver = get(config, f"cinder.backends.{backend}.DRIVER")
 
         if driver == "lvm":
             has_lvm_backend = True
@@ -58,13 +45,7 @@ def install_pkgs(config):
         elif driver == "nfs":
             has_nfs_backend = True
 
-            use_external_share = parse_bool(
-                get(
-                    config,
-                    f"cinder.backends.{backend}.USE_EXTERNAL_SHARE"
-                ),
-                False
-            )
+            use_external_share = parse_bool(get(config, f"cinder.backends.{backend}.USE_EXTERNAL_SHARE"), False)
 
             if not use_external_share:
                 needs_nfs_server = True
@@ -85,35 +66,16 @@ def install_pkgs(config):
 
     return True
 
-
 def conf_lvm_backend(config, backend):
 
     prefix = f"cinder.backends.{backend}"
 
-    physical_volume = get(
-        config,
-        f"{prefix}.PHYSICAL_VOLUME",
-    )
+    physical_volume = get(config, f"{prefix}.PHYSICAL_VOLUME")
 
-    image_path = get(
-        config,
-        f"{prefix}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
-    )
-
-    loop_path = get(
-        config,
-        f"{prefix}.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",
-    )
-
-    image_size = get(
-        config,
-        f"{prefix}.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",
-    )
-
-    vg_name = get(
-        config,
-        f"{prefix}.VOLUME_GROUP",
-    )
+    image_path = get(config, f"{prefix}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
+    loop_path = get(config, f"{prefix}.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",)
+    image_size = get(config, f"{prefix}.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",)
+    vg_name = get(config, f"{prefix}.VOLUME_GROUP")
 
     if physical_volume:
         lvm_dev = physical_volume
@@ -149,25 +111,16 @@ def conf_lvm_backend(config, backend):
             print()
 
         try:
-            losetup_output = subprocess.check_output(
-                ["losetup", "-j", image_path],
-                text=True
-            )
+            losetup_output = subprocess.check_output(["losetup", "-j", image_path], text=True)
         except subprocess.CalledProcessError:
             losetup_output = ""
 
         image_path = Path(get(config, f"cinder.backends.{backend}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH"))
 
-        losetup_output = run_command_output(
-            ["losetup", "-a"]
-        )
+        losetup_output = run_command_output(["losetup", "-a"])
 
         if str(image_path) not in losetup_output:
-            if not run_command(
-                ["losetup", str(lvm_dev), str(image_path)],
-                f"Associating {str(lvm_dev)} to {str(image_path)}..."
-            ):
-                return False
+            if not run_command(["losetup", str(lvm_dev), str(image_path)], f"Associating {str(lvm_dev)} to {str(image_path)}...") : return False
             
     vg = get_vg_for_pv(lvm_dev)
 
@@ -175,17 +128,9 @@ def conf_lvm_backend(config, backend):
 
         print() 
 
-        if not run_command(
-            ["pvcreate", lvm_dev],
-            f"Creating physical volume on {lvm_dev}..."
-        ):
-            return False
+        if not run_command(["pvcreate", lvm_dev], f"Creating physical volume on {lvm_dev}...") : return False
 
-        if not run_command(
-            ["vgcreate", vg_name, lvm_dev],
-            f"Creating volume group {vg_name}..."
-        ):
-            return False
+        if not run_command(["vgcreate", vg_name, lvm_dev],  f"Creating volume group {vg_name}..." ) : return False
 
     elif vg == vg_name:
         pass
@@ -492,7 +437,6 @@ def conf_cinder_backup(config):
                             f"same NFS server ({backup_server}) as the Cinder volume backend "
                             f"NFS, on a different export.{colors.RESET}"
                         )   
-
 
         set_conf_option(cinder_conf, "DEFAULT", "backup_driver", "cinder.backup.drivers.nfs.NFSBackupDriver")
 

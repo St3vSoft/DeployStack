@@ -275,7 +275,6 @@ def create_loopback_config(config):
                 )
             )
 
-
     if install_manila and is_lvm_manila_backend_enabled:
         vg = get(
             config,
@@ -343,7 +342,6 @@ def create_loopback_config(config):
             toml_string(state_file),
         )
 
-    
 def install_pkgs(config):
 
     print()
