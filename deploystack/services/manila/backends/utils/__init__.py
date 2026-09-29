@@ -100,7 +100,7 @@ def wait_manila_backend(env, timeout=120, interval=5):
         if spinner.running:
             spinner.stop(done_message="FAILED", color="red", width=50)
 
-def wait_share_available(share_name, env, timeout=120, interval=5):
+def wait_share_available(share_name, env, timeout=600, interval=5):
 
     spinner = Spinner(message=f"Waiting for share '{share_name}' to become available...")
     spinner.start()
@@ -157,7 +157,7 @@ def wait_share_available(share_name, env, timeout=120, interval=5):
         if spinner.running:
             spinner.stop(done_message="FAILED", color="red", width=60)
 
-def wait_dhss_share_available(share_name, env, timeout=600, interval=10):
+def wait_dhss_share_available(share_name, env, timeout=900, interval=10):
 
     spinner = Spinner(message=f"Waiting for share '{share_name}' to become available...")
     spinner.start()
