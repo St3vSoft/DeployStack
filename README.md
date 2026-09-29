@@ -12,8 +12,6 @@ The instructions below describe a **temporary installation** method for developm
 
 ## 1. System Preparation
 
-> [!WARNING]
-
 Ensure you have the necessary tools for Python 3:
 
 ```bash
