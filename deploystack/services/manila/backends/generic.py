@@ -102,7 +102,7 @@ def conf_generic_backend(config):
     if neutron_driver == "ovs":
         set_conf_option(conf_openvswitch, "agent", "tunnel_types", "vxlan")
 
-    set_conf_option(nova_conf, "DEFAULT", "resume_guests_state_on_host_boot" "true")
+    set_conf_option(nova_conf, "DEFAULT", "resume_guests_state_on_host_boot", "true")
 
     return True
 
