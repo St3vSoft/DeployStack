@@ -8,8 +8,6 @@ DeployStack is a command-line utility for deploying OpenStack on Ubuntu/Debian.
 
 The instructions below describe a **temporary installation** method for development or testing, until an official `.deb` package is released.
 
----
-
 ## 1. System Preparation
 
 Ensure you have the necessary tools for Python 3:
