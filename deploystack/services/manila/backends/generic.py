@@ -89,6 +89,7 @@ def conf_generic_backend(config):
     set_conf_option(manila_conf, "generic", "service_instance_flavor_id", str(generic_service_instance_flavor_id))
     set_conf_option(manila_conf, "generic", "service_image_name", generic_service_image_name)
     set_conf_option(manila_conf, "generic", "service_instance_user", "manila")
+    set_conf_option(manila_conf, "generic", "service_instance_password", "manila")
     set_conf_option(manila_conf, "generic", "path_to_private_key", "/etc/manila/ssh/id_manila")
     set_conf_option(manila_conf, "generic", "path_to_public_key", "/etc/manila/ssh/id_manila.pub")
     set_conf_option(manila_conf, "generic", "interface_driver", generic_interface_driver)
