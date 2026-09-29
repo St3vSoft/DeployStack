@@ -150,7 +150,7 @@ def finalize_generic_backend(config, env):
 
         print()
 
-        if not run_command(["virt-customize", "-a", manila_temp_image_file, "--run-command", "'systemctl disable fetch-public-ssh-keys.service'"], "Preparing Manila service image...", timeout=600) : return False
+        if not run_command(["virt-customize", "-a", manila_temp_image_file, "--run-command", "systemctl disable fetch-public-ssh-keys.service"], "Preparing Manila service image...", timeout=600) : return False
 
         if os.path.exists(manila_temp_image_file):
             if not os_run(["openstack", "image", "create", generic_service_image_name, "--file", manila_temp_image_file, "--disk-format", "qcow2", "--container-format", "bare", "--public"], "Uploading Manila image to Glance...", env=env): return False
