@@ -93,7 +93,8 @@ def conf_generic_backend(config):
     set_conf_option(manila_conf, "generic", "path_to_public_key", "/etc/manila/ssh/id_manila.pub")
     set_conf_option(manila_conf, "generic", "interface_driver", generic_interface_driver)
     set_conf_option(manila_conf, "generic", "connect_security_service_method", "ssh")
-    set_conf_option(manila_conf, "generic", "service_instance_launch_timeout", "300")
+    set_conf_option(manila_conf, "generic", "service_instance_launch_timeout", "600")
+    set_conf_option(manila_conf, "generic", "max_time_to_build_instance", "600")
 
     if neutron_driver == "ovs":
         set_conf_option(conf_openvswitch, "agent", "tunnel_types", "vxlan")
