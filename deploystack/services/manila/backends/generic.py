@@ -10,12 +10,14 @@ from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
 from ....utils.config.helpers import parse_bool
 
+from ...nova import nova_conf
+from ...neutron.ovs import conf_openvswitch
+
 from .utils import wait_manila_backend
 from .utils.shares import create_shares, create_share_types
 
 from .protocols.nfs import run_setup_nfs
 
-conf_openvswitch = "/etc/neutron/plugins/ml2/openvswitch_agent.ini"
 manila_conf = "/etc/manila/manila.conf"
 
 manila_ssh_key_path = "/etc/manila/ssh/id_manila"
@@ -99,6 +101,8 @@ def conf_generic_backend(config):
 
     if neutron_driver == "ovs":
         set_conf_option(conf_openvswitch, "agent", "tunnel_types", "vxlan")
+
+    set_conf_option(nova_conf, "DEFAULT", "resume_guests_state_on_host_boot" "true")
 
     return True
 
