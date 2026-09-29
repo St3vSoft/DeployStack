@@ -35,7 +35,7 @@ def install_pkgs():
 
     print()
 
-    if not apt_install(["manila-share"], "Installing Manila Share package..."): return False
+    if not apt_install(["manila-share", "libguestfs-tools"], "Installing Manila Share and libguestfs tools..."): return False
 
     return True 
 
@@ -147,6 +147,10 @@ def finalize_generic_backend(config, env):
 
         if not os.path.exists(manila_temp_image_file):
             if not run_command(["wget", "--continue", "--progress=dot:giga", "--tries=3", "--timeout=30", "--read-timeout=60","-O", manila_temp_image_file, manila_image_url], "Downloading Manila service image... (this may take a while) ", timeout=3600): return False
+
+        print()
+
+        if not run_command(["virt-customize", "-a", manila_temp_image_file, "--run-command", "'systemctl disable fetch-public-ssh-keys.service'"], "Preparing Manila service image...", timeout=600) : return False
 
         if os.path.exists(manila_temp_image_file):
             if not os_run(["openstack", "image", "create", generic_service_image_name, "--file", manila_temp_image_file, "--disk-format", "qcow2", "--container-format", "bare", "--public"], "Uploading Manila image to Glance...", env=env): return False
