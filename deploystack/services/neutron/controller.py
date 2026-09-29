@@ -25,8 +25,7 @@ def install_pkgs():
         "neutron-plugin-ml2", 
     ]
 
-    if not apt_install(neutron_packages, ux_text="Installing Neutron packages..."):
-        return False
+    if not apt_install(neutron_packages, ux_text="Installing Neutron packages...") : return False
 
     return True
 
