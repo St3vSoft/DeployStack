@@ -286,7 +286,7 @@ def create_shares_network(config, env):
 
     if not shares_network_exists:
         print()
-        if not os_run(["openstack", "network", "create", "shares", "--provider-network-type", "flat", "--provider-physical-network", "shares", "--share"], "Creating shares network...", env=env): return False
+        if not os_run(["openstack", "network", "create", "shares", "--provider-network-type", "flat", "--provider-physical-network", "shares"], "Creating shares network...", env=env): return False
 
     subnets_list = json.loads(os_run_output(["openstack", "subnet", "list", "-f", "json"], env=env))
     shares_subnet_exists = any((sub.get("Name") or sub.get("name")) == "shares_subnet" for sub in subnets_list)
