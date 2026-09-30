@@ -136,8 +136,7 @@ def conf_ovn_bridges(config):
 
         host_dns = get(config, "network.HOST_DNS_SERVERS", None)
         if host_default_gateway and host_dns:
-            subnet_dns = " ".join(host_dns) if isinstance(host_dns, list) else host_dns
-            
+            subnet_dns = " ".join(host_dns) if isinstance(host_dns, list) else host_dns           
 
     bridges_interfaces_content = template.format(
         management_iface=management_iface if is_dual_nic else "",

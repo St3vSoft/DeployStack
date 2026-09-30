@@ -482,7 +482,7 @@ def run_setup_lvm_backend(config, env):
 
     if using_loopback:
         if not write_loopback_lvm_env("manila", backend="lvm-loopback", description="Manila Loopback LVM", before_services="manila-share.service"): return False   
-        if not setup_loopback_service("manila"): return False   
+        if not setup_loopback_service("manila", backend="lvm-loopback"): return False   
 
         if not is_debian() and is_ubuntu_release("26.04"):
             if not run_setup_directio_patch(): return False
