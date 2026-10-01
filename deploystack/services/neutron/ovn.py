@@ -23,7 +23,7 @@ from ...templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES
 
 from .network.security_group import add_rules_to_default_sg
 
-from .network.provisioner import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
+from .network.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
 from .network.routers import create_custom_network_router
 
 neutron_conf = "/etc/neutron/neutron.conf"

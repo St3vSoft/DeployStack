@@ -93,7 +93,12 @@ def create_shares(shares, env, dhss: bool = False):
 
         if existing_share:
             print(f"{colors.YELLOW}{share_name} already exists, checking status...{colors.RESET}")
+            
             share_id = existing_share.get("ID", existing_share.get("id"))
+            status = existing_share.get("status", "").lower()
+
+            if status == "error":
+                if not os_run(["openstack", "share", "delete", share_id], f"Deleting failed '{share_id}' share...") : return False
         else:
             print()
             
@@ -107,8 +112,7 @@ def create_shares(shares, env, dhss: bool = False):
             
             share_create_cmd += [share_protocol, str(share_size)]
 
-            if not os_run(share_create_cmd, f"Creating share '{share_name}'... ", env=env):
-                return False
+            if not os_run(share_create_cmd, f"Creating share '{share_name}'... ", env=env): return False
 
             print()
 
@@ -117,13 +121,12 @@ def create_shares(shares, env, dhss: bool = False):
             else:
                 share_info = wait_share_available(share_name, env)
 
-            if not share_info:
-                return False
+            if not share_info: return False
 
             share_id = share_info.get("id")
 
         if not share_id:
-            print(f"\n{colors.RED}ERROR: unable to retrieve {share_name} id{colors.RESET}")
+            print(f"\n{colors.RED}ERROR: Unable to retrieve {share_name} id{colors.RESET}")
             return False
 
         export_path = None
