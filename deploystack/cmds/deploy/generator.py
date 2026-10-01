@@ -334,23 +334,6 @@ def config_openstack(
 
                 if manila_backend.lower() == "generic":
 
-                    config_dict["manila"]["backends"]["generic"].pop("SERVICE_IMAGE_AUTHENTICATION", {})
-
-                    config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"].append({
-                        "AUTH_METHOD": manila_dhss_auth_type
-                    })
-
-                    if manila_dhss_auth_type == "password":
-                        config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"].append({
-                            "SERVICE_INSTANCE_USER": "manila",
-                            "SERVICE_INSTANCE_PASSWORD": "manila",
-                        })
-                    elif manila_dhss_auth_type == "ssh_key":
-                        config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"].append({
-                            "SERVICE_INSTANCE_PRIVATE_KEY": "/etc/manila/ssh/id_manila",
-                            "SERVICE_INSTANCE_PUBLIC_KEY": "/etc/manila/ssh/id_manila.pub",
-                        })
-
                     shares.append({
                         "name": "default_nfs_internal_share",
                         "share_protocol": "NFS",
@@ -513,6 +496,23 @@ def config_openstack(
         config_dict["manila"]["shares"] = shares
 
         if manila_backend.lower() == "generic":
+
+            config_dict["manila"]["backends"]["generic"].pop("SERVICE_IMAGE_AUTHENTICATION", {})
+            
+            config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"] = ({
+                "AUTH_METHOD": manila_dhss_auth_type
+            })
+
+            if manila_dhss_auth_type == "password":
+                config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"] = ({
+                    "SERVICE_INSTANCE_USER": "manila",
+                    "SERVICE_INSTANCE_PASSWORD": "manila",
+                })
+            elif manila_dhss_auth_type == "ssh_key":
+                config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"] = ({
+                    "SERVICE_INSTANCE_PRIVATE_KEY": "/etc/manila/ssh/id_manila",
+                    "SERVICE_INSTANCE_PUBLIC_KEY": "/etc/manila/ssh/id_manila.pub",
+                })
 
             config_dict["manila"]["share_types"] = [{
                         "name": "default_share_type",
