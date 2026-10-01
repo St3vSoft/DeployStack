@@ -15,6 +15,28 @@ SUPPORTED_EXTRA_SPECS = {
     "mount_snapshot_support",
 }
 
+def get_share_network_id(share_network_name, env):
+
+    share_networks = json.loads(
+        os_run_output(
+            ["openstack", "share", "network", "list", "-f", "json"],
+            env=env,
+        ) or "[]"
+    )
+
+    share_network = next(
+        (
+            item for item in share_networks
+            if item.get("Name", item.get("name")) == share_network_name
+        ),
+        None,
+    )
+
+    if not share_network:
+        return None
+
+    return share_network.get("ID", share_network.get("id"))
+
 def get_share_server_for_share(share_id, env):
 
     result = os_run_output(["openstack", "share", "show", share_id, "-f", "json"], env=env)
@@ -115,10 +137,12 @@ def create_shares(shares, env, dhss: bool = False):
         share_protocol = share["share_protocol"]
         share_size = share["share_size"]
         is_public = parse_bool(share["is_public"], False)
-        share_network = None
+        share_network_name = None
 
         if dhss:
-            share_network = share["share_network"]
+            share_network_name = share["share_network"]
+
+            share_network = get_share_network_id(share_network_name, env)
 
         existing_share = next((item for item in share_list if item.get("Name", item.get("name")) == share_name), None)
 
