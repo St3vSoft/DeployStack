@@ -137,13 +137,13 @@ def finalize(env):
 
 def create_shares_networks(config, env):
 
+    line_printed = False
+
     service_networks = get(config, "manila.backends.generic.service_networks") or []
 
     networks_list = json.loads(os_run_output(["openstack", "network", "list", "-f", "json"], env=env) or "[]")
 
     demo_env = build_openstack_env_from_file("/root/demo-openrc.sh")
-
-    line_printed = False
 
     admin_share_networks_list = json.loads(os_run_output(["openstack", "share", "network", "list", "-f", "json"], env=env) or "[]")
     demo_share_networks_list = json.loads(os_run_output(["openstack", "share", "network", "list", "-f", "json"], env=demo_env) or "[]")
