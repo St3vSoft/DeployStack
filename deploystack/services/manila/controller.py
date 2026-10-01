@@ -29,9 +29,9 @@ def install_pkgs(config):
 
         os_release = None
 
-        if ensure_os_release("gazpacho"):
+        if ensure_os_release(config, "gazpacho"):
             os_release = "gazpacho"
-        elif ensure_os_release("flamingo"):
+        elif ensure_os_release(config, "flamingo"):
             os_release = "flamingo"
 
         if os_release:
