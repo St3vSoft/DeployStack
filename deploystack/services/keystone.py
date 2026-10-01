@@ -135,6 +135,9 @@ def create_projects_and_demo_user(config, env):
 
     assignments = get_role_assignments(env)
 
+    if assignments is False:
+        return False
+
     existing_assignments = {(a["User"], a["Project"], a["Role"]) for a in assignments}
 
     create_service_project_cmd = [
@@ -176,6 +179,9 @@ def create_services_users(config, env):
 
     services = get_services(env)
     assignments = get_role_assignments(env)
+
+    if services is False or assignments is False:
+        return False
 
     services_user_create_cmds = [
         ["openstack", "user", "create", "--domain", "default", "--password", service_password, "glance", "--or-show"],
@@ -281,6 +287,9 @@ def create_services_endpoints(config, env):
     neutron_url = f"http://{get_base_host(config)}:9696"
 
     endpoints = get_endpoints(env=env)
+
+    if endpoints is False:
+        return False
 
     endpoints_create_cmds = []
 
