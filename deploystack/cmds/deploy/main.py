@@ -260,7 +260,9 @@ def init_parser(subparsers):
         type=str,
         choices=["password", "ssh_key"],
         dest="manila_service_instance_auth_method",
-        help="Authentication method for Manila service instances (default: ssh_key) (Generic Only)"
+        help=("Authentication method for Manila service instances "
+            "(choices: password, ssh_key; default: ssh_key; Generic backend only)"
+        )
     )
 
     general_options.add_argument(
@@ -268,7 +270,7 @@ def init_parser(subparsers):
         type=str,
         dest="os_release",
         default=default_os_release,
-        help=f"The OpenStack release to install for deployment (default: {get_default_openstack_release()})"
+        help=f"The OpenStack release to install for deployment (default: {default_os_release})"
     )
 
     general_options.add_argument(
@@ -313,7 +315,7 @@ def deploy(parser, args) -> None:
 
         enable_cinder_backup = args.enable_cinder_backup
 
-        os_release: str
+        os_release: str = args.os_release
 
         if neutron_driver not in ("ovs", "ovn"):
             neutron_driver = "ovs"
