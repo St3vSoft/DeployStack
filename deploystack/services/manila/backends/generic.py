@@ -106,6 +106,12 @@ def conf_generic_backend(config):
         service_instance_private_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PRIVATE_KEY", "/etc/manila/ssh/id_manila")
         service_instance_public_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PUBLIC_KEY", "/etc/manila/ssh/id_manila.pub")
 
+        service_instance_user = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_USER", "manila")
+        service_instance_password = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PASSWORD", "manila")
+        
+        set_conf_option(manila_conf, "generic", "service_instance_user", service_instance_user)
+        set_conf_option(manila_conf, "generic", "service_instance_password", service_instance_password)
+
         set_conf_option(manila_conf, "generic", "path_to_private_key", service_instance_private_key)
         set_conf_option(manila_conf, "generic", "path_to_public_key", service_instance_public_key)
 
