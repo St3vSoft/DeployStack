@@ -9,6 +9,7 @@ from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
 from ....utils.config.helpers import parse_bool
+from ....utils.core import colors
 
 from ...nova import nova_conf
 from ...neutron.ovs import conf_openvswitch
@@ -19,8 +20,6 @@ from .utils.shares import create_shares, create_share_types
 from .protocols.nfs import run_setup_nfs
 
 manila_conf = "/etc/manila/manila.conf"
-
-manila_ssh_key_path = "/etc/manila/ssh/id_manila"
 
 def _set_service_auth(conf, section, username, ip_address, region, password):
     set_conf_option(conf, section, "auth_url", f"http://{ip_address}:5000")
@@ -61,6 +60,8 @@ def conf_generic_backend(config):
     enabled_share_protocols = ",".join(protocols)
 
     share_helpers = get(config, "manila.SHARE_HELPERS") or []
+
+    service_image_authentication_method = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.AUTH_METHOD", "password")
     
     helpers = []
 
@@ -90,10 +91,22 @@ def conf_generic_backend(config):
     set_conf_option(manila_conf, "generic", "connect_share_server_to_tenant_network", str(generic_share_server_to_tenant_network))
     set_conf_option(manila_conf, "generic", "service_instance_flavor_id", str(generic_service_instance_flavor_id))
     set_conf_option(manila_conf, "generic", "service_image_name", generic_service_image_name)
-    set_conf_option(manila_conf, "generic", "service_instance_user", "manila")
-    set_conf_option(manila_conf, "generic", "service_instance_password", "manila")
-    #set_conf_option(manila_conf, "generic", "path_to_private_key", "/etc/manila/ssh/id_manila")
-    #set_conf_option(manila_conf, "generic", "path_to_public_key", "/etc/manila/ssh/id_manila.pub")
+
+    if service_image_authentication_method == "password":
+        service_instance_user = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_USER", "manila")
+        service_instance_password = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PASSWORD", "manila")
+
+        set_conf_option(manila_conf, "generic", "service_instance_user", service_instance_user)
+        set_conf_option(manila_conf, "generic", "service_instance_password", service_instance_password)
+
+    elif service_image_authentication_method == "ssh_key":
+
+        service_instance_private_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PRIVATE_KEY", "/etc/manila/ssh/id_manila")
+        service_instance_public_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PUBLIC_KEY", "/etc/manila/ssh/id_manila.pub")
+
+        set_conf_option(manila_conf, "generic", "path_to_private_key", service_instance_private_key)
+        set_conf_option(manila_conf, "generic", "path_to_public_key", service_instance_public_key)
+
     set_conf_option(manila_conf, "generic", "interface_driver", generic_interface_driver)
     set_conf_option(manila_conf, "generic", "connect_security_service_method", "ssh")
     set_conf_option(manila_conf, "generic", "service_instance_launch_timeout", "600")
@@ -137,6 +150,8 @@ def finalize_generic_backend(config, env):
     generic_service_instance_flavor_vcpus = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR.VCPUS")
     generic_service_instance_flavor_disk = get(config, "manila.backends.generic.SERVICE_INSTANCE_FLAVOR.DISK")
 
+    service_image_authentication_method = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.AUTH_METHOD", "password")
+
     service_networks = get(config, "manila.backends.generic.service_networks") or []
 
     networks_list = json.loads(os_run_output(["openstack", "network", "list", "-f", "json"], env=env) or "[]")
@@ -165,23 +180,31 @@ def finalize_generic_backend(config, env):
         except FileNotFoundError:
             pass
 
+    if service_image_authentication_method == "ssh_key":
+        service_instance_private_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PRIVATE_KEY", "/etc/manila/ssh/id_manila")
+        service_instance_public_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PUBLIC_KEY", "/etc/manila/ssh/id_manila.pub")
+        
+        if not os.path.exists(service_instance_private_key) or not os.path.exists(service_instance_public_key):
+            print()
 
-    os.makedirs("/etc/manila/ssh", exist_ok=True)
+            key_dir = os.path.dirname(service_instance_private_key)
 
-    if not os.path.exists(manila_ssh_key_path):
-        print()
-        if not run_command(["ssh-keygen", "-t", "rsa", "-b", "2048", "-N", "", "-f", manila_ssh_key_path], "Generating Manila SSH Key...") : return False
+            if not os.path.exists(key_dir):
+                os.makedirs(key_dir, mode=0o700, exist_ok=True)
 
-    try:
-        shutil.chown("/etc/manila/ssh", user="manila", group="manila")
-        shutil.chown("/etc/manila/ssh/id_manila", user="manila", group="manila")
-        shutil.chown("/etc/manila/ssh/id_manila.pub", user="manila", group="manila")
+            if not run_command(["ssh-keygen", "-t", "rsa", "-b", "2048", "-N", "", "-f", service_instance_private_key], "Generating Manila SSH Key...") : return False
 
-        os.chmod("/etc/manila/ssh", 0o700)
-        os.chmod("/etc/manila/ssh/id_manila", 0o600)
-        os.chmod("/etc/manila/ssh/id_manila.pub", 0o644)
-    except Exception as e:
-        pass
+        try:
+            shutil.chown(key_dir, user="manila", group="manila")
+            shutil.chown(service_instance_private_key, user="manila", group="manila")
+            shutil.chown(service_instance_public_key, user="manila", group="manila")
+
+            os.chmod(key_dir, 0o700)
+            os.chmod(service_instance_private_key, 0o600)
+            os.chmod(service_instance_public_key, 0o644)
+        except Exception as e:
+            print(f"{colors.RED}Failed to configure Manila SSH key permissions: {e}{colors.RESET}")
+            return False
 
     manila_service_flavor_exists = any(flavor.get("Name") == generic_service_instance_flavor_name for flavor in flavors_list)
 

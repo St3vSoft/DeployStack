@@ -11,6 +11,20 @@ from .runner import deploy as runner_deploy
 
 from .args.validator import validate_deploy_args
 
+def get_default_openstack_release():
+    if is_ubuntu_release("20.04"):
+        return "ussuri"
+    elif is_ubuntu_release("22.04"):
+        return "yoga"
+    elif is_ubuntu_release("24.04"):
+        return "caracal"
+    elif is_ubuntu_release("26.04"):
+        return "gazpacho"
+
+    return "caracal"
+
+default_os_release = get_default_openstack_release()
+
 def init_parser(subparsers):
      
     parser = subparsers.add_parser(
@@ -245,7 +259,8 @@ def init_parser(subparsers):
         "--os-release",
         type=str,
         dest="os_release",
-        help="The OpenStack release to install for deployment (default: caracal)"
+        default=default_os_release,
+        help=f"The OpenStack release to install for deployment (default: {get_default_openstack_release()})"
     )
 
     general_options.add_argument(
@@ -398,18 +413,6 @@ def deploy(parser, args) -> None:
             else 5
         ) if manila_flag == "yes" else 0
 
-        if args.os_release is not None:
-            os_release = args.os_release
-        elif is_ubuntu_release("20.04"):
-            os_release = "ussuri"
-        elif is_ubuntu_release("22.04"):
-            os_release = "yoga"
-        elif is_ubuntu_release("24.04"):
-            os_release = "caracal"
-        elif is_ubuntu_release("26.04"):
-            os_release = "gazpacho"
-        else:
-            os_release = "caracal"
 
         config_openstack(
             config_file_path=config_file_path,

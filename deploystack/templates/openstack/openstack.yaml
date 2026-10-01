@@ -252,6 +252,19 @@ manila:
           # Neutron network used for the public Manila service network.
           neutron_network: public
 
+      SERVICE_IMAGE_AUTHENTICATION:
+        # Authentication method for Manila service instances.
+        # password | ssh_key
+        AUTH_METHOD: "ssh_key"
+
+        # Credentials used by Manila to access service instances.
+        SERVICE_INSTANCE_USER: "manila"
+        SERVICE_INSTANCE_PASSWORD: "manila"
+
+        # SSH keys used by Manila to access service instances.
+        SERVICE_INSTANCE_PRIVATE_KEY: "/etc/manila/ssh/id_manila"
+        SERVICE_INSTANCE_PUBLIC_KEY: "/etc/manila/ssh/id_manila.pub"
+
       # Nova flavor configuration for Manila service instances.
       SERVICE_INSTANCE_FLAVOR:
         # Name of the Nova flavor.
