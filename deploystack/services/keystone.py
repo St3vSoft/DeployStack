@@ -18,6 +18,10 @@ keystone_conf = "/etc/keystone/keystone.conf"
 
 def get_endpoints(env=None):
     raw = run_command_output(["openstack", "endpoint", "list", "-f", "json"], env=env)
+
+    if raw is False:
+            return False
+    
     return json.loads(raw or "[]")
 
 def get_role_assignments(env=None):
@@ -25,6 +29,10 @@ def get_role_assignments(env=None):
         ["openstack", "role", "assignment", "list", "--names", "-f", "json"],
         env=env
     )
+
+    if raw is False:
+        return False
+
     return json.loads(raw or "[]")
 
 def get_services(env=None):
@@ -32,6 +40,9 @@ def get_services(env=None):
         ["openstack", "service", "list", "-f", "json"],
         env=env
     )
+
+    if raw is False:
+            return False
 
     return json.loads(raw or "[]")
 

@@ -33,7 +33,7 @@ def run_command_output(cmd, ignore_errors=False, env=None):
             f"Last output: {result.stderr.strip()}\n"
         )
 
-    return None
+    return False
 
 def run_command_sync(command, env=None):
     try:
