@@ -7,7 +7,7 @@ from ...utils.core import colors
 from ...utils.core.system_utils import is_ubuntu_release
 
 from .generator import generate_config_file, config_openstack
-from .runner import deploy as runner_deploy
+from .runner import deploy as start_deployment
 
 from .args.validator import validate_deploy_args
 
@@ -255,6 +255,14 @@ def init_parser(subparsers):
         help="One or more Manila share protocols (choices: nfs, cifs)."
     )
 
+    manila.add_argument(
+        "--manila-service-instance-auth-method",
+        type=str,
+        choices=["password", "ssh_key"],
+        dest="manila_service_instance_auth_method",
+        help="Authentication method for Manila service instances (default: ssh_key) (Generic Only)"
+    )
+
     general_options.add_argument(
         "--os-release",
         type=str,
@@ -311,6 +319,8 @@ def deploy(parser, args) -> None:
             neutron_driver = "ovs"
 
         manila_backend = args.manila_backend or "lvm"
+
+        manila_service_instance_auth_method = None
 
         if manila_backend not in ("generic", "lvm"):
             manila_backend = "lvm"
@@ -399,7 +409,12 @@ def deploy(parser, args) -> None:
                 if args.backup_workers is not None
                 else 1
             )
-        
+
+        if manila_backend == "generic":
+            manila_service_instance_auth_method = (
+                args.manila_service_instance_auth_method or "ssh_key"
+            )
+  
         manila_lvm_vg = (
             args.manila_volume_group
             if manila_flag == "yes" and args.manila_volume_group is not None
@@ -445,6 +460,8 @@ def deploy(parser, args) -> None:
             manila_backend=manila_backend,
             manila_share_protocols=manila_share_protocols,
 
+            manila_dhss_auth_type=manila_service_instance_auth_method,
+
             os_mgmt_iface=args.os_management_interface,
 
             default_gateway=args.default_gateway,
@@ -471,7 +488,7 @@ def deploy(parser, args) -> None:
             )
             sys.exit(0)
 
-        runner_deploy(config_file_path)
+        start_deployment(config_file_path)
 
     else:
 
@@ -483,4 +500,4 @@ def deploy(parser, args) -> None:
             )
             sys.exit(1)
 
-        runner_deploy(args.config_file)
+        start_deployment(args.config_file)

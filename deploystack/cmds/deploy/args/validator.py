@@ -103,3 +103,12 @@ def validate_deploy_args(parser, args):
         parser.error(
             "--manila-share-protocols requires --install-manila yes"
         )
+
+    if (
+        args.manila_service_instance_auth_method is not None
+        and args.manila_backend != "generic"
+    ):
+        parser.error(
+            "--manila-service-instance-auth-method requires "
+            "--manila-backend generic"
+        )

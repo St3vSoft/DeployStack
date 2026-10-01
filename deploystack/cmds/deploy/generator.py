@@ -53,6 +53,7 @@ def config_openstack(
     neutron_driver: str = "ovs",   # "ovs" | "ovn"
     manila_backend: str = "",
     manila_share_protocols: str = "",
+    manila_dhss_auth_type: str = "",
     os_release: str = "caracal",
     os_mgmt_iface: str = "",
 
@@ -332,6 +333,24 @@ def config_openstack(
                 })
 
                 if manila_backend.lower() == "generic":
+
+                    config_dict["manila"]["backends"]["generic"].pop("SERVICE_IMAGE_AUTHENTICATION", {})
+
+                    config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"].append({
+                        "AUTH_METHOD": manila_dhss_auth_type
+                    })
+
+                    if manila_dhss_auth_type == "password":
+                        config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"].append({
+                            "SERVICE_INSTANCE_USER": "manila",
+                            "SERVICE_INSTANCE_PASSWORD": "manila",
+                        })
+                    elif manila_dhss_auth_type == "ssh_key":
+                        config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"].append({
+                            "SERVICE_INSTANCE_PRIVATE_KEY": "/etc/manila/ssh/id_manila",
+                            "SERVICE_INSTANCE_PUBLIC_KEY": "/etc/manila/ssh/id_manila.pub",
+                        })
+
                     shares.append({
                         "name": "default_nfs_internal_share",
                         "share_protocol": "NFS",
