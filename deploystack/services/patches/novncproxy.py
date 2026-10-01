@@ -67,6 +67,8 @@ def patch_novncproxy_systemd_unit():
 
     if not run_command(["systemctl", "daemon-reload"], "Reloading systemd daemon..."): return False
 
+    return True
+
 def run_novncproxy_setup_patches(os_release):
 
     if not add_deadsnaker_ppa() : return False
@@ -74,13 +76,6 @@ def run_novncproxy_setup_patches(os_release):
     if not create_virtual_env() : return False
     if not install_novncproxy(os_release) : return False
 
-    patch_novncproxy_systemd_unit()
+    if not patch_novncproxy_systemd_unit() : return False
 
     return True
-
-
-
-
-
-
-

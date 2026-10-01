@@ -152,7 +152,12 @@ def finalize(config):
 
     if not is_debian() and is_ubuntu_release("26.04"):
 
-        print(f"\n{colors.YELLOW}Warning: Ubuntu 26.04 Resolute has been detected; a patch will be applied to the NoVNCProxy console to ensure it works properly.{colors.RESET}\n")
+        print(
+            f"\n{colors.YELLOW}"
+            "Warning: Ubuntu 26.04 Resolute detected. "
+            "Applying a compatibility patch to run Nova NoVNCProxy in a dedicated Python 3.12 virtual environment."
+            f"{colors.RESET}\n"
+        )
 
         if not run_novncproxy_setup_patches(os_release) : return False
 

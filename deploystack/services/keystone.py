@@ -4,7 +4,7 @@ import os
 import json
 
 from ..utils.core.commands import run_command, run_command_output, run_commands
-from ..utils.core.system_utils import service_exists, is_debian, nc_wait
+from ..utils.core.system_utils import service_exists, is_debian, nc_wait, is_ubuntu_release
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
@@ -120,7 +120,7 @@ def finalize(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    if ensure_os_release(config, "flamingo"):
+    if is_ubuntu_release("24.04") and ensure_os_release(config, "flamingo"):
         if not patch_keystone_wsgi() : return False
 
     if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2...") : return False
