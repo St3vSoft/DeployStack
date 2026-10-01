@@ -14,6 +14,8 @@ def install_manilaclient_in_venv(release):
 
     if release == "gazpacho":
         python_manilaclient_version = "6.0.0"
+    elif release == "flamingo":
+        python_manilaclient_version = "5.6.0"
 
     print()
 

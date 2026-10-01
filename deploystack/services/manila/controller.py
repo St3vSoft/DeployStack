@@ -25,13 +25,22 @@ def install_pkgs(config):
 
     manila_packages = ["manila-api", "manila-scheduler", "python3-manilaclient"]
 
-    if is_ubuntu_release("24.04") and ensure_os_release(config, "gazpacho"):
+    if is_ubuntu_release("24.04"):
 
-        manila_packages.remove("python3-manilaclient")
+        os_release = None
 
-        if not install_manilaclient_in_venv("gazpacho") : return False
+        if ensure_os_release("gazpacho"):
+            os_release = "gazpacho"
+        elif ensure_os_release("flamingo"):
+            os_release = "flamingo"
 
-        print()
+        if os_release:
+            manila_packages.remove("python3-manilaclient")
+
+            if not install_manilaclient_in_venv(os_release):
+                return False
+
+            print()
 
     if not apt_install(manila_packages, "Installing Manila packages..."):
         return False
