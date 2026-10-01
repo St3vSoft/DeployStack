@@ -28,6 +28,8 @@ def create_venv_and_install_openstackclient(release):
 
     if release == "gazpacho":
         python_openstackclient_version = "9.0.0"
+    elif release == "gazpacho":
+        python_openstackclient_version = "8.0.0"
 
     if not run_command([venv_pip, "install", f"python-openstackclient=={python_openstackclient_version}"], "Installing OpenStack Client in venv...") : return False
 

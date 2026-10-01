@@ -374,17 +374,27 @@ def install_pkgs(config):
 
         devices.append(manila_pv or manila_loop_dev)
 
-    if is_ubuntu_release("24.04") and ensure_os_release(config, "gazpacho"):
+    if is_ubuntu_release("24.04"):
+        os_release = None
 
-        print(f"{colors.YELLOW}Warning: Ubuntu 24.04 Gazpacho has been detected; "
-              f"OpenStack Client will be installed in an isolated venv to avoid "
-              f"conflicts with system packages.{colors.RESET}\n")
-        
-        prereqs_pkgs.remove("python3-openstackclient")
+        if ensure_os_release(config, "gazpacho"):
+            os_release = "gazpacho"
+        elif ensure_os_release(config, "flamingo"):
+            os_release = "flamingo"
 
-        if not create_venv_and_install_openstackclient("gazpacho"): return False
+        if os_release:
+            print(
+                f"{colors.YELLOW}Warning: Ubuntu 24.04 {os_release.capitalize()} has been detected; "
+                f"OpenStack Client will be installed in an isolated venv to avoid "
+                f"conflicts with system packages.{colors.RESET}\n"
+            )
 
-        print()
+            prereqs_pkgs.remove("python3-openstackclient")
+
+            if not create_venv_and_install_openstackclient(os_release):
+                return False
+
+            print()
         
     if devices:
         prereqs_pkgs.append("lvm2")
