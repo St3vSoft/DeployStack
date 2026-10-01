@@ -12,6 +12,8 @@ from ..utils.core import colors
 
 from ..utils.config.helpers import parse_bool
 
+from .patches.keystone.wsgi import patch_keystone_wsgi
+
 from .utils import get_base_host, ensure_os_release
 
 keystone_conf = "/etc/keystone/keystone.conf"
@@ -117,6 +119,9 @@ def finalize(config):
     print()
 
     ip_address = get(config, "network.HOST_IP")
+
+    if ensure_os_release(config, "flamingo"):
+        if not patch_keystone_wsgi() : return False
 
     if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2...") : return False
 
