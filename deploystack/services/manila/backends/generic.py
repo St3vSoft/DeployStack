@@ -68,6 +68,9 @@ def conf_generic_backend(config):
 
     service_image_authentication_method = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.AUTH_METHOD", "password")
 
+    service_instance_user = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_USER", "manila")
+    service_instance_password = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PASSWORD", "manila")
+
     if "NFS" in protocols:
         if not run_setup_nfs(): return False
 
@@ -95,8 +98,6 @@ def conf_generic_backend(config):
     set_conf_option(manila_conf, "generic", "service_image_name", generic_service_image_name)
 
     if service_image_authentication_method == "password":
-        service_instance_user = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_USER", "manila")
-        service_instance_password = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PASSWORD", "manila")
 
         set_conf_option(manila_conf, "generic", "service_instance_user", service_instance_user)
         set_conf_option(manila_conf, "generic", "service_instance_password", service_instance_password)
@@ -106,9 +107,6 @@ def conf_generic_backend(config):
         service_instance_private_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PRIVATE_KEY", "/etc/manila/ssh/id_manila")
         service_instance_public_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PUBLIC_KEY", "/etc/manila/ssh/id_manila.pub")
 
-        service_instance_user = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_USER", "manila")
-        service_instance_password = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PASSWORD", "manila")
-        
         set_conf_option(manila_conf, "generic", "service_instance_user", service_instance_user)
         set_conf_option(manila_conf, "generic", "service_instance_password", service_instance_password)
 
