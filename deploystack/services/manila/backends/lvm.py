@@ -78,7 +78,8 @@ iface br-shares inet static
 
     with open("/etc/sysctl.d/99-br-shares.conf", "w") as f:
         f.write("net.ipv4.conf.br-shares.rp_filter = 2\n")
-    run_command(["sysctl", "--system"], "Applying sysctl...")
+
+    if not run_command(["sysctl", "--system"], "Applying sysctl...") : return False
 
     print()
 
@@ -253,8 +254,7 @@ def setup_iptables_rules(config):
 
     iptables_commands = [["iptables", "-A", "BR_SHARES"] + r for r in br_shares_rules]
 
-    if not run_commands(iptables_commands, "Applying firewall rules..."):
-        return False
+    if not run_commands(iptables_commands, "Applying firewall rules..."): return False
 
     print()
 
@@ -404,13 +404,10 @@ def conf_lvm_manila(config):
     enabled_share_protocols = ",".join(protocols)
 
     vg_name = get(config, "manila.backends.lvm.storage.SHARE_VOLUME_GROUP")
-    
 
     share_export_ip = get(config, "manila.backends.lvm.SHARE_EXPORT_IP")
 
     share_helpers = get(config, "manila.SHARE_HELPERS") or []
-
-    helpers = []
 
     if "NFS" in protocols:
         if not run_setup_nfs(): return False
@@ -418,12 +415,11 @@ def conf_lvm_manila(config):
     if "CIFS" in protocols:
         if not run_setup_samba(config): return False
 
-    for helper in share_helpers:
-        for helper_type, config in helper.items():
-            helper_name = config.get("name")
-            helpers.append(f"{helper_type}={helper_name}")
-
-    helpers = [f"{helper_type}={config.get('name')}" for helper in share_helpers for helper_type, config in helper.items()]
+    helpers = [
+        f"{helper_type}={helper_config.get('name')}"
+        for helper in share_helpers
+        for helper_type, helper_config in helper.items()
+    ]
 
     set_conf_option(manila_conf, "DEFAULT", "share_helpers", ",".join(helpers))
 

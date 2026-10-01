@@ -11,6 +11,8 @@ from ....utils.config.setter import set_conf_option
 from ....utils.config.helpers import parse_bool
 from ....utils.core import colors
 
+from ....utils.core.system_utils import build_openstack_env_from_file
+
 from ...nova import nova_conf
 from ...neutron.ovs import conf_openvswitch
 
@@ -20,6 +22,9 @@ from .utils.shares import create_shares, create_share_types
 from .protocols.nfs import run_setup_nfs
 
 manila_conf = "/etc/manila/manila.conf"
+
+manila_temp_image_file = "/tmp/manila-service-image.qcow2"
+manila_image_url = "https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-master.qcow2"
 
 def _set_service_auth(conf, section, username, ip_address, region, password):
     set_conf_option(conf, section, "auth_url", f"http://{ip_address}:5000")
@@ -62,18 +67,15 @@ def conf_generic_backend(config):
     share_helpers = get(config, "manila.SHARE_HELPERS") or []
 
     service_image_authentication_method = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.AUTH_METHOD", "password")
-    
-    helpers = []
 
     if "NFS" in protocols:
         if not run_setup_nfs(): return False
 
-    for helper in share_helpers:
-        for helper_type, config in helper.items():
-            helper_name = config.get("name")
-            helpers.append(f"{helper_type}={helper_name}")
-
-    helpers = [f"{helper_type}={config.get('name')}" for helper in share_helpers for helper_type, config in helper.items()]
+    helpers = [
+        f"{helper_type}={config.get('name')}"
+        for helper in share_helpers
+        for helper_type, config in helper.items()
+    ]
 
     set_conf_option(manila_conf, "DEFAULT", "share_helpers", ",".join(helpers))
 
@@ -133,12 +135,104 @@ def finalize(env):
 
     return True
 
+def create_shares_networks(config, env):
+
+    service_networks = get(config, "manila.backends.generic.service_networks") or []
+
+    networks_list = json.loads(os_run_output(["openstack", "network", "list", "-f", "json"], env=env) or "[]")
+
+    demo_env = build_openstack_env_from_file("/root/demo-openrc.sh")
+
+    line_printed = False
+
+    admin_share_networks_list = json.loads(os_run_output(["openstack", "share", "network", "list", "-f", "json"], env=env) or "[]")
+    demo_share_networks_list = json.loads(os_run_output(["openstack", "share", "network", "list", "-f", "json"], env=demo_env) or "[]")
+
+    project_commands = {
+        "admin": [],
+        "demo": [],
+    }
+
+    project_envs = {
+        "admin": env,
+        "demo": demo_env,
+    }
+
+    for service_net in service_networks:
+
+        network_name = service_net["name"]
+        neutron_network = service_net["neutron_network"]
+
+        neutron_network_id = ""
+    
+        for network in networks_list:
+            if (network.get("Name") or network.get("name")) == neutron_network:
+                neutron_network_id = network.get("ID") or network.get("id")
+                break
+        if not neutron_network_id:
+            print(f"{colors.RED}Neutron network '{neutron_network}' not found.{colors.RESET}")
+            return False
+
+        neutron_network_subnets_list = json.loads(os_run_output(["openstack", "subnet", "list", "--network", neutron_network_id, "-f", "json"], env=env) or "[]")
+
+        neutron_subnet_id = ""
+
+        for subnet in neutron_network_subnets_list:
+            neutron_subnet_id = subnet.get("ID") or subnet.get("id")
+            break
+
+        if not neutron_subnet_id:
+            print(f"{colors.RED}No subnet found for Neutron network '{neutron_network}'.{colors.RESET}")
+            return False
+
+        admin_share_network_exists = any(
+            (sn.get("Name") or sn.get("name")) == network_name
+            for sn in admin_share_networks_list
+        )
+
+        demo_share_network_exists = any(
+            (sn.get("Name") or sn.get("name")) == network_name
+            for sn in demo_share_networks_list
+        )
+
+        share_network_command = [
+            "openstack",
+            "share",
+            "network",
+            "create",
+            "--name", network_name,
+            "--neutron-net-id", str(neutron_network_id),
+            "--neutron-subnet-id", str(neutron_subnet_id),
+        ]
+
+        if not admin_share_network_exists:
+            project_commands["admin"].append({
+                "command": share_network_command.copy(),
+                "name": network_name,
+            })
+
+        if not demo_share_network_exists:
+            project_commands["demo"].append({
+                "command": share_network_command.copy(),
+                "name": network_name,
+            })
+
+    for project, commands in project_commands.items():
+        for item in commands:
+            if not line_printed:
+                line_printed = True
+                print()
+
+            if not os_run(
+                item["command"],
+                f"Creating share network '{item['name']}' for '{project}' project...",
+                env=project_envs[project]): return False
+
+    return True
+    
 def finalize_generic_backend(config, env):
 
     create_shares_enabled = parse_bool(get(config, "manila.CREATE_SHARES") , False)
-
-    manila_temp_image_file = "/tmp/manila-service-image.qcow2"
-    manila_image_url = "https://tarballs.opendev.org/openstack/manila-image-elements/images/manila-service-image-master.qcow2"
 
     generic_service_image_name = get(config, "manila.backends.generic.SERVICE_IMAGE_NAME")
 
@@ -152,9 +246,6 @@ def finalize_generic_backend(config, env):
 
     service_image_authentication_method = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.AUTH_METHOD", "password")
 
-    service_networks = get(config, "manila.backends.generic.service_networks") or []
-
-    networks_list = json.loads(os_run_output(["openstack", "network", "list", "-f", "json"], env=env) or "[]")
     images_list = json.loads(os_run_output(["openstack", "image", "list", "-f", "json"], env=env) or "[]")
     flavors_list = json.loads(os_run_output(["openstack", "flavor", "list", "-f", "json"], env=env) or "[]")
     
@@ -181,13 +272,14 @@ def finalize_generic_backend(config, env):
             pass
 
     if service_image_authentication_method == "ssh_key":
+
         service_instance_private_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PRIVATE_KEY", "/etc/manila/ssh/id_manila")
         service_instance_public_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PUBLIC_KEY", "/etc/manila/ssh/id_manila.pub")
+
+        key_dir = os.path.dirname(service_instance_private_key)
         
         if not os.path.exists(service_instance_private_key) or not os.path.exists(service_instance_public_key):
             print()
-
-            key_dir = os.path.dirname(service_instance_private_key)
 
             if not os.path.exists(key_dir):
                 os.makedirs(key_dir, mode=0o700, exist_ok=True)
@@ -212,36 +304,7 @@ def finalize_generic_backend(config, env):
         print()
         if not os_run(["openstack", "flavor", "create", "--id", str(generic_service_instance_flavor_id), "--ram", str(generic_service_instance_flavor_ram), "--disk", str(generic_service_instance_flavor_disk), "--vcpus", str(generic_service_instance_flavor_vcpus), generic_service_instance_flavor_name], "Creating Manila service flavor...", env=env): return False
 
-    share_networks_list = json.loads(os_run_output(["openstack", "share", "network", "list", "-f", "json"], env=env) or "[]")
-
-    line_printed = False
-
-    for service_net in service_networks:
-
-        network_name = service_net["name"]
-        neutron_network = service_net["neutron_network"]
-
-        neutron_network_id = ""
-        neutron_subnet_id = ""
-    
-        for network in networks_list:
-            if network["Name"] == neutron_network:
-                neutron_network_id = network.get("ID") or network.get("id")
-
-        neutron_network_subnets_list = json.loads(os_run_output(["openstack", "subnet", "list", "--network", neutron_network_id, "-f", "json"], env=env) or "[]")
-
-        for subnet in neutron_network_subnets_list:
-            neutron_subnet_id = subnet.get("ID") or subnet.get("id")
-            break
-
-        tenant_share_network_exists = any(sn.get("Name") == network_name or sn.get("name") == network_name for sn in share_networks_list)
-
-        if not tenant_share_network_exists:
-            if not line_printed:
-                line_printed = True
-                print()
-
-            if not os_run(["openstack", "share", "network", "create", "--name", network_name, "--neutron-net-id", str(neutron_network_id), "--neutron-subnet-id", str(neutron_subnet_id)], f"Creating tenant share '{network_name}' network...", env=env): return False
+    if not create_shares_networks(config, env) : return False
 
     if create_shares_enabled:
         shares = get(config, "manila.shares") or []
