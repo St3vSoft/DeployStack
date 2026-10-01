@@ -498,20 +498,18 @@ def config_openstack(
         if manila_backend.lower() == "generic":
 
             config_dict["manila"]["backends"]["generic"].pop("SERVICE_IMAGE_AUTHENTICATION", {})
-            
-            config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"] = ({
-                "AUTH_METHOD": manila_dhss_auth_type
-            })
 
             if manila_dhss_auth_type == "password":
                 config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"] = ({
                     "SERVICE_INSTANCE_USER": "manila",
                     "SERVICE_INSTANCE_PASSWORD": "manila",
+                    "AUTH_METHOD": "password"
                 })
             elif manila_dhss_auth_type == "ssh_key":
                 config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"] = ({
                     "SERVICE_INSTANCE_PRIVATE_KEY": "/etc/manila/ssh/id_manila",
                     "SERVICE_INSTANCE_PUBLIC_KEY": "/etc/manila/ssh/id_manila.pub",
+                    "AUTH_METHOD": "ssh_key"
                 })
 
             config_dict["manila"]["share_types"] = [{
