@@ -257,6 +257,10 @@ def conf_cinder_backup(config):
     
     enabled_cinder_backends = get(config, "cinder.ENABLED_BACKENDS", []) or []
 
+    if backup_compression_algorithm == "zstd":
+        print()
+        if not apt_install(["python3-zstd"], "Installing Python3 zstd Package...") : return False
+
     if backup_driver == "posix":
 
         for backend in enabled_cinder_backends:

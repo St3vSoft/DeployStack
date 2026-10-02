@@ -281,7 +281,6 @@ manila:
 
         # Disk size assigned to the service instance in GB.
         DISK: 10
-
     lvm:
       samba:
         # Username used by the Samba service to access the CIFS shares.
