@@ -19,6 +19,9 @@ def get_flavors(env=None):
         env=env
     )
 
+    if raw is False:
+        return False
+
     return json.loads(raw or "[]")
 
 def install_pkgs():
@@ -116,8 +119,10 @@ def create_default_flavors(env):
     
 def run_setup_nova_compute(config, env):
      
-    if not install_pkgs(): return False   
-    conf_nova_compute(config)   
+    if not install_pkgs(): return False  
+
+    conf_nova_compute(config)  
+     
     if not finalize(): return False   
     if not create_default_flavors(env): return False
     

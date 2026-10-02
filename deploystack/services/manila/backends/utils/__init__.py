@@ -50,7 +50,7 @@ def create_manila_sudoers_rule():
 
     os.chmod("/etc/sudoers.d/manila-privsep", 0o440)
 
-def wait_manila_backend(env, timeout=120, interval=5):
+def wait_manila_share_agent(env, timeout=120, interval=5):
 
     spinner = Spinner(message="Waiting for Share Service to become UP ...")
     spinner.start()

@@ -4,7 +4,7 @@ import os
 
 from ...utils.core import colors
 
-from ...utils.core.system_utils import is_ubuntu_release
+from ...utils.core.system_utils import is_ubuntu_release, is_debian
 
 from .generator import generate_config_file, config_openstack
 from .runner import deploy as start_deployment
@@ -12,16 +12,30 @@ from .runner import deploy as start_deployment
 from .args.validator import validate_deploy_args
 
 def get_default_openstack_release():
-    if is_ubuntu_release("20.04"):
-        return "ussuri"
-    elif is_ubuntu_release("22.04"):
-        return "yoga"
-    elif is_ubuntu_release("24.04"):
-        return "caracal"
-    elif is_ubuntu_release("26.04"):
-        return "gazpacho"
 
-    return "caracal"
+    if not is_debian():
+        if is_ubuntu_release("20.04"):
+            return "ussuri"
+        elif is_ubuntu_release("22.04"):
+            return "yoga"
+        elif is_ubuntu_release("23.04"):
+            return "antelope"
+        elif is_ubuntu_release("23.10"):
+            return "bobcat"
+        elif is_ubuntu_release("24.04"):
+            return "caracal"
+        elif is_ubuntu_release("24.10"):
+            return "dalmatian"
+        elif is_ubuntu_release("25.04"):
+            return "epoxy"
+        elif is_ubuntu_release("25.10"):
+            return "epoxy"
+        elif is_ubuntu_release("26.04"):
+            return "gazpacho"
+        else:
+            return "caracal"
+    else:
+        return "epoxy"
 
 default_os_release = get_default_openstack_release()
 

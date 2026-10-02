@@ -21,7 +21,7 @@ from ....utils.config.helpers import parse_bool
 from ....utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service
 from ....utils.lvm import get_vg_for_pv, ensure_system_user_with_run_command
 
-from .utils import wait_manila_backend, create_manila_sudoers_rule
+from .utils import wait_manila_share_agent, create_manila_sudoers_rule
 
 from .utils.shares import create_shares, create_share_types
 
@@ -449,7 +449,7 @@ def finalize(env):
 
     print()
     
-    if not wait_manila_backend(env=env) : return False
+    if not wait_manila_share_agent(env=env) : return False
 
     return True
 
