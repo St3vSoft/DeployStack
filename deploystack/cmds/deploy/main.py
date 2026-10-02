@@ -13,29 +13,26 @@ from .args.validator import validate_deploy_args
 
 def get_default_openstack_release():
 
-    if not is_debian():
-        if is_ubuntu_release("20.04"):
-            return "ussuri"
-        elif is_ubuntu_release("22.04"):
-            return "yoga"
-        elif is_ubuntu_release("23.04"):
-            return "antelope"
-        elif is_ubuntu_release("23.10"):
-            return "bobcat"
-        elif is_ubuntu_release("24.04"):
-            return "caracal"
-        elif is_ubuntu_release("24.10"):
-            return "dalmatian"
-        elif is_ubuntu_release("25.04"):
-            return "epoxy"
-        elif is_ubuntu_release("25.10"):
-            return "epoxy"
-        elif is_ubuntu_release("26.04"):
-            return "gazpacho"
-        else:
-            return "caracal"
-    else:
+    if is_debian():
         return "epoxy"
+
+    ubuntu_releases = {
+        "20.04": "ussuri",
+        "22.04": "yoga",
+        "23.04": "antelope",
+        "23.10": "bobcat",
+        "24.04": "caracal",
+        "24.10": "dalmatian",
+        "25.04": "epoxy",
+        "25.10": "epoxy",
+        "26.04": "gazpacho",
+    }
+
+    for ubuntu_version, openstack_release in ubuntu_releases.items():
+        if is_ubuntu_release(ubuntu_version):
+            return openstack_release
+
+    return "caracal"
 
 default_os_release = get_default_openstack_release()
 
