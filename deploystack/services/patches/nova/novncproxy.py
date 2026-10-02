@@ -1,13 +1,17 @@
 import os
 
-from ...utils.core.commands import run_command
-from ...utils.apt.apt import apt_install, apt_update
-from ...utils.config.setter import set_service_option
+from ....utils.core.commands import run_command
+from ....utils.apt.apt import apt_install, apt_update
 
-from ...utils.core.system_utils import is_package_installed
+from ...utils import ensure_os_release
+
+from ....utils.core.system_utils import is_package_installed
+
+from ....templates import NOVA_NOVNCPROXY_PATCH
+
+from ...nova import novncproxy_dropin_dir
 
 venv_path = "/opt/nova-novncproxy-venv"
-novncproxy_systemd_unit = "/usr/lib/systemd/system/nova-novncproxy.service"
 
 def add_deadsnaker_ppa():
 
@@ -40,13 +44,13 @@ def create_virtual_env():
 
     return True
 
-def install_novncproxy(os_release):
+def install_novncproxy(config, os_release):
 
     print()
 
     nova_version = None
 
-    if os_release=="gazpacho":
+    if os_release == "gazpacho" and ensure_os_release(config, "gazpacho"):
         nova_version = "33.0.0"
 
     install_novncproxy_cmd_pip = [os.path.join(venv_path, "bin", "pip"), "install", f"nova=={nova_version}", "eventlet", "websockify", "pymysql"]
@@ -60,8 +64,19 @@ def install_novncproxy(os_release):
 def patch_novncproxy_systemd_unit():
 
     novncproxy_binary_path = os.path.join(venv_path, "bin", "nova-novncproxy")
+    novncproxy_dropin = os.path.join(novncproxy_dropin_dir, "nova-novncproxy-patch.conf")
 
-    set_service_option(novncproxy_systemd_unit, "Service", "ExecStart", f"{novncproxy_binary_path} --config-file=/etc/nova/nova.conf --log-file=/var/log/nova/nova-novncproxy.log")
+    os.makedirs(novncproxy_dropin_dir, exist_ok=True)
+
+    with open(NOVA_NOVNCPROXY_PATCH, "r") as f:
+            template = f.read()
+
+    nova_novncproxy_service_content = template.format(
+        binary_path=novncproxy_binary_path
+    )
+
+    with open(novncproxy_dropin, "w") as f:
+        f.write(nova_novncproxy_service_content)
 
     print()
 
@@ -69,12 +84,12 @@ def patch_novncproxy_systemd_unit():
 
     return True
 
-def run_novncproxy_setup_patches(os_release):
+def run_novncproxy_setup_patches(config, os_release):
 
     if not add_deadsnaker_ppa() : return False
     if not install_python312() : return False
     if not create_virtual_env() : return False
-    if not install_novncproxy(os_release) : return False
+    if not install_novncproxy(config, os_release) : return False
 
     if not patch_novncproxy_systemd_unit() : return False
 

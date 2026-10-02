@@ -240,6 +240,7 @@ def conf_ovs_bridges(config):
         "systemctl enable networking",
         "systemctl restart networking",
     ]
+    
     full_cmd = " && ".join(networking_cmds)
 
     if not run_command(["bash", "-c", full_cmd], "Restarting Networking service..."):

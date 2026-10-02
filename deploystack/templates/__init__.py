@@ -5,6 +5,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 def _t(*parts) -> str:
     return os.path.join(BASE_DIR, *parts)
 
+# Patches
+NOVA_NOVNCPROXY_PATCH         = _t("patches", "nova", "nova-novncproxy.tpl")     
+
 # Loopback
 LOOPBACK_SERVICE         = _t("loopback", "loopback.service.tpl")
 

@@ -6,13 +6,17 @@ import stat
 from ..utils.core.commands import run_command, run_command_sync, os_run
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
-from ..utils.config.setter import set_conf_option, set_service_option
+from ..utils.config.setter import set_conf_option
 from ..utils.core.system_utils import nc_wait, is_debian, is_ubuntu_release, service_exists
 from ..utils.core import colors
 
-from .patches.novncproxy import run_novncproxy_setup_patches
+from ..templates import NOVA_NOVNCPROXY_PATCH
+
+from .patches.nova.novncproxy import run_novncproxy_setup_patches
 
 nova_conf = "/etc/nova/nova.conf"
+
+novncproxy_dropin_dir = "/etc/systemd/system/nova-novncproxy.service.d"
 nova_novncproxy_service = "/lib/systemd/system/nova-novncproxy.service"
 
 def install_pkgs():
@@ -159,13 +163,27 @@ def finalize(config):
             f"{colors.RESET}\n"
         )
 
-        if not run_novncproxy_setup_patches(os_release) : return False
+        if not run_novncproxy_setup_patches(config, os_release) : return False
 
     if is_debian() and service_exists("nova-serialproxy.service") and service_exists("nova-spicehtml5proxy.service"):
              
         print()
 
-        set_service_option(nova_novncproxy_service, "Service", "ExecStart", "/usr/bin/nova-novncproxy --config-file=/etc/nova/nova.conf")
+        novncproxy_dropin = os.path.join(novncproxy_dropin_dir, "nova-novncproxy-patch.conf")
+
+        os.makedirs(novncproxy_dropin_dir, exist_ok=True)
+
+        with open(NOVA_NOVNCPROXY_PATCH, "r") as f:
+            template = f.read()
+
+        nova_novncproxy_service_content = template.format(
+            binary_path="/usr/bin/nova-novncproxy"
+        )
+
+        with open(novncproxy_dropin, "w") as f:
+            f.write(nova_novncproxy_service_content)
+
+        print()
 
         run_command_sync(["systemctl", "disable", "nova-spicehtml5proxy", "nova-serialproxy"])
         run_command_sync(["systemctl", "enable", "nova-novncproxy"])
