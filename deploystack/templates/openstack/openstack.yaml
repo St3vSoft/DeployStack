@@ -326,7 +326,6 @@ manila:
         # Loopback device used as the LVM physical volume.
         MANILA_LVM_LOOP_PATH: "/dev/loop0"
 
-
   # Manila share types to create automatically during deployment.
   share_types:
     - name: "default_share_type"
@@ -555,7 +554,6 @@ compute:
   # no: a different compute host is required for the resize operation.
   ALLOW_RESIZE_TO_SAME_HOST: "no"
 
-
 optional_services:
   # Install and configure Cinder.
   # yes | no
@@ -580,7 +578,6 @@ optional_services:
   # Coming soon.
   # Install and configure Barbican (Key Manager service).
   # INSTALL_BARBICAN: no
-
 
 openstack:
   # OpenStack release/version used for the deployment.
