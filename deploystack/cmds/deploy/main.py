@@ -39,9 +39,9 @@ default_os_release = get_default_openstack_release()
 def init_parser(subparsers):
      
     parser = subparsers.add_parser(
-    "deploy",
-    help="Start the OpenStack Deployment on the current node"
-)
+        "deploy",
+        help="Start the OpenStack Deployment on the current node"
+    )
 
     deployment_options = parser.add_argument_group("Deployment Options")
     general_options = parser.add_argument_group("General Options")
