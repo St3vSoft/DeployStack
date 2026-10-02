@@ -532,7 +532,6 @@ cinder:
     # Number of backup operations that can run concurrently.
     BACKUP_WORKERS: 1
 
-
 compute:
   # Virtualization type used by Nova Compute.
   # kvm | qemu
