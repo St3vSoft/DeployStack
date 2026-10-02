@@ -9,8 +9,7 @@ from ....utils.core.system_utils import is_package_installed
 
 from ....templates import NOVA_NOVNCPROXY_PATCH
 
-from ...nova import novncproxy_dropin_dir
-
+novncproxy_dropin_dir = "/etc/systemd/system/nova-novncproxy.service.d"
 venv_path = "/opt/nova-novncproxy-venv"
 
 def add_deadsnaker_ppa():
