@@ -155,10 +155,7 @@ def get_default_flavor(preferred: str = DEFAULT_FLAVOR) -> str:
 
 def delete_instance(instance_id: str):
     try:
-        subprocess.run(
-            ["openstack", "server", "delete", instance_id],
-            check=True
-        )
+        subprocess.run(["openstack", "server", "delete", instance_id], check=True)
     except subprocess.CalledProcessError as e:
             print(f"Error when deleting instance {instance_id}: {e}")
 

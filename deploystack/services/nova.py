@@ -3,11 +3,11 @@
 import os
 import stat
 
-from ..utils.core.commands import run_command, run_command_sync, os_run
+from ..utils.core.commands import run_command, run_command_sync, os_run, run_command_output
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
-from ..utils.core.system_utils import nc_wait, is_debian, is_ubuntu_release, service_exists
+from ..utils.core.system_utils import nc_wait, is_debian, is_ubuntu_release, service_exists, build_openstack_env_from_file
 from ..utils.core import colors
 
 from ..templates import NOVA_NOVNCPROXY_PATCH
@@ -209,22 +209,46 @@ def add_default_keypair(env):
 
     key_name = "default"
     key_file = f"/root/{key_name}.pem"
+    public_key_file = f"{key_file}.pub"
+
+    demo_env = build_openstack_env_from_file("/root/demo-openrc.sh")
 
     check_cmd = ["openstack", "keypair", "show", key_name]
-    exists = run_command_sync(check_cmd, env=env)
 
-    if exists:
+    admin_keypair_exists = run_command_sync(check_cmd, env=env)
+    demo_keypair_exists = run_command_sync(check_cmd, env=demo_env)
+
+
+    if not admin_keypair_exists:
+
+        create_cmd = ["openstack", "keypair", "create", key_name, "--private-key", key_file]
+
+        if not os_run(create_cmd, "Creating default keypair...", env=env) : return False
+
+        os.chmod(key_file, stat.S_IRUSR | stat.S_IWUSR)
+        os.chown(key_file, os.getuid(), os.getgid())
+    else:
         print(f"{colors.YELLOW}Keypair '{key_name}' already exists, skipping creation.{colors.RESET}")
-        return True
 
-    create_cmd = ["openstack", "keypair", "create", key_name, "--private-key", key_file]
-    
-    if not os_run(create_cmd, "Creating default keypair...", env=env) : return False
+    if not demo_keypair_exists:
 
-    os.chmod(key_file, stat.S_IRUSR | stat.S_IWUSR)
-    os.chown(key_file, os.getuid(), os.getgid())
+        if not os.path.exists(public_key_file):
+            public_key = run_command_output(["ssh-keygen", "-y", "-f", key_file])
 
+            if not public_key:
+                return False
+
+            with open(public_key_file, "w") as f:
+                f.write(public_key + "\n")
+
+        import_demo_cmd = ["openstack", "keypair", "create",  key_name, "--public-key", public_key_file]
+
+        if not run_command_sync(import_demo_cmd, env=demo_env) : return False
+    else:
+        print(f"{colors.YELLOW}Keypair '{key_name}' already exists, skipping creation.{colors.RESET}")
+        
     print(f"{colors.YELLOW}Keypair '{key_name}' created and saved to {key_file}{colors.RESET}")
+
     return True
 
 def run_setup_nova(config, env):
