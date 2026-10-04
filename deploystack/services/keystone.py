@@ -120,7 +120,7 @@ def finalize(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    if is_ubuntu_release("24.04") and ensure_os_release(config, "flamingo"):
+    if ensure_os_release(config, "flamingo"):
         if not patch_keystone_wsgi() : return False
 
     if not run_command(["systemctl", "restart", "apache2"], "Restarting Apache2...") : return False
