@@ -7,7 +7,7 @@ def _t(*parts) -> str:
 
 # Patches
 NOVA_NOVNCPROXY_PATCH         = _t("patches", "nova", "nova-novncproxy.tpl")     
-APACHE2_OVERRIDE_CONF         = _t("patches", "apache2", "apache2-override.conf")
+APACHE2_OVERRIDE_CONF         = _t("patches", "apache2", "apache2-override.tpl")
 
 # Loopback
 LOOPBACK_SERVICE         = _t("loopback", "loopback.service.tpl")
