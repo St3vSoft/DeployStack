@@ -45,9 +45,15 @@ def deploy(config_file, config_generated: bool = False):
         sys.exit(1)
         return False
   
-    if not check_ifupdown():
-        print(f"OpenStack deployment cannot proceed because {colors.GREEN}ifupdown{colors.RESET} is not installed on this system.\nPlease install the {colors.GREEN}ifupdown{colors.RESET} package and ensure your network is properly configured before retrying the deployment.")
-        
+    if check_ifupdown():
+        print(
+            f"OpenStack deployment cannot proceed because "
+            f"{colors.GREEN}ifupdown{colors.RESET} is not installed on this system.\n"
+            f"Please install the {colors.GREEN}ifupdown{colors.RESET} package and ensure "
+            f"your network is properly configured before retrying the deployment.\n"
+            f"Documentation: https://github.com/St3vSoft/DeployStack/wiki/OpenStack-Deployment-Guide"
+        )
+
         sys.exit(1)
         return False
         
