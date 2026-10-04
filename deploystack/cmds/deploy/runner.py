@@ -45,7 +45,7 @@ def deploy(config_file, config_generated: bool = False):
         sys.exit(1)
         return False
   
-    if check_ifupdown():
+    if not check_ifupdown():
         print(
             f"OpenStack deployment cannot proceed because "
             f"{colors.GREEN}ifupdown{colors.RESET} is not installed on this system.\n"
