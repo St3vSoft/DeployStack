@@ -61,6 +61,7 @@ def deploy(config_file, config_generated: bool = False):
 
         if config_generated:
             print("delete file")
+            print(config_file)
             os.remove(config_file)
 
         sys.exit(1)
