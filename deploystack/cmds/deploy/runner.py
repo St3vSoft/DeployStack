@@ -57,7 +57,10 @@ def deploy(config_file, config_generated: bool = False):
     if not validate_all(config):
         print("\nPlease review and correct any errors reported in the configuration above before retrying the OpenStack deployment again.")
 
+        print(str(config_generated))
+
         if config_generated:
+            print("delete file")
             os.remove(config_file)
 
         sys.exit(1)
