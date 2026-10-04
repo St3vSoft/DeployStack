@@ -27,7 +27,7 @@ from ...services.utils import get_base_host
 
 from ...utils.config.helpers import parse_bool
 
-def deploy(config_file):
+def deploy(config_file, config_generated: bool = False):
 
     config = parse_config(config_file)
     config = resolve_vars(config)
@@ -56,6 +56,9 @@ def deploy(config_file):
 
     if not validate_all(config):
         print("\nPlease review and correct any errors reported in the configuration above before retrying the OpenStack deployment again.")
+
+        if config_generated:
+            os.remove(config_file)
 
         sys.exit(1)
         return False 

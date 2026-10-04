@@ -500,7 +500,7 @@ def deploy(parser, args) -> None:
             )
             sys.exit(0)
 
-        start_deployment(config_file_path)
+        start_deployment(config_file_path, config_generated=True)
 
     else:
 
@@ -512,4 +512,4 @@ def deploy(parser, args) -> None:
             )
             sys.exit(1)
 
-        start_deployment(args.config_file)
+        start_deployment(args.config_file, config_generated=False)

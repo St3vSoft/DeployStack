@@ -18,7 +18,6 @@ def validate_deploy_args(parser, args):
                 "--default-gateway must be a valid IP address"
             )
 
-
     # Cinder
     if args.enable_nfs_snapshots == "yes":
         if args.install_cinder != "yes":
