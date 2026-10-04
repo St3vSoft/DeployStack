@@ -89,10 +89,7 @@ def create_custom_network_router(
             ):
                 return False
 
-        subnet_list = safe_json(
-            ["openstack", "subnet", "list", "--name", subnet_name, "-f", "json"],
-            env
-        )
+        subnet_list = safe_json(["openstack", "subnet", "list", "--name", subnet_name, "-f", "json"], env)
 
         if not subnet_list:
             print(f"Subnet {subnet_name} not found, skipping attach")

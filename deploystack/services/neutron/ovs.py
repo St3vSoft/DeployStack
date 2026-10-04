@@ -243,8 +243,7 @@ def conf_ovs_bridges(config):
     
     full_cmd = " && ".join(networking_cmds)
 
-    if not run_command(["bash", "-c", full_cmd], "Restarting Networking service..."):
-        return False
+    if not run_command(["bash", "-c", full_cmd], "Restarting Networking service..."): return False
 
     return True
 
@@ -363,7 +362,11 @@ def finalize(config):
     with open("/etc/udev/rules.d/99-openvswitch.rules", "w") as f:
         f.write(udev_rule)
 
-    shutil.copy(OVS_PERMISSIONS_SERVICE, "/etc/systemd/system/ovs-nova-perms.service")
+    try:
+        shutil.copy2(OVS_PERMISSIONS_SERVICE, "/etc/systemd/system/ovs-nova-perms.service")
+    except OSError as e:
+        print(f"{colors.RED}ERROR: Failed to copy OVS Nova Perms Service: {e}{colors.RESET}")
+        return False
 
     if not enable_ipv4_forwarding() : return False
 
@@ -407,16 +410,10 @@ def create_ovs_networks(config, env):
 
     provider_networks = get(config, "neutron.provider_networks", [])
     
-    public_network = next(
-        (n for n in provider_networks if n.get("bridge") == public_bridge),
-        None
-    )
+    public_network = next((n for n in provider_networks if n.get("bridge") == public_bridge), None)
 
     if public_network is None:
-        public_network = next(
-            (n for n in provider_networks if n.get("name") == "public"),
-            None
-        )
+        public_network = next((n for n in provider_networks if n.get("name") == "public"), None)
 
     create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes" 
 
@@ -548,23 +545,8 @@ def create_ovs_networks(config, env):
         if provider_networks:
             if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, tenant_bridge=internal_bridge, public_bridge=public_bridge, tunnel_bridge=tunnel_bridge, env=env) : return False
     
-        sg_list = json.loads(
-                os_run_output(
-                    ["openstack", "security", "group", "list", "-f", "json"],
-                    env=env
-                )
-            )
-    
-        sg_demo_list = json.loads(
-            os_run_output(
-                [
-                    "openstack", "security", "group", "list",
-                    "--project", "demo",
-                    "-f", "json"
-                ],
-                env=env
-            )
-        )
+        sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
+        sg_demo_list = json.loads(os_run_output([ "openstack", "security", "group", "list", "--project", "demo", "-f", "json"], env=env))
 
         default_admin_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
         default_demo_sg = next((sg for sg in sg_demo_list if sg["Name"] == "default"), None)
@@ -585,15 +567,7 @@ def create_ovs_networks(config, env):
             for sg in (default_admin_sg, default_demo_sg):
                 sg_id = sg["ID"]
 
-                rules_json = os_run_output(
-                    [
-                        "openstack",
-                        "security", "group", "rule", "list",
-                        sg_id,
-                        "-f", "json"
-                    ],
-                    env=env
-                )
+                rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id,  "-f", "json"], env=env)
 
                 rules = json.loads(rules_json)
 

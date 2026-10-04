@@ -441,7 +441,6 @@ def deploy(parser, args) -> None:
             else 5
         ) if manila_flag == "yes" else 0
 
-
         config_openstack(
             config_file_path=config_file_path,
 

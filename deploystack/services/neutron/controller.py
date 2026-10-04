@@ -1,12 +1,14 @@
 # Configure the Networking service (Neutron) (Controller Node)
 
 import os
+import shutil
 
 from ...utils.core.commands import run_command
 from ...utils.apt.apt import apt_install, apt_update
 from ...utils.config.parser import get
-from ...utils.config.setter import set_conf_option, set_service_option
+from ...utils.config.setter import set_conf_option
 from ...utils.core.system_utils import service_exists, is_debian, is_ubuntu_release
+from ...templates import APACHE2_OVERRIDE_CONF
 from ...utils.core import colors
 
 neutron_conf = "/etc/neutron/neutron.conf"
@@ -14,7 +16,7 @@ conf_ml2 = "/etc/neutron/plugins/ml2/ml2_conf.ini"
 conf_metadata_agent = "/etc/neutron/metadata_agent.ini"
 conf_nova = "/etc/nova/nova.conf"
 
-apache2_systemd_unit = "/usr/lib/systemd/system/apache2.service"
+apache2_systemd_override_dir = "/etc/systemd/system/apache2.service.d/"
 
 def install_pkgs():
     
@@ -99,8 +101,8 @@ def conf_neutron(config):
     print()
 
     neutron_db_migration_cmd = [
-    "sudo", "-u", "neutron",
-    "neutron-db-manage", "--config-file", neutron_conf,  "--config-file", conf_ml2, "upgrade", "head"]
+        "sudo", "-u", "neutron",
+        "neutron-db-manage", "--config-file", neutron_conf,  "--config-file", conf_ml2, "upgrade", "head"]
     
     if not run_command(neutron_db_migration_cmd, "Running Neutron DB Migrations...") : return False
 
@@ -111,8 +113,15 @@ def finalize():
     print()
 
     if not is_debian() and is_ubuntu_release("26.04"):
-        set_service_option(apache2_systemd_unit, "Service", "ProtectProc", "default")
-        set_service_option(apache2_systemd_unit, "Service", "ProcSubset", "all")
+        os.makedirs(apache2_systemd_override_dir, exist_ok=True)
+
+        dest_conf_file = os.path.join(apache2_systemd_override_dir, "apache2-override.conf")
+
+        try:
+            shutil.copy2(APACHE2_OVERRIDE_CONF, dest_conf_file)
+        except OSError as e:
+            print(f"{colors.RED}ERROR: Failed to copy Apache override: {e}{colors.RESET}")
+            return False
 
         if not run_command(["systemctl", "daemon-reload"], "Reloading systemd daemon..."): return False
 

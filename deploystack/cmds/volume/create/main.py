@@ -3,7 +3,7 @@ import uuid
 
 from .runner import create as create_volume
 
-from ....utils.tasks.check_deployment import is_openstack_ready, is_cinder_available
+from ....utils.tasks.check_deployment import is_openstack_ready, is_cinder_available, is_cinder_backup_available
 
 def init_parser(subparsers):
 
@@ -65,6 +65,9 @@ def create(parser, args) -> None:
         sys.exit(1)
 
     if not is_cinder_available():
+        sys.exit(1)
+
+    if args.backup and not is_cinder_backup_available():
         sys.exit(1)
 
     create_volume(

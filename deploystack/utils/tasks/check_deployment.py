@@ -61,7 +61,6 @@ def is_debug_enabled() -> bool:
     """Determine whether debugging is active for this module."""
     return _env_flag_enabled(DEBUG_ENV_VAR)
 
-
 def configure_logging(debug: bool | None = None) -> None:
     """
     Configure the module's logger.
@@ -88,7 +87,6 @@ def configure_logging(debug: bool | None = None) -> None:
 
     if debug:
         logger.debug(f"Debug logging enabled for {__name__} (via {DEBUG_ENV_VAR})")
-
 
 # Initial logger configuration at module import time,
 # based on the current state of the environment variable.
@@ -227,7 +225,9 @@ def check_deployment(include_endpoints: bool = True):
         add_check(CheckCategory.ENDPOINTS, items, check_endpoint)
 
     if all(is_package_installed(pkg) for pkg in cinder_pkgs):
+
         logger.debug("Cinder detected: adding related checks")
+
         add_services_check(["cinder-scheduler", "cinder-volume", "tgt"])
         add_packages_check(cinder_pkgs)
         add_config_files_check(["/etc/cinder/cinder.conf", "/etc/tgt/conf.d/cinder.conf"])
@@ -236,7 +236,9 @@ def check_deployment(include_endpoints: bool = True):
             add_endpoints_check(["volumev3"])
 
     if all(is_package_installed(pkg) for pkg in manila_pkgs):
+
         logger.debug("Manila detected: adding related checks")
+
         manila_conf = "/etc/manila/manila.conf"
 
         add_config_files_check([manila_conf])
@@ -343,6 +345,7 @@ if __name__ == "__main__":
         exit(1)
 
     endpoint_result = check_deployment(include_endpoints=True)
+
     print(endpoint_result)
 
     exit(0 if endpoint_result.ok else 1)
@@ -355,6 +358,24 @@ def check_cinder_available() -> bool:
 
     if not all(check_service_active(service) for service in ["cinder-scheduler", "cinder-volume", "tgt"]) : return False
    
+    return True
+
+def check_cinder_backup_available() -> bool:
+
+    pkgs = cinder_pkgs + ["cinder-backup"]
+
+    if not all(is_package_installed(pkg) for pkg in pkgs): return False
+
+    if not all(check_service_active(service) for service in ["cinder-backup"]) : return False
+
+def is_cinder_backup_available() -> bool:
+
+    if not check_cinder_backup_available():
+        print(f"{colors.RED}Cinder Backup service is not installed or not available.{colors.RESET}\n")
+        print(f"{colors.YELLOW}  • If you want Cinder backup support, install and configure the 'cinder-backup' service{colors.RESET}")
+        print(f"{colors.YELLOW}  • Alternatively, continue without Cinder Backup, but volume backup features will not be available{colors.RESET}\n")
+        return False
+
     return True
 
 def is_cinder_available() -> bool:

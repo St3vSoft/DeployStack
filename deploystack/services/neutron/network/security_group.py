@@ -16,10 +16,7 @@ def add_rules_to_default_sg(create_bridges: bool, rules_dict, ip_prefix, sg_id: 
 
         is_icmp = protocol == "icmp"
 
-        rule_exists = any(
-            rule_matches(r, protocol, port, ip_prefix)
-            for r in rules
-        )
+        rule_exists = any(rule_matches(r, protocol, port, ip_prefix) for r in rules)
 
         if create_bridges and not rule_exists:
 
@@ -36,6 +33,6 @@ def add_rules_to_default_sg(create_bridges: bool, rules_dict, ip_prefix, sg_id: 
             if not os_run(cmd, f"Allowing {rule_type} access in project '{sg_id}'...", env=env):
                 return False
         else:
-            print(f"{colors.YELLOW}{rule_type} rule already exists, skipping creation.{colors.RESET}")
+            print(f"{colors.YELLOW}{rule_type} rule in project '{sg_id}' already exists, skipping creation.{colors.RESET}")
 
     return True

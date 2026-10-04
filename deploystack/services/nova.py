@@ -211,13 +211,14 @@ def add_default_keypair(env):
     key_file = f"/root/{key_name}.pem"
     public_key_file = f"{key_file}.pub"
 
+    already_exists = False
+
     demo_env = build_openstack_env_from_file("/root/demo-openrc.sh")
 
     check_cmd = ["openstack", "keypair", "show", key_name]
 
     admin_keypair_exists = run_command_sync(check_cmd, env=env)
     demo_keypair_exists = run_command_sync(check_cmd, env=demo_env)
-
 
     if not admin_keypair_exists:
 
@@ -228,7 +229,7 @@ def add_default_keypair(env):
         os.chmod(key_file, stat.S_IRUSR | stat.S_IWUSR)
         os.chown(key_file, os.getuid(), os.getgid())
     else:
-        print(f"{colors.YELLOW}Keypair '{key_name}' already exists, skipping creation.{colors.RESET}")
+        already_exists = True
 
     if not demo_keypair_exists:
 
@@ -245,7 +246,10 @@ def add_default_keypair(env):
 
         if not run_command_sync(import_demo_cmd, env=demo_env) : return False
     else:
-        print(f"{colors.YELLOW}Keypair '{key_name}' already exists, skipping creation.{colors.RESET}")
+        already_exists = True
+
+    if already_exists:
+        print(f"{colors.YELLOW}Keypair '{key_name}' already exists in demo project, skipping creation.{colors.RESET}")
         
     print(f"{colors.YELLOW}Keypair '{key_name}' created and saved to {key_file}{colors.RESET}")
 

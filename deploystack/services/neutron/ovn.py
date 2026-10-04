@@ -411,11 +411,14 @@ def finalize(config):
     
     udev_rule = 'SUBSYSTEM=="unix", ACTION=="add", DEVPATH=="/var/run/openvswitch/db.sock", MODE="0666"\n'
 
-
     with open("/etc/udev/rules.d/99-openvswitch.rules", "w") as f:
         f.write(udev_rule)
 
-    shutil.copy(OVS_PERMISSIONS_SERVICE, "/etc/systemd/system/ovs-nova-perms.service")
+    try:
+        shutil.copy2(OVS_PERMISSIONS_SERVICE, "/etc/systemd/system/ovs-nova-perms.service")
+    except OSError as e:
+        print(f"{colors.RED}ERROR: Failed to copy OVS Nova Perms Service: {e}{colors.RESET}")
+        return False
 
     if not enable_ipv4_forwarding() : return False
 
@@ -475,6 +478,7 @@ def finalize(config):
     return True
 
 def create_ovn_networks(config, env):
+    
     print()
 
     public_subnet_range_start = get(config, "neutron.public_network.PUBLIC_SUBNET_RANGE_START")
@@ -488,16 +492,10 @@ def create_ovn_networks(config, env):
 
     provider_networks = get(config, "neutron.provider_networks", [])
 
-    public_network = next(
-        (n for n in provider_networks if n.get("bridge") == public_bridge),
-        None
-    )
+    public_network = next((n for n in provider_networks if n.get("bridge") == public_bridge), None)
 
     if public_network is None:
-        public_network = next(
-            (n for n in provider_networks if n.get("name") == "public"),
-            None
-        )
+        public_network = next((n for n in provider_networks if n.get("name") == "public"), None)
 
     create_ovn_bridges = get(config, "neutron.ovn.CREATE_BRIDGES", "no") == "yes"
 
@@ -623,23 +621,9 @@ def create_ovn_networks(config, env):
         if provider_networks:
             if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=None, tunnel_bridge=None, env=env) : return False
 
-        sg_list = json.loads(
-            os_run_output(
-                ["openstack", "security", "group", "list", "-f", "json"],
-                env=env
-            )
-        )
+        sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
 
-        sg_demo_list = json.loads(
-            os_run_output(
-                [
-                    "openstack", "security", "group", "list",
-                    "--project", "demo",
-                    "-f", "json"
-                ],
-                env=env
-            )
-        )
+        sg_demo_list = json.loads(os_run_output(["openstack", "security", "group", "list", "--project", "demo", "-f", "json"], env=env))
 
         default_admin_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
         default_demo_sg = next((sg for sg in sg_demo_list if sg["Name"] == "default"), None)
