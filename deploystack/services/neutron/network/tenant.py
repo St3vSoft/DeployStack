@@ -173,7 +173,7 @@ def create_tenant_networks(config, networks_list, subnets_list, routers_list, pu
             cmd.append("--dhcp" if net.get("enable_dhcp", True) else "--no-dhcp")
 
             for dns in net.get("dns_servers", []) or []:
-                cmd += ["--dns-nameservers", dns]
+                cmd += ["--dns-nameserver", dns]
 
             cmd.append(subnet_name)
 
