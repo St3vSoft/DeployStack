@@ -552,9 +552,9 @@ def create_ovn_networks(config, env):
     else:
         print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
 
-    print()
-
     if provider_networks: 
+        print()
+
         if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=None, tunnel_bridge=None, env=env) :
             return False
 
