@@ -345,13 +345,19 @@ def validate_neutron(config) -> bool:
     ok = True
 
     neutron_driver = (get(config, "neutron.DRIVER") or "").lower()
-    tenant_type = (get(config, "neutron.tenant_network.TYPE") or "").lower()
+    tenant_types = get(config, "neutron.tenant_network.TYPES") or []
     ovs_create_bridges = get(config, "neutron.ovs.CREATE_BRIDGES")
     public_bridge_interface_ovs = get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
     ovn_encap_type = (get(config, "neutron.ovn.OVN_ENCAP_TYPE") or "").lower()
 
     provider_networks = get(config, "neutron.provider_networks", [])
     bridges = get(config, "neutron.bridges", [])
+
+    if isinstance(tenant_types, str):
+        tenant_types = [tenant_types]
+
+    tenant_types = [t.lower() for t in tenant_types]
+    valid_tenant_types = {"geneve", "vxlan"}
 
     if neutron_driver not in ("ovs", "ovn"):
         print(f"{colors.RED}Error: neutron.DRIVER must be 'ovs' or 'ovn' (got '{neutron_driver}'){colors.RESET}")
@@ -366,8 +372,13 @@ def validate_neutron(config) -> bool:
             "neutron.ovs.TENANT_BRIDGE",
             "neutron.ovs.PUBLIC_BRIDGE_INTERFACE"
         ]
-        if tenant_type == "vxlan":
+        if "vxlan" in tenant_types:
             ovs_fields.append("neutron.ovs.TUNNEL_BRIDGE")
+
+            vni_range = (get(config, "neutron.tenant_network.VNI_RANGE") or "").lower()
+            if not vni_range:
+                print(f"{colors.RED}Error: VNI_RANGE must be set for VXLAN tenant networks{colors.RESET}")
+                ok = False
 
         for field in ovs_fields:
             value = get(config, field)
@@ -383,15 +394,10 @@ def validate_neutron(config) -> bool:
             print(f"{colors.RED}The interface '{public_bridge_interface_ovs}' specified in neutron.ovs.PUBLIC_BRIDGE_INTERFACE does not exist.{colors.RESET}")
             ok = False
 
-        if tenant_type == "geneve":
+        if "geneve" in tenant_types:
             print(f"{colors.RED}Error: neutron.tenant_network.TYPE 'geneve' is not supported by OVS{colors.RESET}")
             ok = False
 
-        if tenant_type == "vxlan":
-            vni_range = (get(config, "neutron.tenant_network.VNI_RANGE") or "").lower()
-            if not vni_range:
-                print(f"{colors.RED}Error: VNI_RANGE must be set for VXLAN tenant networks{colors.RESET}")
-                ok = False
 
     # ==========================
     # OVN
@@ -409,23 +415,16 @@ def validate_neutron(config) -> bool:
                 print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
                 ok = False
 
-        if ovn_encap_type and tenant_type and ovn_encap_type != tenant_type:
-            print(f"{colors.RED}Error: OVN_ENCAP_TYPE ({ovn_encap_type}) does not match tenant network type ({tenant_type}).{colors.RESET}")
-            ok = False
+        for tenant_type in tenant_types:
+            if tenant_type not in valid_tenant_types:
+                print(
+                    f"{colors.RED}Error: Invalid tenant network type "
+                    f"'{tenant_type}'{colors.RESET}"
+                )
+                ok = False
 
-        if tenant_type not in ["geneve", "vxlan"]:
-            print(f"{colors.RED}Error: Invalid tenant network type '{tenant_type}'{colors.RESET}")
-            ok = False
-
-        ovn_nb_port = validate_positive_int(
-            get(config, ovn_fields[2]),
-            ovn_fields[2]
-        )
-
-        ovn_sb_port = validate_positive_int(
-            get(config, ovn_fields[3]),
-            ovn_fields[3]
-        )
+        ovn_nb_port = validate_positive_int(get(config, ovn_fields[2]), ovn_fields[2])
+        ovn_sb_port = validate_positive_int(get(config, ovn_fields[3]), ovn_fields[3])
 
         if ovn_nb_port is None:
             ok = False
