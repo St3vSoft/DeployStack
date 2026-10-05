@@ -8,7 +8,7 @@ from ....utils.core import colors
 OVERLAY_TYPES = ("geneve", "vxlan")
 VALID_TENANT_TYPES = ("geneve", "vxlan", "vlan", "flat")
 
-def get_tenant_types(config, default="vxlan"):
+def get_tenant_types(config, default="geneve"):
 
     types = get(config, "neutron.tenant_networks.TYPES", None)
 
@@ -127,7 +127,7 @@ def _ensure_router(router, subnet_name, public_network_name, env):
 
     return True
 
-def create_tenant_networks(config, networks_list, subnets_list, routers_list, public_network_name, connect_routers, env, legacy_type="vxlan"):
+def create_tenant_networks(config, networks_list, subnets_list, routers_list, public_network_name, connect_routers, env, legacy_type="geneve"):
 
     tenant_networks = get_tenant_networks(config, legacy_type)
 
