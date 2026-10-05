@@ -1,5 +1,5 @@
-from .ovs import run_setup_ovs_neutron
-from .ovn import run_setup_ovn_neutron
+from .drivers.ovs import run_setup_ovs_neutron
+from .drivers.ovn import run_setup_ovn_neutron
 from .controller import run_setup_controller_neutron
 
 def run_setup_neutron(config, env):

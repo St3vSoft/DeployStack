@@ -82,6 +82,8 @@ def add_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: 
         if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {bridge}"): return False
         if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {bridge}"): return False
 
+        
+
     return True
 
 
@@ -127,6 +129,7 @@ def create_custom_networks(
     for pn in provider_networks:
 
         bridge = pn.get("bridge")
+        physnet = pn.get("physnet")
         net_type = pn.get("type")
 
         if net_type != "local" and bridge in (public_bridge, tunnel_bridge, "br-int", tenant_bridge):
@@ -154,17 +157,15 @@ def create_custom_networks(
 
         subnet_name = f"{network_name}_subnet"
 
-        network_exists = any(
-            (net.get("Name") or net.get("name")) == network_name
-            for net in networks_list
-        )
+        network_exists = any((net.get("Name") or net.get("name")) == network_name for net in networks_list)
+        physnet_name = physnet or network_name
 
         if net_type == "flat":
 
             network_cmd = [
                 "openstack", "network", "create",
                 "--share",
-                "--provider-physical-network", network_name,
+                "--provider-physical-network", physnet_name,
                 "--provider-network-type", "flat"
             ]
 

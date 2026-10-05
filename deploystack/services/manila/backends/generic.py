@@ -14,7 +14,7 @@ from ....utils.core import colors
 from ....utils.core.system_utils import build_openstack_env_from_file
 
 from ...nova import nova_conf
-from ...neutron.ovs import conf_openvswitch
+from ...neutron.drivers.ovs import conf_openvswitch
 
 from .utils import wait_manila_share_agent
 from .utils.shares import create_shares, create_share_types

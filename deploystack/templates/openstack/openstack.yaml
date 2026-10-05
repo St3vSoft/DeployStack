@@ -118,15 +118,68 @@ neutron:
 
   # Tenant network configuration shared by OVS and OVN.
   tenant_network:
-    # Network type used for tenant/project networks.
-    # OVN: geneve | vxlan
-    # OVS: flat | vlan | vxlan
-    TYPE: "geneve"
-
+    # Network types enabled for tenant/project networks, in priority order
+    # (first one is used when a tenant creates a network without specifying
+    # the type). Written to [ml2] tenant_network_types and type_drivers.
+    # OVN: geneve | vxlan | vlan | flat
+    # OVS: vxlan | geneve | vlan | flat
+    # Backward compatibility: the legacy single value "TYPE" is still
+    # accepted and treated as "TYPES: [<value>]".
+    TYPES:
+      - geneve
+      # - vlan
+     
     # Range of VXLAN/Geneve Virtual Network Identifiers available
-    # for tenant networks.
+    # for tenant networks. Used when TYPES contains geneve or vxlan.
     # Example: "1:65536".
     VNI_RANGE: "1:65536"
+ 
+    # VLAN ranges available for tenant networks. Used when TYPES contains vlan.
+    # Each entry maps a physical network name to a VLAN ID range and to the
+    # bridge that carries it:
+    #   OVS: bridge_mappings = <physnet>:<bridge>
+    #   OVN: ovn-bridge-mappings = <physnet>:<bridge>
+    # Leave empty if "vlan" is not in TYPES.
+    VLAN_RANGES: []
+    # Example:
+    # VLAN_RANGES:
+    #   - physnet: "physnet-tenant"
+    #     range: "100:199"
+    #     bridge: "br-tenant"
+ 
+    # Tenant networks to create automatically during deployment.
+    # They are created after Neutron and the "public" network, and before
+    # Manila (the Manila generic backend uses the "internal" network).
+    networks:
+      - name: "internal"
+        # Network type: must be one of the values enabled in TYPES.
+        type: "geneve"
+ 
+        # Subnet configuration.
+        subnet_cidr: "10.0.0.0/24"
+        gateway: "10.0.0.1"
+        dns_servers:
+          - 8.8.8.8
+        enable_dhcp: true
+ 
+        # Optional: create a router with its gateway on the "public"
+        # provider network and an interface on this tenant network.
+        # Several networks can share the same router name.
+        router: "internal-router"
+ 
+      # Example: VLAN tenant network (requires "vlan" in TYPES and a matching
+      # entry in VLAN_RANGES).
+      # - name: "dev-vlan"
+      #   type: "vlan"
+      #   physnet: "physnet-tenant"
+      #   segmentation_id: 150
+      #   subnet_cidr: "10.1.0.0/24"
+      #   gateway: "10.1.0.1"
+      #   dns_servers:
+      #     - 8.8.8.8
+      #   enable_dhcp: true
+      #   router: "router-main"
+ 
 
   # Provider/external networks exposed through Neutron.
   provider_networks:
@@ -134,13 +187,18 @@ neutron:
       # OVS/OVN bridge associated with the provider network.
       bridge: "br-ex"
 
+      # Physical network name used in Neutron (physical_network) and in the
+      # bridge mappings. Defaults to "name" if omitted.
+      physnet: "public"
+
       # Provider network type.
       # flat | vlan
       type: "flat"
 
     # Additional provider networks can be defined here.
     # Example:
-    # - name: "storage"
+    # - name: "storage-net"
+    #   physnet: storage
     #   bridge: "br-storage"
     #   type: "flat"
 

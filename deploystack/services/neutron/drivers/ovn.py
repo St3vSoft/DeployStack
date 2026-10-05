@@ -8,23 +8,25 @@ import socket
 
 from pathlib import Path
 
-from ...utils.core.commands import run_command, run_command_sync, os_run, os_run_output
-from ...utils.apt.apt import apt_install
-from ...utils.config.parser import get
-from ...utils.config.setter import set_conf_option
-from ...utils.core.system_utils import nc_wait, iface_exists
-from ...utils.core import colors
-from ...utils.core.system_utils import service_exists, is_debian, is_module_loaded
-from ...utils.config.helpers import parse_bool
-from ...utils.network.net_utils import get_network_info
-from .utils import enable_ipv4_forwarding
+from ....utils.core.commands import run_command, run_command_sync, os_run, os_run_output
+from ....utils.apt.apt import apt_install
+from ....utils.config.parser import get
+from ....utils.config.setter import set_conf_option
+from ....utils.core.system_utils import nc_wait, iface_exists
+from ....utils.core import colors
+from ....utils.core.system_utils import service_exists, is_debian, is_module_loaded
+from ....utils.config.helpers import parse_bool
+from ....utils.network.net_utils import get_network_info
+from ..utils import enable_ipv4_forwarding
 
-from ...templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
+from ..network.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
 
-from .network.security_group import add_rules_to_default_sg
+from ....templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 
-from .network.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
-from .network.routers import create_custom_network_router
+from ..network.security_group import add_rules_to_default_sg
+
+from ..network.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
+from ..network.routers import create_custom_network_router
 
 neutron_conf = "/etc/neutron/neutron.conf"
 neutron_ovn_metadata_agent_conf = "/etc/neutron/neutron_ovn_metadata_agent.ini"
@@ -320,26 +322,22 @@ def conf_ovn_neutron(config):
     ovn_sb_port = get(config, "neutron.ovn.OVN_SB_PORT")
     ovn_nb_port = get(config, "neutron.ovn.OVN_NB_PORT")
 
-    tenant_network_type = get(config, "neutron.tenant_network.TYPE", "geneve").lower()
-    tenant_network_vni_range = get(config, "neutron.tenant_network.VNI_RANGE", "1:1000")
-
     service_password = get(config, "passwords.SERVICE_PASSWORD")
 
     ovn_l3_scheduler = get(config, "neutron.ovn.OVN_L3_SCHEDULER", "leastloaded").lower()
     
     provider_networks = get(config, "neutron.provider_networks", [])
 
-    flat_networks = [n["name"] for n in provider_networks if n["type"] == "flat"]
+    flat_networks = [n.get("physnet") or n["name"] for n in provider_networks if n["type"] == "flat"]
+
     vlan_networks = [n for n in provider_networks if n["type"] == "vlan"]
+
+    tenant_types = get_tenant_types(config)
+    tenant_network_vni_range = get(config, "neutron.tenant_network. VNI_RANGE", "1:1000")
+    vlan_ranges_str = build_network_vlan_ranges(config)
 
     flat_networks_str = ",".join(flat_networks)
     vlan_networks_str = ",".join(f'{n["name"]}:{n["vlan_range"]}' for n in vlan_networks)
-
-    bridge_mappings = ",".join(
-        f'{n["name"]}:{n["bridge"]}'
-        for n in provider_networks
-        if n.get("name") and n.get("bridge")
-    )
 
     enable_distributed_floating_ip = get(config, "neutron.ovn.ENABLE_DISTRIBUTED_FLOATING_IP", "no") == "yes"
 
@@ -348,8 +346,8 @@ def conf_ovn_neutron(config):
     create_ovn_bridges = get(config, "neutron.ovn.CREATE_BRIDGES", "no") == "yes"
 
     set_conf_option(conf_ml2, "ml2", "mechanism_drivers", "ovn")
-    set_conf_option(conf_ml2, "ml2", "type_drivers", f"flat,vlan,local,{tenant_network_type}")
-    set_conf_option(conf_ml2, "ml2", "tenant_network_types", tenant_network_type)
+    set_conf_option(conf_ml2, "ml2", "type_drivers", build_type_drivers(tenant_types))
+    set_conf_option(conf_ml2, "ml2", "tenant_network_types", ",".join(tenant_types))
     set_conf_option(conf_ml2, "ml2", "extension_drivers", "port_security")
     set_conf_option(conf_ml2, "securitygroup", "enable_ipset", "true")
 
@@ -374,9 +372,9 @@ def conf_ovn_neutron(config):
         if flat_networks_str:
             set_conf_option(conf_ml2, "ml2_type_flat", "flat_networks", flat_networks_str)
         if vlan_networks_str:
-            set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_networks_str)
+            set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_ranges_str)
         
-        set_conf_option(conf_ml2, "ovn", "ovn_bridge_mappings", bridge_mappings)
+        set_conf_option(conf_ml2, "ovn", "ovn_bridge_mappings", build_bridge_mappings(config))
 
     set_conf_option(conf_ml2, "ovn", "ovn_nb_connection", f"tcp:{ip_address}:{ovn_nb_port}")
     set_conf_option(conf_ml2, "ovn", "ovn_sb_connection", f"tcp:{ip_address}:{ovn_sb_port}")
@@ -556,39 +554,11 @@ def create_ovn_networks(config, env):
 
     print()
 
-    internal_network_exists = any(net.get("Name") == "internal" for net in networks_list)
-    create_internal_network_cmd = [
-        "openstack", "network", "create",
-        "--share",
-        "--provider-network-type", ovn_encap_type,
-        "internal"
-    ] if create_ovn_bridges else ["openstack", "network", "create", "internal"]
-
-    if not internal_network_exists:
-        if not os_run(create_internal_network_cmd, f"Creating internal ({ovn_encap_type}) network...", env=env):
-            return False
-
-        internal_subnet_exists = any(sub.get("Name") == "internal_subnet" for sub in subnets_list)
-        if not internal_subnet_exists:
-            internal_subnet_cmd = [
-                "openstack", "subnet", "create",
-                "--network", "internal",
-                "--subnet-range", "10.0.0.0/24",
-                "--gateway", "10.0.0.1",
-                "--allocation-pool", "start=10.0.0.10,end=10.0.0.200",
-                "--dns-nameserver", "8.8.8.8",
-                "internal_subnet"
-            ]
-            
-            if not os_run(internal_subnet_cmd, "Creating internal subnet...", env=env):
-                return False
-    else:
-        print(f"{colors.YELLOW}Internal network already exists, skipping creation.{colors.RESET}")
-
-
     if provider_networks: 
         if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=None, tunnel_bridge=None, env=env) :
             return False
+
+    if not create_tenant_networks(config, networks_list, subnets_list, routers_list, public_network_name=public_network["name"], connect_routers=create_ovn_bridges, legacy_type=ovn_encap_type, env=env) : return False
 
     print()
 
@@ -599,24 +569,9 @@ def create_ovn_networks(config, env):
     else:
         print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
 
+    routers_list = json.loads(os_run_output(["openstack", "router", "list", "-f", "json"], env=env))
+
     if create_ovn_bridges:
-
-        external_gateways_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "external_gateways"], env=env))
-        interfaces_info_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "interfaces_info"], env=env))
-
-        if not external_gateways_list.get("external_gateways"):
-            if not os_run(
-                ["openstack", "router", "set", "internal_router", "--external-gateway", public_network["name"]],
-                "Setting external gateway for internal router...", env=env
-            ):
-                return False
-
-        if not interfaces_info_list.get("interfaces_info"):
-            if not os_run(
-                ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
-                "Adding internal subnet to router...", env=env
-            ):
-                return False
             
         if provider_networks:
             if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=None, tunnel_bridge=None, env=env) : return False
