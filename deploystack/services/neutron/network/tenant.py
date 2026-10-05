@@ -117,7 +117,7 @@ def _ensure_router(router, subnet_name, public_network_name, env):
     if not gateways.get("external_gateways"):
         if not os_run(["openstack", "router", "set", router, "--external-gateway", public_network_name], f"Setting external gateway for router '{router}'...", env=env) : return False
 
-    subnet_id, None = os_run_output(["openstack", "subnet", "show", subnet_name, "-f", "value", "-c", "id"], env=env)
+    subnet_id = os_run_output(["openstack", "subnet", "show", subnet_name, "-f", "value", "-c", "id"], env=env)
     subnet_id = subnet_id.strip()
 
     interfaces = json.loads(os_run_output(["openstack", "router", "show", router, "-f", "json", "-c", "interfaces_info"], env=env))
