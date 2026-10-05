@@ -72,6 +72,8 @@ def create_custom_network_router(
         router_name = f"{network_name}_router"
         subnet_name = f"{network_name}_subnet"
 
+        internal_network_subnet = subnet_cfg.get("tenant_subnet")
+
         if not router_exists(router_name, env):
             if not os_run(
                 ["openstack", "router", "create", router_name],
@@ -83,16 +85,16 @@ def create_custom_network_router(
         if not has_gateway(router_name, env):
             if not os_run(
                 ["openstack", "router", "set", router_name,
-                 "--external-gateway", "public"],
+                 "--external-gateway", network_name],
                 f"Setting external gateway for {router_name}...",
                 env=env
             ):
                 return False
 
-        subnet_list = safe_json(["openstack", "subnet", "list", "--name", subnet_name, "-f", "json"], env)
+        subnet_list = safe_json(["openstack", "subnet", "list", "--name", internal_network_subnet, "-f", "json"], env)
 
         if not subnet_list:
-            print(f"Subnet {subnet_name} not found, skipping attach")
+            print(f"Subnet {internal_network_subnet} not found, skipping attach")
             continue
 
         subnet_id = subnet_list[0].get("ID") or subnet_list[0].get("id")
@@ -101,7 +103,7 @@ def create_custom_network_router(
 
             if not os_run(
                 ["openstack", "router", "add", "subnet",
-                 router_name, subnet_name],
+                 router_name, internal_network_subnet],
                 f"Attaching {subnet_name} to {router_name}...",
                 env=env
             ):
