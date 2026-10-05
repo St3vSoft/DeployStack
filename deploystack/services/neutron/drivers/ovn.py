@@ -562,13 +562,6 @@ def create_ovn_networks(config, env):
 
     print()
 
-    router_exists = any(r.get("Name") == "internal_router" for r in routers_list)
-    if not router_exists:
-        if not os_run(["openstack", "router", "create", "internal_router"], "Creating internal router...", env=env):
-            return False
-    else:
-        print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
-
     routers_list = json.loads(os_run_output(["openstack", "router", "list", "-f", "json"], env=env))
 
     if create_ovn_bridges:

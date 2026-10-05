@@ -177,6 +177,10 @@ def create_tenant_networks(config, networks_list, subnets_list, routers_list, pu
 
             cmd.append(subnet_name)
 
+            if not os_run(cmd, f"Creating subnet '{subnet_name}'...", env=env): return False
+
+            existing_subnets.add(subnet_name)
+
         router = net.get("router")
 
         if not router:
