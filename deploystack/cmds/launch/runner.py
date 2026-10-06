@@ -321,7 +321,7 @@ def create_server(name: str, image_id: str, flavor_id: str,
 
     server_id: str = None
 
-    print(f"Launching instance '{name}' ...\n")
+    print(f"\nLaunching instance '{name}' ...\n")
 
     try:
 
@@ -378,7 +378,7 @@ def create_server_with_password(
 
     server_id: str = None
 
-    print(f"Launching instance '{name}' ...\n")
+    print(f"\nLaunching instance '{name}' ...\n")
 
     try:
         result = _run([
