@@ -56,16 +56,19 @@ def get_router_and_provider_network(tenant_network_name: str) -> tuple[str | Non
         return None, None
 
     network_id = networks[0]["ID"]
-
-    ports = json.loads(_os("port", "list", "--network", network_id, "-f", "json", "-c", "ID", "-c", "Device Owner", "-c", "Device ID"))
+    ports = json.loads(_os("port", "list", "--network", network_id, "-f", "json", "-c", "ID", "-c", "Device ID"))
 
     for port in ports:
-        if port["Device Owner"] != "network:router_interface":
+        device_id = port["Device ID"]
+        if not device_id:
             continue
 
-        router = json.loads(_os("router", "show", port["Device ID"], "-f", "json"))
-        gateway = router.get("external_gateway_info")
+        try:
+            router = json.loads(_os("router", "show", device_id, "-f", "json"))
+        except subprocess.CalledProcessError:
+            continue
 
+        gateway = router.get("external_gateway_info")
         if gateway:
             return router["name"], gateway["network_id"]
 
