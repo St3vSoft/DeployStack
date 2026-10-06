@@ -50,6 +50,24 @@ def is_private_tenant_network(network_id: str) -> bool:
 
     return True
 
+def get_router_for_external_network(network_id: str) -> str:
+
+    routers = json.loads(_os("router", "list", "--long", "-f", "json", "-c", "Name", "-c", "network_id", "-c", "External gateway info"))
+
+    for router in routers:
+        router_name = router["Name"]
+        gateway = router["External gateway info"]
+
+        if not gateway:
+            continue
+
+        net_id = gateway["network_id"]
+
+        if net_id == network_id:
+            return router_name
+
+    return None
+
 def is_local_network_type_by_id(network_id: str) -> bool:
     network = json.loads(_os("network", "show", network_id, "-f", "json"))
 
@@ -58,7 +76,6 @@ def is_local_network_type_by_id(network_id: str) -> bool:
 def is_external_network_by_id(network_id: str) -> bool:
     net = json.loads(_os("network", "show", network_id, "-f", "json"))
     return net.get("router:external", False)
-
 
 def get_external_network(preferred: str | None = None) -> str:
 
@@ -153,13 +170,13 @@ def get_default_flavor(preferred: str = DEFAULT_FLAVOR) -> str:
             return parts[0]
     return out.splitlines()[0].split()[0] if out else "1"
 
-def delete_instance(instance_id: str):
+def delete_error_instance(instance_id: str):
     try:
         subprocess.run(["openstack", "server", "delete", instance_id], check=True)
     except subprocess.CalledProcessError as e:
-            print(f"Error when deleting instance {instance_id}: {e}")
+        print(f"Error when deleting instance {instance_id}: {e}")
 
-def internal_router_has_gateway(env=None) -> bool:
+def internal_router_has_gateway(router_name: str, env=None) -> bool:
 
     field_name: str
 
@@ -168,7 +185,7 @@ def internal_router_has_gateway(env=None) -> bool:
     else:
         field_name = "external_gateway_info"
 
-    result = _run(["openstack", "router", "show", "internal_router", "-f", "json", "-c", field_name], env=env)
+    result = _run(["openstack", "router", "show", router_name, "-f", "json", "-c", field_name], env=env)
     external_gateways = json.loads(result.stdout)
 
     gateways = external_gateways.get(field_name, [])
@@ -244,8 +261,7 @@ def get_floating_ip_id(fip_address: str) -> str:
         sys.exit(1)
     return fip_id
 
-def generate_user_config(ostype: str, default_user: str, password: str,
-                          public_key: str = None) -> str:
+def generate_user_config(ostype: str, default_user: str, password: str, public_key: str = None) -> str:
 
     if ostype == "linux":
         template_path = (
@@ -328,7 +344,7 @@ def create_server(name: str, image_id: str, flavor_id: str,
         for line in out.stdout.splitlines():
             instance_id, instance_name = line.split(None, 1)
             if name in instance_name:
-                delete_instance(instance_id)
+                delete_error_instance(instance_id)
 
         logger.error(
             f"{colors.RED}"
@@ -384,7 +400,7 @@ def create_server_with_password(
         for line in out.stdout.splitlines():
             instance_id, instance_name = line.split(None, 1)
             if name in instance_name:
-                 delete_instance(instance_id)
+                 delete_error_instance(instance_id)
 
         logger.error(
             f"{colors.RED}"
@@ -452,7 +468,7 @@ def wait_for_active(server_id: str, timeout: int = 100):
 
             for instance_id in error_ids:
                 if instance_id == server_id:
-                    delete_instance(instance_id)
+                    delete_error_instance(instance_id)
 
             sys.exit(1)
 
@@ -544,6 +560,7 @@ def launch(
     os_admin_user = (props.get("os_admin_user") or "")
 
     external_net_id = get_external_network(external_net if external_net != EXTERNAL_NET else None)
+    external_router_name = get_router_for_external_network(external_net_id)
 
     admin_internal_env = build_openstack_env_from_file(internal_admin_openrc_file)
 
@@ -599,7 +616,8 @@ def launch(
 
     if is_private:
 
-        if internal_router_has_gateway(env=admin_internal_env) and not is_local_network:
+        if internal_router_has_gateway(router_name=external_router_name, env=admin_internal_env) and not is_local_network:
+            
             fip = allocate_floating_ip(external_net_id)
             attach_floating_ip(server_id, fip)
 
