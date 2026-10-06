@@ -19,7 +19,12 @@ def _run(args: list[str], check=True, env=None) -> subprocess.CompletedProcess:
 
 
 def _os(env, *args) -> str:
-    result = _run(["openstack"] + list(args), env=env)
+    
+    if env:
+        result = _run(["openstack"] + list(args), env=env)
+    else:
+        result = _run(["openstack"] + list(args))
+
     return result.stdout.strip()
 
 def _os_value(*args) -> str:
