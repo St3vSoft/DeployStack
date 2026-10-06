@@ -59,27 +59,14 @@ def get_router_and_provider_network(tenant_network_name: str) -> tuple[str | Non
     subnets = json.loads(_os("subnet", "list", "--network", network_id, "-f", "json", "-c", "ID"))
     subnet_ids = {subnet["ID"] for subnet in subnets}
 
-    print(f"DEBUG network_id={network_id}")
-    print(f"DEBUG subnet_ids={subnet_ids}")
-
-    routers = json.loads(_os("router", "list", "-f", "json", "-c", "ID", "-c", "Name"))
+    routers = json.loads(_os("router", "list", "-f", "json"))
 
     for router in routers:
         router_info = json.loads(_os("router", "show", router["ID"], "-f", "json"))
-        interfaces = router_info.get("interfaces_info", [])
-
-        print(f"DEBUG router={router['Name']}")
-        print(f"DEBUG interfaces={interfaces}")
-
-        for interface in interfaces:
-            if interface.get("subnet_id") in subnet_ids:
-                gateway = router_info.get("external_gateway_info")
-
-                print(f"DEBUG MATCH router={router['Name']}")
-                print(f"DEBUG gateway={gateway}")
-
-                if gateway:
-                    return router["Name"], gateway["network_id"]
+        if any(interface.get("subnet_id") in subnet_ids for interface in router_info.get("interfaces_info", [])):
+            gateway = router_info.get("external_gateway_info")
+            if gateway:
+                return router_info["name"], gateway["network_id"]
 
     return None, None
 
