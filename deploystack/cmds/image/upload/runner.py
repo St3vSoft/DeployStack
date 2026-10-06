@@ -139,6 +139,8 @@ def upload_glance_image(
         create_image_cmd.append("--private")
     elif visibility == "shared":
         create_image_cmd.append("--shared")
+    elif visibility == "community":
+        create_image_cmd.append("--community")
 
     create_image_cmd.append(f"{name}")
     
