@@ -114,12 +114,6 @@ def get_external_network(preferred: str | None = None) -> str:
         logger.error(f"{colors.RED}No external network (router:external=True) found in the project/cloud.{colors.RESET}")
         sys.exit(1)
 
-    if len(external_nets) > 1:
-        logger.warning(
-            f"{colors.YELLOW}Find more external networks:"
-            f"{[n['Name'] for n in external_nets]}. Using the first: {external_nets[0]['Name']}{colors.RESET}"
-        )
-
     return external_nets[0]["ID"]
 
 def ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
