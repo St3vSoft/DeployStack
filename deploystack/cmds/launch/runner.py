@@ -583,7 +583,7 @@ def launch(
     if is_external_network_by_id(network_id):
         external_router_name = get_router_for_external_network(external_net_id)
     else:
-        external_router_name, provider_network_id = get_router_and_provider_network(admin_internal_env, network)
+        external_router_name, provider_network_id = get_router_and_provider_network(network, admin_internal_env)
 
     password_enabled = True
     show_access = True
