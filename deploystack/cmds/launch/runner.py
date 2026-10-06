@@ -50,6 +50,24 @@ def is_private_tenant_network(network_id: str) -> bool:
 
     return True
 
+def get_router_and_provider_network(tenant_network_name: str) -> tuple[str | None, str | None]:
+    networks = json.loads(_os("network", "list", "--name", tenant_network_name, "-f", "json", "-c", "ID"))
+    if not networks:
+        return None, None
+
+    network_id = networks[0]["ID"]
+
+    ports = json.loads(_os("port", "list", "--network", network_id, "--device-owner", "network:router_interface", "-f", "json", "-c", "Device ID"))
+
+    for port in ports:
+        router = json.loads(_os("router", "show", port["Device ID"], "-f", "json"))
+        gateway = router.get("external_gateway_info")
+
+        if gateway:
+            return router["name"], gateway["network_id"]
+
+    return None, None
+
 def get_router_for_external_network(network_id: str) -> str:
 
     routers = json.loads(_os("router", "list", "--long", "-f", "json", "-c", "Name", "-c", "network_id", "-c", "External gateway info"))
@@ -560,7 +578,14 @@ def launch(
     os_admin_user = (props.get("os_admin_user") or "")
 
     external_net_id = get_external_network(external_net if external_net != EXTERNAL_NET else None)
-    external_router_name = get_router_for_external_network(external_net_id)
+
+    provider_network_id = None
+    external_router_name = None
+
+    if is_external_network_by_id(network):
+        external_router_name = get_router_for_external_network(external_net_id)
+    else:
+        external_router_name, provider_network_id = get_router_and_provider_network(network)
 
     admin_internal_env = build_openstack_env_from_file(internal_admin_openrc_file)
 
@@ -616,9 +641,19 @@ def launch(
 
     if is_private:
 
-        if internal_router_has_gateway(router_name=external_router_name, env=admin_internal_env) and not is_local_network:
-            
-            fip = allocate_floating_ip(external_net_id)
+        if not external_router_name:
+            logger.warning(
+                f"{colors.YELLOW}"
+                f"No router with external gateway found for tenant network '{network}'."
+                f"{colors.RESET}\n"
+            )
+
+            instance_ip_address = get_instance_ip(name, network)
+
+        elif internal_router_has_gateway(router_name=external_router_name, env=admin_internal_env) and not is_local_network:
+
+            fip = allocate_floating_ip(provider_network_id or network)
+
             attach_floating_ip(server_id, fip)
 
             instance_ip_address = fip
