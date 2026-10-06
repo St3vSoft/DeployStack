@@ -56,9 +56,7 @@ def get_router_and_provider_network(tenant_network_name: str) -> tuple[str | Non
         return None, None
 
     network_id = networks[0]["ID"]
-
     subnets = json.loads(_os("subnet", "list", "--network", network_id, "-f", "json", "-c", "ID"))
-
     subnet_ids = {subnet["ID"] for subnet in subnets}
 
     routers = json.loads(_os("router", "list", "-f", "json", "-c", "ID", "-c", "Name"))
@@ -66,12 +64,11 @@ def get_router_and_provider_network(tenant_network_name: str) -> tuple[str | Non
     for router in routers:
         router_info = json.loads(_os("router", "show", router["ID"], "-f", "json"))
 
-        for interface in router_info.get("interfaces_info", []):
-            if interface.get("subnet_id") in subnet_ids:
-                gateway = router_info.get("external_gateway_info")
+        if any(interface["subnet_id"] in subnet_ids for interface in router_info.get("interfaces_info", [])):
+            gateway = router_info.get("external_gateway_info")
 
-                if gateway:
-                    return router["Name"], gateway["network_id"]
+            if gateway:
+                return router_info["name"], gateway["network_id"]
 
     return None, None
 
@@ -589,7 +586,7 @@ def launch(
     provider_network_id = None
     external_router_name = None
 
-    if is_external_network_by_id(network):
+    if is_external_network_by_id(network_id):
         external_router_name = get_router_for_external_network(external_net_id)
     else:
         external_router_name, provider_network_id = get_router_and_provider_network(network)
