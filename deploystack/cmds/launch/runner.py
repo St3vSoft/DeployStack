@@ -57,9 +57,12 @@ def get_router_and_provider_network(tenant_network_name: str) -> tuple[str | Non
 
     network_id = networks[0]["ID"]
 
-    ports = json.loads(_os("port", "list", "--network", network_id, "--device-owner", "network:router_interface", "-f", "json", "-c", "Device ID"))
+    ports = json.loads(_os("port", "list", "--network", network_id, "-f", "json", "-c", "ID", "-c", "Device Owner", "-c", "Device ID"))
 
     for port in ports:
+        if port["Device Owner"] != "network:router_interface":
+            continue
+
         router = json.loads(_os("router", "show", port["Device ID"], "-f", "json"))
         gateway = router.get("external_gateway_info")
 
@@ -642,11 +645,7 @@ def launch(
     if is_private:
 
         if not external_router_name:
-            logger.warning(
-                f"{colors.YELLOW}"
-                f"No router with external gateway found for tenant network '{network}'."
-                f"{colors.RESET}\n"
-            )
+            logger.warning(f"{colors.YELLOW}No router with external gateway found for tenant network '{network}'.{colors.RESET}\n")
 
             instance_ip_address = get_instance_ip(name, network)
 
