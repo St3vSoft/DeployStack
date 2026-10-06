@@ -18,10 +18,9 @@ def _run(args: list[str], check=True, env=None) -> subprocess.CompletedProcess:
         sys.exit(1)
 
 
-def _os(*args) -> str:
-    result = _run(["openstack"] + list(args))
+def _os(env, *args) -> str:
+    result = _run(["openstack"] + list(args), env=env)
     return result.stdout.strip()
-
 
 def _os_value(*args) -> str:
     result = _run(["openstack"] + list(args) + ["-f", "value"])
