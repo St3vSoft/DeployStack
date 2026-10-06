@@ -61,11 +61,14 @@ def get_router_and_provider_network(tenant_network_name: str) -> tuple[str | Non
 
     routers = json.loads(_os("router", "list", "-f", "json"))
 
+    print(routers)
+
     for router in routers:
         router_info = json.loads(_os("router", "show", router["ID"], "-f", "json"))
         if any(interface.get("subnet_id") in subnet_ids for interface in router_info.get("interfaces_info", [])):
             gateway = router_info.get("external_gateway_info")
             if gateway:
+                print(gateway)
                 return router_info["name"], gateway["network_id"]
 
     return None, None
@@ -226,26 +229,17 @@ def get_default_network(preferred: str | None = None) -> str:
 
     if preferred:
         for net_id, net_name in lines:
-            if preferred.lower() in net_name.lower() or net_name.lower() in preferred.lower():
-
-                is_external = is_external_network_by_id(net_id)
-
-                if is_external:
-                    logger.warning(
-                        f"{colors.YELLOW}"
-                        f"The '{net_name}' network is external. "
-                        f"Floating IP assignment will be skipped."
-                        f"{colors.RESET}\n"
-                    )
-
+            if preferred.lower() == net_name.lower():
                 return net_id
+        logger.error(f"Network '{preferred}' not found.")
+        sys.exit(1)
 
     for net_id, net_name in lines:
-        if "internal" in net_name.lower():
+        if "internal" in net_name.lower() and not is_external_network_by_id(net_id):
             return net_id
 
     for net_id, net_name in lines:
-        if "public" not in net_name.lower():
+        if not is_external_network_by_id(net_id) and "public" not in net_name.lower():
             return net_id
 
     logger.error("No suitable internal network found. Cannot use public network by default.")
@@ -587,6 +581,7 @@ def launch(
     if is_external_network_by_id(network_id):
         external_router_name = get_router_for_external_network(external_net_id)
     else:
+        print("ok")
         external_router_name, provider_network_id = get_router_and_provider_network(network)
 
     admin_internal_env = build_openstack_env_from_file(internal_admin_openrc_file)
