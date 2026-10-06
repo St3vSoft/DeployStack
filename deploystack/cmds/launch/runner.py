@@ -51,24 +51,21 @@ def is_private_tenant_network(network_id: str) -> bool:
     return True
 
 def get_router_and_provider_network(tenant_network_name: str, env) -> tuple[str | None, str | None]:
-    networks = json.loads(_os(args=["network", "list", "--name", tenant_network_name, "-f", "json", "-c", "ID"]))
+    networks = json.loads(_os("network", "list", "--name", tenant_network_name, "-f", "json", "-c", "ID"))
     if not networks:
         return None, None
 
     network_id = networks[0]["ID"]
-    subnets = json.loads(_os(env=env, args=["subnet", "list", "--network", network_id, "-f", "json", "-c", "ID"]))
+    subnets = json.loads(_os("subnet", "list", "--network", network_id, "-f", "json", "-c", "ID"))
     subnet_ids = {subnet["ID"] for subnet in subnets}
 
-    routers = json.loads(_os(env=env, args=["router", "list", "-f", "json"]))
-
-    print(routers)
+    routers = json.loads(_os("router", "list", "-f", "json", env=env))
 
     for router in routers:
-        router_info = json.loads(_os(env=env, args=["router", "show", router["ID"], "-f", "json"]))
+        router_info = json.loads(_os("router", "show", router["ID"], "-f", "json", env=env))
         if any(interface.get("subnet_id") in subnet_ids for interface in router_info.get("interfaces_info", [])):
             gateway = router_info.get("external_gateway_info")
             if gateway:
-                print(gateway)
                 return router_info["name"], gateway["network_id"]
 
     return None, None
