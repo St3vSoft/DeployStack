@@ -119,7 +119,7 @@ def upload_glance_image(
         env: None
     ) -> bool:
     
-    print(f"\nUploading image '{name}' ...\n")
+    print(f"\nUploading image '{name}' to Glance...\n")
 
     admin_user = OS_ADMIN_USERS[os]
 
