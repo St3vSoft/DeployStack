@@ -18,8 +18,8 @@ def _run(args: list[str], check=True, env=None) -> subprocess.CompletedProcess:
         sys.exit(1)
 
 
-def _os(env, *args) -> str:
-    
+def _os(*args, env=None) -> str:
+
     if env:
         result = _run(["openstack"] + list(args), env=env)
     else:
