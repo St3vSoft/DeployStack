@@ -555,7 +555,7 @@ def create_ovn_networks(config, env):
     if provider_networks: 
         print()
 
-        if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=None, tunnel_bridge=None, env=env) :
+        if not create_custom_networks(networks_list=networks_list, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=None, tunnel_bridge=None, env=env) :
             return False
 
     if not create_tenant_networks(config, networks_list, subnets_list, routers_list, public_network_name=public_network["name"], connect_routers=create_ovn_bridges, legacy_type=ovn_encap_type, env=env) : return False
