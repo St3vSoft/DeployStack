@@ -249,7 +249,7 @@ def add_default_keypair(env):
         already_exists = True
 
     if already_exists:
-        print(f"{colors.YELLOW}Keypair '{key_name}' already exists in demo project, skipping creation.{colors.RESET}")
+        print(f"{colors.YELLOW}Keypair '{key_name}' already exists, skipping creation.{colors.RESET}")
     else:
         print(f"{colors.YELLOW}Keypair '{key_name}' created and saved to {key_file}{colors.RESET}")
 
