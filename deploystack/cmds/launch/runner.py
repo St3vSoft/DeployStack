@@ -122,10 +122,8 @@ def ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
 
     if not os.path.isfile(key_path):
         print(f"Creating local '{keypair_name}' ssh key at {key_path}")
-        subprocess.run(
-            ["ssh-keygen", "-t", "rsa", "-b", "2048", "-N", "", "-f", key_path],
-            check=True, stdout=subprocess.DEVNULL
-        )
+
+        subprocess.run(["ssh-keygen", "-t", "rsa", "-b", "2048", "-N", "", "-f", key_path], check=True, stdout=subprocess.DEVNULL)
     else:
         print(f"SSH key already exists: {key_path}")
 
@@ -256,10 +254,9 @@ def get_server_id(name: str) -> str:
     return exact[0]
 
 def get_floating_ip_id(fip_address: str) -> str:
-    """Resolve floating IP address to its ID."""
-    out = _os("floating", "ip", "list",
-              "--floating-ip-address", fip_address,
-              "-f", "value", "-c", "ID")
+
+    out = _os("floating", "ip", "list", "--floating-ip-address", fip_address,  "-f", "value", "-c", "ID")
+
     fip_id = out.strip().splitlines()[0] if out.strip() else ""
     if not fip_id:
         logger.error(f"Floating IP {fip_address} not found")
@@ -444,12 +441,7 @@ def wait_for_active(server_id: str, timeout: int = 100):
 
     while time.time() < deadline:
 
-        status = _os_value(
-            "server", "show",
-            server_id,
-            "-f", "value",
-            "-c", "status"
-        ).strip().upper()
+        status = _os_value("server", "show", server_id, "-f", "value", "-c", "status").strip().upper()
 
         if status == "ACTIVE":
             return
@@ -457,17 +449,7 @@ def wait_for_active(server_id: str, timeout: int = 100):
         if status == "ERROR":
             logger.error(f"{colors.RED}Server {server_id} is in ERROR state{colors.RESET}\n")
 
-            out = subprocess.run(
-                [
-                    "openstack", "server", "list",
-                    "--status", "ERROR",
-                    "-f", "value",
-                    "-c", "ID"
-                ],
-                capture_output=True,
-                text=True,
-                check=True
-            )
+            out = subprocess.run(["openstack", "server", "list", "--status", "ERROR", "-f", "value", "-c", "ID"], capture_output=True, text=True,check=True)
 
             error_ids = out.stdout.splitlines()
 

@@ -106,17 +106,14 @@ def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge
             run_command(["ip", "link", "set", port, "down"],
                         f"Bringing {port} down", ignore_errors=True)
 
-            run_command_sync(["ovs-vsctl", "--if-exists", "del-br", bridge],
-                    f"Deleting bridge {bridge}", ignore_errors=True)
+            run_command_sync(["ovs-vsctl", "--if-exists", "del-br", bridge], f"Deleting bridge {bridge}", ignore_errors=True)
 
-            run_command_sync(["ovs-vsctl", "--if-exists", "del-port", bridge, port],
-                        f"Deleting port {port} from {bridge}", ignore_errors=True)
+            run_command_sync(["ovs-vsctl", "--if-exists", "del-port", bridge, port], f"Deleting port {port} from {bridge}", ignore_errors=True)
 
     return True, line1
 
 def create_custom_networks(
         networks_list: list,
-        subnets_list: list,
         provider_networks: list, 
         public_bridge: str,
         tenant_bridge: str,
@@ -225,10 +222,7 @@ def create_custom_networks(
                 subnet_cmd += ["--dns-nameserver", dns]
 
             if subnet_range_start is not None and subnet_range_end is not None:
-                subnet_cmd += [
-                    "--allocation-pool",
-                    f"start={subnet_range_start},end={subnet_range_end}"
-                ]
+                subnet_cmd += ["--allocation-pool", f"start={subnet_range_start},end={subnet_range_end}"]
 
             subnet_cmd.append(subnet_name)
 
