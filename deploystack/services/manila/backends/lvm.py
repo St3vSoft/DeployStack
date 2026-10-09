@@ -298,7 +298,7 @@ def create_shares_network(config, env):
 
     if create_bridges:
         shares_subnet_id = os_run_output(["openstack", "subnet", "show", "shares_subnet", "-f", "value", "-c", "id"], env=env).strip()
-        internal_router_info = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json"], env=env))
+        internal_router_info = json.loads(os_run_output(["openstack", "router", "show", "internal-router", "-f", "json"], env=env))
 
         interfaces = internal_router_info.get("interfaces_info", [])
         shares_router_subnet_attached = any(iface.get("subnet_id") == shares_subnet_id for iface in interfaces)
