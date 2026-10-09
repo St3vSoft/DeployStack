@@ -167,7 +167,7 @@ def conf_ovn_bridges(config):
         backup_path = os.path.join(backup_dir, backup_name)
         shutil.move(full_path, backup_path)
 
-    if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge, "--", "--may-exist", "add-port", public_iface], f"Adding bridge {public_bridge} with port {public_iface}"): return False
+    if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge, "--", "--may-exist", "add-port", public_bridge, public_iface], f"Adding bridge {public_bridge} with port {public_iface}"): return False
     
     if custom_bridges:
         if not add_custom_bridges(bridges=bridges, public_bridge=public_bridge, tunnel_bridge=None, internal_flat_bridge=None) : return False
