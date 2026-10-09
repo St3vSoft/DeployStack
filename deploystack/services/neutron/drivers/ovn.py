@@ -236,19 +236,13 @@ def conf_ovn_controller(config):
     
     provider_networks = get(config, "neutron.provider_networks", [])
 
-    line_printed = False
-
     kernel_modules = []
 
     for encap_type, modules in encap_modules.items():
         if encap_type in ovn_encap_type:
             kernel_modules += modules
 
-    if not line_printed:
-        print()
-        line_printed = True
-
-        if not enable_kernel_module(module_names=kernel_modules) : return False
+    if not enable_kernel_module(module_names=kernel_modules) : return False
 
     write_permanent_modules_conf("/etc/modules-load.d/ovn-controller.conf", modules=kernel_modules)
 
