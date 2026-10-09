@@ -534,6 +534,8 @@ def config_openstack(
                 "SHARE_EXPORT_IP": "172.20.10.10",   
                 })
 
+            config_dict["manila"]["backends"]["lvm"]["SHARE_TENANT_NETWORK_CIDR"] = "10.0.0.0/24"
+
             for protocol in manila_share_protocols:
                 if protocol.lower() in "cifs":
                     config_dict["manila"]["backends"]["lvm"].setdefault("samba", {})
