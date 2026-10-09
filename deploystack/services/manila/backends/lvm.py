@@ -58,6 +58,8 @@ def conf_shares_bridge(config):
     share_export_ip = ipaddress.ip_interface(f"{share_export_ip}/24")
     share_export_gateway_ip = str(share_export_ip.network.network_address + 1)
 
+    tenant_network_cidr = get(config, "manila.backends.lvm.SHARE_TENANT_NETWORK_CIDR")
+
     print()
 
     if not run_command(["ovs-vsctl", "--may-exist", "add-br", "br-shares"], "Adding shares bridge...") : return False
@@ -67,8 +69,8 @@ auto br-shares
 iface br-shares inet static
     address {share_export_ip.ip}
     netmask 255.255.255.0
-    post-up ip route add 10.0.0.0/24 via {share_export_gateway_ip} dev br-shares
-    pre-down ip route del 10.0.0.0/24 via {share_export_gateway_ip} dev br-shares
+    post-up ip route add {tenant_network_cidr} via {share_export_gateway_ip} dev br-shares
+    pre-down ip route del {tenant_network_cidr} via {share_export_gateway_ip} dev br-shares
 """
 
     with open(INTERFACES_FILE, "w") as f:

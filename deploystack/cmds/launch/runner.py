@@ -402,7 +402,7 @@ def create_server_with_password(
         for line in out.stdout.splitlines():
             instance_id, instance_name = line.split(None, 1)
             if name in instance_name:
-                 delete_error_instance(instance_id)
+                delete_error_instance(instance_id)
 
         logger.error(
             f"{colors.RED}"

@@ -359,6 +359,9 @@ manila:
       # The deployment is responsible for configuring this IP when required.
       SHARE_EXPORT_IP: "172.20.10.10"
 
+      # Tenant network CIDR reachable by the Manila LVM backend.
+      SHARE_TENANT_NETWORK_CIDR: "10.0.0.0/24"
+
       storage:
         # -------------------------
         # Physical volume configuration
