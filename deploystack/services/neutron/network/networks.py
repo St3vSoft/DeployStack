@@ -79,7 +79,7 @@ def add_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: 
         if not bridge or not port:
             continue
 
-        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge, "--", "--may-exists", "add-port", port], f"Adding bridge {bridge} with {port} port"): return False
+        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge, "--", "--may-exist", "add-port", port], f"Adding bridge {bridge} with {port} port"): return False
 
     return True
 
