@@ -12,12 +12,11 @@ from ....utils.core.commands import run_command, run_command_sync, os_run, os_ru
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
-from ....utils.core.system_utils import nc_wait, iface_exists
+from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, enable_kernel_module
 from ....utils.core import colors
-from ....utils.core.system_utils import service_exists, is_debian, is_module_loaded
 from ....utils.config.helpers import parse_bool
 from ....utils.network.net_utils import get_network_info
-from ..utils import enable_ipv4_forwarding
+from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, ifaces_config_exclude_patterns
 
 from ..network.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
 
@@ -30,6 +29,9 @@ from ..network.routers import create_custom_network_router
 
 neutron_conf = "/etc/neutron/neutron.conf"
 neutron_ovn_metadata_agent_conf = "/etc/neutron/neutron_ovn_metadata_agent.ini"
+
+interfaces_dir = "/etc/network/interfaces.d/"
+backup_dir = "/root/net-backup"
 
 conf_ml2 = "/etc/neutron/plugins/ml2/ml2_conf.ini"
 conf_nova = "/etc/nova/nova.conf"
@@ -76,8 +78,7 @@ def conf_ovn_bridges(config):
     custom_bridges = bool(bridges)
 
     for module in ["openvswitch"]:
-        if not is_module_loaded(module):
-            if not run_command(["modprobe", module], f"Loading kernel module '{module}'..."): return False
+        if not enable_kernel_module(module) : return False
 
     if host_default_gateway:
         if iface_exists(public_bridge):
@@ -159,18 +160,11 @@ def conf_ovn_bridges(config):
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)
 
-    exclude_patterns = {
-        "openvswitch",
-        "br-shares",
-    }
-
-    interfaces_dir = "/etc/network/interfaces.d/"
-    backup_dir = "/root/net-backup"
     os.makedirs(backup_dir, exist_ok=True)
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     for filename in os.listdir(interfaces_dir):
         full_path = os.path.join(interfaces_dir, filename)
-        if (full_path == INTERFACES_FILE or not os.path.isfile(full_path) or any(pattern in filename.lower() for pattern in exclude_patterns)):
+        if (full_path == INTERFACES_FILE or not os.path.isfile(full_path) or any(pattern in filename.lower() for pattern in ifaces_config_exclude_patterns)):
             continue
         backup_name = f"{filename}.{timestamp}"
         backup_path = os.path.join(backup_dir, backup_name)
@@ -247,21 +241,17 @@ def conf_ovn_controller(config):
 
     line_printed = False
 
-    if "geneve" in ovn_encap_type:
-        kernel_modules += ["vport_geneve", "geneve"]
+    for encap_type, modules in encap_modules.items():
+        if encap_type in ovn_encap_type:
+            kernel_modules += modules
 
-    for module in kernel_modules:
-        if not is_module_loaded(module):
-            if not line_printed:
-                print()
-                line_printed = True
+    if not line_printed:
+        print()
+        line_printed = True
 
-            if not run_command(["modprobe", module], f"Loading kernel module '{module}'...") : return False
+        if not enable_kernel_module(module_names=kernel_modules) : return False
 
-    modules_file = Path("/etc/modules-load.d/ovn-controller.conf")
-
-    modules_file.parent.mkdir(parents=True, exist_ok=True)
-    modules_file.write_text("\n".join(kernel_modules) + "\n")
+    write_permanent_modules_conf("/etc/modules-load.d/ovn-controller.conf", modules=kernel_modules)
 
     print()
 
@@ -560,37 +550,36 @@ def create_ovn_networks(config, env):
 
     routers_list = json.loads(os_run_output(["openstack", "router", "list", "-f", "json"], env=env))
 
-    if create_ovn_bridges:
-            
+    if create_ovn_bridges:    
         if provider_networks:
             print()
             
             if not create_custom_network_router(provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=None, tunnel_bridge=None, env=env) : return False
 
-        sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
+    sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
 
-        sg_demo_list = json.loads(os_run_output(["openstack", "security", "group", "list", "--project", "demo", "-f", "json"], env=env))
+    sg_demo_list = json.loads(os_run_output(["openstack", "security", "group", "list", "--project", "demo", "-f", "json"], env=env))
 
-        default_admin_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
-        default_demo_sg = next((sg for sg in sg_demo_list if sg["Name"] == "default"), None)
+    default_admin_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
+    default_demo_sg = next((sg for sg in sg_demo_list if sg["Name"] == "default"), None)
 
-        if not default_admin_sg:
-            raise RuntimeError("No security group named 'default' found for admin")
+    if not default_admin_sg:
+        raise RuntimeError("No security group named 'default' found for admin")
 
-        if not default_demo_sg:
-            raise RuntimeError("No security group named 'default' found for project 'demo'")
+    if not default_demo_sg:
+        raise RuntimeError("No security group named 'default' found for project 'demo'")
 
-        services_rules = get(config, "neutron.default_security_group.services", {})
+    services_rules = get(config, "neutron.default_security_group.services", {})
 
-        services_rules_remote_ip_prefix = get(config,"neutron.default_security_group.defaults.remote_ip_prefix")
+    services_rules_remote_ip_prefix = get(config,"neutron.default_security_group.defaults.remote_ip_prefix")
 
-        if services_rules:
-            for sg in (default_admin_sg, default_demo_sg):
-                sg_id = sg["ID"]
+    if services_rules:
+        for sg in (default_admin_sg, default_demo_sg):
+            sg_id = sg["ID"]
 
-                rules = json.loads(os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env=env))
+            rules = json.loads(os_run_output(["openstack", "security", "group", "rule", "list", sg_id, "-f", "json"], env=env))
 
-                if not add_rules_to_default_sg(sg_id=sg_id,create_bridges=create_ovn_bridges,rules_dict=services_rules, ip_prefix=services_rules_remote_ip_prefix, rules=rules, env=env): return False
+            if not add_rules_to_default_sg(sg_id=sg_id,create_bridges=create_ovn_bridges,rules_dict=services_rules, ip_prefix=services_rules_remote_ip_prefix, rules=rules, env=env): return False
 
     print()
 

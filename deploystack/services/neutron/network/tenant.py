@@ -9,13 +9,14 @@ OVERLAY_TYPES = ("geneve", "vxlan")
 VALID_TENANT_TYPES = ("geneve", "vxlan", "vlan", "flat")
 
 def get_tenant_types(config, default=""):
-
+    
     driver = get(config, "neutron.DRIVER").lower()
 
-    if driver == "ovn":
-        default = "geneve"
-    elif driver == "ovs":
-        default = "flat"
+    driver_defaults = {
+        "ovn": "geneve",
+        "ovs": "flat",
+    }
+    default = driver_defaults.get(driver, default)
 
     types = get(config, "neutron.tenant_networks.TYPES", None)
 
@@ -26,14 +27,7 @@ def get_tenant_types(config, default=""):
     if isinstance(types, str):
         types = [t.strip() for t in types.split(",") if t.strip()]
 
-    result = []
-
-    for t in types:
-        t = str(t).lower()
-        if t not in result:
-            result.append(t)
-
-    return result
+    return list(dict.fromkeys(str(t).lower() for t in types))
 
 def get_vlan_ranges(config):
     return get(config, "neutron.tenant_network.VLAN_RANGES", []) or []

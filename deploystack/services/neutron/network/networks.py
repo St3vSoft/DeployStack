@@ -83,7 +83,7 @@ def add_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: 
 
     return True
 
-def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: str, tunnel_bridge: str, line1: bool = False):
+def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: str, tunnel_bridge: str):
 
     for b in bridges:
         bridge = b.get("name")

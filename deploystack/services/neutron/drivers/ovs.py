@@ -11,18 +11,19 @@ from ....utils.core.commands import run_command, os_run_output, os_run, run_comm
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
-from ....utils.core.system_utils import nc_wait, iface_exists
+from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, enable_kernel_module
 from ....utils.core import colors
-from ....utils.core.system_utils import service_exists, is_debian, is_module_loaded
 from ....templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 from ....utils.network.net_utils import get_network_info
 from ....utils.config.helpers import parse_bool
-from ..utils import enable_ipv4_forwarding
+from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules
 
 from ..network.security_group import add_rules_to_default_sg
 
 from ..network.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
 from ..network.routers import create_custom_network_router
+
+from ..network.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
 
 neutron_conf="/etc/neutron/neutron.conf"
 conf_ml2="/etc/neutron/plugins/ml2/ml2_conf.ini"
@@ -30,6 +31,9 @@ conf_openvswitch="/etc/neutron/plugins/ml2/openvswitch_agent.ini"
 conf_dhcp_agent="/etc/neutron/dhcp_agent.ini"
 conf_l3_agent="/etc/neutron/l3_agent.ini"
 conf_nova="/etc/nova/nova.conf"
+
+interfaces_dir = "/etc/network/interfaces.d/"
+backup_dir = "/root/net-backup"
 
 def install_pkgs():
 
@@ -77,13 +81,11 @@ def conf_ovs_bridges(config):
 
     is_dual_nic = (public_iface != management_iface)
 
-    line1 = False
     custom_bridges = bool(bridges)
 
     is_l3_bridge: bool = mgmt_gateway is not None
 
     if host_default_gateway:
-    
         if iface_exists(public_bridge):
             public_bridge_info = get_network_info(interface_name=public_bridge)
             public_iface_ip = public_bridge_info["ip"]
@@ -102,17 +104,9 @@ def conf_ovs_bridges(config):
                 run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
-    ok, line1 = clean_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=tenant_bridge, tunnel_bridge=tunnel_bridge, line1=line1)
-
-    if not ok:
-        return False
+    if not clean_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=tenant_bridge, tunnel_bridge=tunnel_bridge) : return False
     
-    for bridge, port in [(public_bridge, public_iface)] + ([(tenant_bridge, None)] if tenant_network_type != "vxlan" else []):
-
-        if iface_exists(bridge):
-            if port:
-                run_command_sync(["ovs-vsctl", "--if-exists", "del-port", bridge, port])
-            run_command_sync(["ovs-vsctl", "--if-exists", "del-br", bridge])
+    run_command_sync(["ovs-vsctl", "--if-exists", "del-br", bridge])
 
     print()
 
@@ -176,16 +170,11 @@ def conf_ovs_bridges(config):
     )
 
     if custom_bridges:
-        bridges_interfaces_content = append_custom_bridges_ifaces_config(
-            bridges,
-            bridges_interfaces_content
-        )
+        bridges_interfaces_content = append_custom_bridges_ifaces_config(bridges, bridges_interfaces_content)
 
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)
 
-    interfaces_dir = "/etc/network/interfaces.d/"
-    backup_dir = "/root/net-backup"
     os.makedirs(backup_dir, exist_ok=True)
 
     timestamp = time.strftime("%Y%m%d-%H%M%S")
@@ -209,19 +198,13 @@ def conf_ovs_bridges(config):
         bridges_to_add.append((tunnel_bridge, None))
 
     for bridge, port in bridges_to_add:
-        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {bridge}"):
-            return False
-        if port:
-            if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {bridge}"):
-                return False
-            
-            print()
+        if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge, "--", "--may-exist", "add-port", public_bridge, public_iface], f"Adding bridge {public_bridge} with port {public_iface}"): return False
+        
+        print()
 
-            if not run_command(["ip", "link", "set", port, "up"], f"Bringing interface {port} up"):
-                return False
+        if not run_command(["ip", "link", "set", port, "up"], f"Bringing interface {port} up"): return False
 
-        if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing bridge {bridge} up"):
-            return False
+        if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing bridge {bridge} up"): return False
     
     if custom_bridges:
         print()
@@ -251,15 +234,19 @@ def conf_neutron_ovs(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    tenant_network_type = (get(config, "neutron.tenant_network.TYPE") or "").lower()
-    tenant_network_vni_range = (get(config, "neutron.tenant_network.VNI_RANGE") or "")
+    tenant_network_vni_range = get(config, "neutron.tenant_network. VNI_RANGE", "1:1000")
 
     provider_networks = get(config, "neutron.provider_networks", [])
 
-    use_tenant_flat_bridge = tenant_network_type != "vxlan"
+    tenant_types = get_tenant_types(config)
 
-    flat_networks  = [n["name"] for n in provider_networks if n["type"] == "flat"]
-    vlan_networks  = [n["name"] for n in provider_networks if n["type"] == "vlan"]
+    flat_networks = [n.get("physnet") or n["name"] for n in provider_networks if n["type"] == "flat"]
+    vlan_networks = [n for n in provider_networks if n["type"] == "vlan"]
+
+    use_tenant_flat_bridge = any(network_type != "vxlan" for network_type in tenant_types)
+
+    flat_networks_str = ",".join(flat_networks)
+    vlan_networks_str = ",".join(f'{n["name"]}:{n["vlan_range"]}' for n in vlan_networks)
 
     bridge_mappings: str = ""
 
@@ -281,23 +268,14 @@ def conf_neutron_ovs(config):
 
     create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes" 
 
-    type_drivers = []
-
-    if tenant_network_type:
-        type_drivers.append(tenant_network_type)
-
-    for driver in ("flat", "vlan", "vxlan", "local"):
-        if driver not in type_drivers:
-            type_drivers.append(driver)
-
-    set_conf_option(conf_ml2, "ml2", "type_drivers", ",".join(type_drivers))
+    set_conf_option(conf_ml2, "ml2", "type_drivers", build_type_drivers(tenant_types))
     
     if create_ovs_bridges:
 
         if use_tenant_flat_bridge:
             set_conf_option(conf_ml2, "ml2", "tenant_network_types", "local")
         else:
-            set_conf_option(conf_ml2, "ml2", "tenant_network_types", tenant_network_type)
+            set_conf_option(conf_ml2, "ml2", "tenant_network_types", ",".join(tenant_types))
 
         set_conf_option(conf_ml2, "ml2", "extension_drivers", "port_security")
 
@@ -310,7 +288,7 @@ def conf_neutron_ovs(config):
         set_conf_option(conf_openvswitch, "ovs", "bridge_mappings", bridge_mappings)
 
         if not use_tenant_flat_bridge:
-            
+    
             tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE").lower()
 
             set_conf_option(conf_ml2, "ml2_type_vxlan", "vni_ranges", tenant_network_vni_range)
@@ -345,19 +323,27 @@ def conf_neutron_ovs(config):
 
 def finalize(config):
 
+    udev_rule = 'SUBSYSTEM=="unix", ACTION=="add", DEVPATH=="/var/run/openvswitch/db.sock", MODE="0666"\n'
+
     ip_address = get(config, "network.HOST_IP")
 
-    if not is_module_loaded("openvswitch"):
+    tenant_types = get_tenant_types(config)
+
+    kernel_modules = ["openvswitch"]
+
+    line_printed = False
+
+    for encap_type, modules in encap_modules.items():
+        if encap_type in tenant_types:
+            kernel_modules += modules
+
+    if not line_printed:
         print()
+        line_printed = True
 
-        if not run_command(["modprobe", "openvswitch"], f"Loading kernel module 'openvswitch'...") : return False
+        if not enable_kernel_module(module_names=kernel_modules) : return False
 
-    modules_file = Path("/etc/modules-load.d/openvswitch.conf")
-    
-    modules_file.parent.mkdir(parents=True, exist_ok=True)
-    modules_file.write_text("openvswitch\n")
-
-    udev_rule = 'SUBSYSTEM=="unix", ACTION=="add", DEVPATH=="/var/run/openvswitch/db.sock", MODE="0666"\n'
+    write_permanent_modules_conf("/etc/modules-load.d/openvswitch.conf", modules=["openvswitch"])
 
     with open("/etc/udev/rules.d/99-openvswitch.rules", "w") as f:
         f.write(udev_rule)
@@ -417,7 +403,7 @@ def create_ovs_networks(config, env):
 
     create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes" 
 
-    tenant_network_type = get(config, "neutron.tenant_network.TYPE")
+    tenant_types = get_tenant_types(config)
 
     dns_args = []
     for dns in public_subnet_dns_servers:
@@ -454,14 +440,8 @@ def create_ovs_networks(config, env):
 
     if create_ovs_bridges:
         create_public_network_cmd = create_flat_public_network_cmd
-
-        if tenant_network_type == "vxlan":
-            create_internal_network_cmd = create_vxlan_internal_network_cmd
-        else:
-            create_internal_network_cmd = create_flat_internal_network_cmd      
     else:
         create_public_network_cmd = ["openstack", "network", "create", "--share", public_network["name"]] 
-        create_internal_network_cmd = ["openstack", "network", "create", "internal"]
 
     public_network_exists = any(net.get("Name") == public_network["name"] for net in networks_list)
 
@@ -484,101 +464,50 @@ def create_ovs_networks(config, env):
             ) : return False
     else:
         print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
-    
-    print()
 
-    internal_network_exists = any(net.get("Name") == "internal" for net in networks_list)
-
-    if not internal_network_exists:
-        if not os_run(
-            create_internal_network_cmd,
-            "Creating internal network...", env=env
-            ) : return False
-
-        internal_subnet_exists = any(sub.get("Name") == "internal_subnet" for sub in subnets_list)
-        if not internal_subnet_exists:
-            if not os_run(
-                ["openstack", "subnet", "create", "--network", "internal",
-                "--subnet-range", "10.0.0.0/24",
-                "--gateway", "10.0.0.1",
-                "--allocation-pool", "start=10.0.0.10,end=10.0.0.200",
-                "--dns-nameserver", "8.8.8.8",
-                "internal_subnet"],
-                "Creating internal subnet...", env=env
-                ) : return False
-    else:
-        print(f"{colors.YELLOW}Internal network already exists, skipping creation.{colors.RESET}")
-    
     if provider_networks:
         if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=internal_bridge, tunnel_bridge=tunnel_bridge, env=env) :
             return False
 
-    print()
-
-    router_exists = any(r.get("Name") == "internal_router" for r in routers_list)
-    if not router_exists:
-        if not os_run(
-            ["openstack", "router", "create", "internal_router"],
-            "Creating internal router...", env=env
-        ): return False
-    else:
-        print(f"{colors.YELLOW}Internal Router already exists, skipping creation.{colors.RESET}")
-
-    if create_ovs_bridges:
-        external_gateways_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "external_gateway_info"], env=env))
-        interfaces_info_list = json.loads(os_run_output(["openstack", "router", "show", "internal_router", "-f", "json", "-c", "interfaces_info"], env=env))
-
-        if not external_gateways_list.get("external_gateway_info"):
-            if not os_run(
-                ["openstack", "router", "set", "internal_router", "--external-gateway", public_network["name"]],
-                "Setting external gateway for internal router...", env=env
-            ):
-                return False
-
-        if not interfaces_info_list.get("interfaces_info"):
-            if not os_run(
-                ["openstack", "router", "add", "subnet", "internal_router", "internal_subnet"],
-                "Adding internal subnet to router...", env=env
-            ):
-                return False    
+    if not create_tenant_networks(config, networks_list, subnets_list, routers_list, public_network_name=public_network["name"], connect_routers=create_ovs_bridges, legacy_type=tenant_types, env=env) : return False
             
-        if provider_networks:
-            if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, tenant_bridge=internal_bridge, public_bridge=public_bridge, tunnel_bridge=tunnel_bridge, env=env) : return False
-    
-        sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
-        sg_demo_list = json.loads(os_run_output([ "openstack", "security", "group", "list", "--project", "demo", "-f", "json"], env=env))
+    if provider_networks:
+        if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, tenant_bridge=internal_bridge, public_bridge=public_bridge, tunnel_bridge=tunnel_bridge, env=env) : return False
 
-        default_admin_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
-        default_demo_sg = next((sg for sg in sg_demo_list if sg["Name"] == "default"), None)
+    sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
+    sg_demo_list = json.loads(os_run_output([ "openstack", "security", "group", "list", "--project", "demo", "-f", "json"], env=env))
 
-        if not default_admin_sg:
-            raise RuntimeError("No security group named 'default' found for admin")
+    default_admin_sg = next((sg for sg in sg_list if sg["Name"] == "default"), None)
+    default_demo_sg = next((sg for sg in sg_demo_list if sg["Name"] == "default"), None)
 
-        if not default_demo_sg:
-            raise RuntimeError("No security group named 'default' found for project 'demo'")
+    if not default_admin_sg:
+        raise RuntimeError("No security group named 'default' found for admin")
 
-        services_rules = get(config, "neutron.default_security_group.services", {})
+    if not default_demo_sg:
+        raise RuntimeError("No security group named 'default' found for project 'demo'")
 
-        services_rules_remote_ip_prefix = get(config,"neutron.default_security_group.defaults.remote_ip_prefix")
+    services_rules = get(config, "neutron.default_security_group.services", {})
 
-        if services_rules:
-            print()
+    services_rules_remote_ip_prefix = get(config,"neutron.default_security_group.defaults.remote_ip_prefix")
 
-            for sg in (default_admin_sg, default_demo_sg):
-                sg_id = sg["ID"]
+    if services_rules:
+        print()
 
-                rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id,  "-f", "json"], env=env)
+        for sg in (default_admin_sg, default_demo_sg):
+            sg_id = sg["ID"]
 
-                rules = json.loads(rules_json)
+            rules_json = os_run_output(["openstack", "security", "group", "rule", "list", sg_id,  "-f", "json"], env=env)
 
-                if not add_rules_to_default_sg(
-                    create_bridges=create_ovs_bridges,
-                    rules_dict=services_rules,
-                    ip_prefix=services_rules_remote_ip_prefix,
-                    sg_id=sg_id,
-                    rules=rules,
-                    env=env
-                ): return False
+            rules = json.loads(rules_json)
+
+            if not add_rules_to_default_sg(
+                create_bridges=create_ovs_bridges,
+                rules_dict=services_rules,
+                ip_prefix=services_rules_remote_ip_prefix,
+                sg_id=sg_id,
+                rules=rules,
+                env=env
+            ): return False
 
     return True
 

@@ -16,6 +16,8 @@ from time import sleep, time
 from ...utils.core import colors
 from ...utils.config.parser import get
 
+from ...utils.core.commands import run_command
+
 VIRTUAL_FILESYSTEMS = {
     "devtmpfs", "tmpfs", "proc", "sysfs", "overlay", "squashfs",
     "cgroup", "cgroup2", "devpts", "mqueue", "debugfs", "tracefs",
@@ -244,6 +246,18 @@ def is_module_loaded(module_name):
             for line in f
         )
 
+def enable_kernel_module(module_names: list[str]) -> bool:
+    try:
+        for module_name in module_names:
+            if not is_module_loaded(module_name):
+                if not run_command(["modprobe", module_name], f"Enabling '{module_name}' kernel module... ") : return False
+
+        return True
+    except subprocess.CalledProcessError:
+        return False
+    except:
+        return False
+
 def service_exists(service_name):
     result = subprocess.run(["systemctl", "list-unit-files", service_name], capture_output=True, text=True)
     return service_name in result.stdout
@@ -276,19 +290,17 @@ def has_hw_virtualization():
         return False
 
 def get_free_loops(count=1):
-    result = subprocess.run(
-        ["losetup", "-J"],
-        capture_output=True,
-        text=True,
-        check=True
-    )
+
+    result = subprocess.run(["losetup", "-J"], capture_output=True, text=True, check=True)
     
     used = set()
+
     for dev in json.loads(result.stdout).get("loopdevices", []):
         used.add(dev["name"])
 
     loops = []
     i = 0
+
     while len(loops) < count:
         candidate = f"/dev/loop{i}"
         if candidate not in used:
