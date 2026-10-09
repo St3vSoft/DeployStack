@@ -155,13 +155,18 @@ def conf_ovn_bridges(config):
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)
 
+    exclude_patterns = {
+        "openvswitch",
+        "br-shares",
+    }
+
     interfaces_dir = "/etc/network/interfaces.d/"
     backup_dir = "/root/net-backup"
     os.makedirs(backup_dir, exist_ok=True)
     timestamp = time.strftime("%Y%m%d-%H%M%S")
     for filename in os.listdir(interfaces_dir):
         full_path = os.path.join(interfaces_dir, filename)
-        if full_path == INTERFACES_FILE or not os.path.isfile(full_path):
+        if (full_path == INTERFACES_FILE or not os.path.isfile(full_path) or any(pattern in filename.lower() for pattern in exclude_patterns)):
             continue
         backup_name = f"{filename}.{timestamp}"
         backup_path = os.path.join(backup_dir, backup_name)
@@ -576,8 +581,6 @@ def create_ovn_networks(config, env):
         services_rules_remote_ip_prefix = get(config,"neutron.default_security_group.defaults.remote_ip_prefix")
 
         if services_rules:
-            print()
-
             for sg in (default_admin_sg, default_demo_sg):
                 sg_id = sg["ID"]
 
