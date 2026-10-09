@@ -11,12 +11,12 @@ from ....utils.core.commands import run_command, os_run_output, os_run, run_comm
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
-from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, enable_kernel_module
+from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian
 from ....utils.core import colors
 from ....templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 from ....utils.network.net_utils import get_network_info
 from ....utils.config.helpers import parse_bool
-from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules
+from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, enable_kernel_module
 
 from ..network.security_group import add_rules_to_default_sg
 
@@ -248,23 +248,10 @@ def conf_neutron_ovs(config):
     flat_networks_str = ",".join(flat_networks)
     vlan_networks_str = ",".join(f'{n["name"]}:{n["vlan_range"]}' for n in vlan_networks)
 
-    bridge_mappings: str = ""
-
-    if use_tenant_flat_bridge:
-        bridge_mappings = ",".join(
-            f'{n["name"]}:{n["bridge"]}'
-            for n in provider_networks
-            if n.get("name") and n.get("bridge")
-        )
-    else:
-        for n in provider_networks:
-            if n.get("name") and n.get("bridge"):
-                bridge_mappings = f'{n["name"]}:{n["bridge"]}'
-                break 
-
     flat_networks_str = ",".join(flat_networks)
 
     vlan_networks_str = ",".join(vlan_networks)
+    vlan_ranges_str = build_network_vlan_ranges(config)
 
     create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes" 
 
@@ -283,9 +270,9 @@ def conf_neutron_ovs(config):
             set_conf_option(conf_ml2, "ml2_type_flat", "flat_networks", flat_networks_str)
 
         if vlan_networks_str:
-            set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_networks_str)
+            set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_ranges_str)
 
-        set_conf_option(conf_openvswitch, "ovs", "bridge_mappings", bridge_mappings)
+        set_conf_option(conf_openvswitch, "ovs", "bridge_mappings", build_bridge_mappings(config))
 
         if not use_tenant_flat_bridge:
     
