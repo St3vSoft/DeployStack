@@ -306,7 +306,7 @@ def create_shares_network(config, env):
         if not shares_router_subnet_attached:
             print()
 
-            if not os_run(["openstack", "router", "add", "subnet", "internal_router", shares_subnet_id], "Adding shares subnet to internal router...", env=env): return False
+            if not os_run(["openstack", "router", "add", "subnet", "internal-router", shares_subnet_id], "Adding shares subnet to internal router...", env=env): return False
 
     return True
 
