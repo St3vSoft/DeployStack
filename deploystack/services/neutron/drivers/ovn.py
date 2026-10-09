@@ -75,6 +75,10 @@ def conf_ovn_bridges(config):
 
     custom_bridges = bool(bridges)
 
+    for module in ["openvswitch"]:
+        if not is_module_loaded(module):
+            if not run_command(["modprobe", module], f"Loading kernel module '{module}'..."): return False
+
     if host_default_gateway:
         if iface_exists(public_bridge):
             public_bridge_info = get_network_info(interface_name=public_bridge)
