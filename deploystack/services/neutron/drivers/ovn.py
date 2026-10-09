@@ -238,6 +238,8 @@ def conf_ovn_controller(config):
 
     line_printed = False
 
+    kernel_modules = []
+
     for encap_type, modules in encap_modules.items():
         if encap_type in ovn_encap_type:
             kernel_modules += modules
