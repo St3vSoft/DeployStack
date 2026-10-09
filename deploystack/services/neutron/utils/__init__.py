@@ -1,8 +1,10 @@
 
 import os
+import subprocess
 
 from pathlib import Path
 
+from ....utils.core.system_utils import is_module_loaded
 from ....utils.core.commands import run_command
 
 encap_modules = {
@@ -14,6 +16,18 @@ ifaces_config_exclude_patterns = {
     "openvswitch",
     "br-shares",
 }
+
+def enable_kernel_module(module_names: list[str]) -> bool:
+    try:
+        for module_name in module_names:
+            if not is_module_loaded(module_name):
+                if not run_command(["modprobe", module_name], f"Enabling '{module_name}' kernel module... ") : return False
+
+        return True
+    except subprocess.CalledProcessError:
+        return False
+    except:
+        return False
 
 def write_permanent_modules_conf(file_path: str, modules: list[str]):
     modules_file = Path(file_path)

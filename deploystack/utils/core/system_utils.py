@@ -16,8 +16,6 @@ from time import sleep, time
 from ...utils.core import colors
 from ...utils.config.parser import get
 
-from ...utils.core.commands import run_command
-
 VIRTUAL_FILESYSTEMS = {
     "devtmpfs", "tmpfs", "proc", "sysfs", "overlay", "squashfs",
     "cgroup", "cgroup2", "devpts", "mqueue", "debugfs", "tracefs",
@@ -250,18 +248,6 @@ def is_module_loaded(module_name):
             line.split()[0] == module_name
             for line in f
         )
-
-def enable_kernel_module(module_names: list[str]) -> bool:
-    try:
-        for module_name in module_names:
-            if not is_module_loaded(module_name):
-                if not run_command(["modprobe", module_name], f"Enabling '{module_name}' kernel module... ") : return False
-
-        return True
-    except subprocess.CalledProcessError:
-        return False
-    except:
-        return False
 
 def service_exists(service_name):
     result = subprocess.run(["systemctl", "list-unit-files", service_name], capture_output=True, text=True)
