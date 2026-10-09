@@ -166,14 +166,19 @@ def is_package_installed(package_name: str | list[str]) -> bool:
 
     except FileNotFoundError:
         return False
-    
+
+def get_ubuntu_release() -> str | None:
+    info = platform.freedesktop_os_release()
+
+    if info.get("ID") == "ubuntu":
+        return info.get("VERSION_ID")
+
+    return None
+
 def is_ubuntu_release(target_version: str) -> bool:
     info = platform.freedesktop_os_release()
 
-    return (
-        info.get("ID") == "ubuntu"
-        and info.get("VERSION_ID") == target_version
-    )
+    return ( info.get("ID") == "ubuntu" and info.get("VERSION_ID") == target_version)
 
 def is_debian():
     try:

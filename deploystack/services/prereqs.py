@@ -7,7 +7,7 @@ from pathlib import Path
 from ..utils.core.commands import run_command, run_command_output
 from ..utils.apt.apt import apt_install, apt_update
 from ..utils.config.parser import get
-from ..utils.core.system_utils import nc_wait, is_ubuntu_release, is_package_installed
+from ..utils.core.system_utils import nc_wait, is_ubuntu_release, is_package_installed, is_debian, get_ubuntu_release
 from ..utils.core import colors
 
 from ..utils.config.setter import set_conf_option, toml_string
@@ -15,39 +15,13 @@ from ..utils.config.setter import set_conf_option, toml_string
 from ..utils.lvm.loopback import set_lvm_filter
 from ..utils.config.helpers import parse_bool
 
-from .utils import ensure_os_release
+from .utils import ensure_os_release, UBUNTU_CLOUD_ARCHIVE, UBUNTU_NATIVE_OPENSTACK
 
 from .patches.openstackclient import create_venv_and_install_openstackclient
 
 deploystack_loopback_conf_file = "/etc/deploystack-loopback.conf"
 
-UBUNTU_CLOUD_ARCHIVE = {
-    ("focal",   "yoga"):      "focal-updates/yoga",
-    ("focal",   "zed"):       "focal-updates/zed",
-    ("jammy",   "yoga"):      "jammy-updates/yoga",
-    ("jammy",   "zed"):       "jammy-updates/zed",
-    ("jammy",   "antelope"):  "jammy-updates/antelope",
-    ("jammy",   "bobcat"):    "jammy-updates/bobcat",
-    ("jammy",   "caracal"):   "jammy-updates/caracal",
-    ("noble",   "dalmatian"): "noble-updates/dalmatian",
-    ("noble",   "epoxy"):     "noble-updates/epoxy",
-    ("noble",   "flamingo"):  "noble-updates/flamingo",
-    ("noble",   "gazpacho"):  "noble-updates/gazpacho"
-}
-
-UBUNTU_NATIVE_OPENSTACK = {
-    "focal":    "ussuri",
-    "jammy":    "yoga",
-    "lunar":    "antelope",    # 23.04
-    "mantic":   "bobcat",      # 23.10
-    "noble":    "caracal",     # 24.04
-    "oracular": "dalmatian",   # 24.10
-    "plucky":   "epoxy",       # 25.04
-    "questing": "epoxy",       # 25.10
-    "resolute": "gazpacho",    # 26.04
-}
-
-def update_etc_hosts(ip_address, domain):
+def _update_etc_hosts(ip_address, domain):
     hosts_path = "/etc/hosts"
     
     short_name = domain.split('.')[0]
@@ -85,7 +59,7 @@ def set_hostname(config):
 
     if not run_command(["hostnamectl", "set-hostname", host_domain], f"Setting Hostname to {host_domain}...") : return False
 
-    if not update_etc_hosts(ip_address, host_domain) : return False
+    if not _update_etc_hosts(ip_address, host_domain) : return False
 
     print()
 
@@ -93,10 +67,7 @@ def set_hostname(config):
 
 def _add_uca_repo(release: str):
     
-    result = run_command(
-        ["add-apt-repository", "-y", f"cloud-archive:{release}"],
-        f"Adding Ubuntu Cloud Archive repository for {release}..."
-    )
+    result = run_command(["add-apt-repository", "-y", f"cloud-archive:{release}"], f"Adding Ubuntu Cloud Archive repository for {release}...")
     
     if not result:
         return False
@@ -104,6 +75,7 @@ def _add_uca_repo(release: str):
     return True
 
 def _setup_debian_repo(distro_codename: str, release: str):
+
     dpkg_conf = "/etc/apt/apt.conf.d/90force-conf"
     repo_file = "/etc/apt/sources.list.d/debian-backports.list"
     repo_line = f"deb http://deb.debian.org/debian {distro_codename}-backports main"
@@ -143,32 +115,6 @@ def _setup_debian_repo(distro_codename: str, release: str):
     if not run_command(["extrepo", "enable", f"openstack_{release}"], f"Enabling OpenStack {release} repo...") : return False
 
     return True
-
-UBUNTU_CLOUD_ARCHIVE = {
-    ("focal",   "wallaby"),
-    ("focal",   "xena"),
-    ("focal",   "yoga"),
-    ("jammy",   "zed"),
-    ("jammy",   "antelope"),
-    ("jammy",   "bobcat"),
-    ("jammy",   "caracal"),
-    ("noble",   "dalmatian"),
-    ("noble",   "epoxy"),
-    ("noble",   "flamingo"),
-    ("noble",   "gazpacho")
-}
-
-UBUNTU_NATIVE_OPENSTACK = {
-    "focal":    "ussuri",
-    "jammy":    "yoga",
-    "lunar":    "antelope",
-    "mantic":   "bobcat",
-    "noble":    "caracal",
-    "oracular": "dalmatian",
-    "plucky":   "epoxy",
-    "questing": "epoxy",
-    "resolute": "gazpacho",
-}
 
 def set_openstack_release(config):
     release = get(config, "openstack.OPENSTACK_RELEASE", "caracal").lower()
@@ -219,19 +165,13 @@ def _print_supported_combinations(current_codename: str, native: str):
     if native:
         print(f"  Ubuntu {current_codename} -> {native} (native, no UCA needed)")
 
-def create_loopback_config(config):
+def _write_loopback_config(config):
 
-    install_manila = parse_bool(
-        get(config, "optional_services.INSTALL_MANILA", False)
-    )
+    install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA", False))
 
-    install_cinder = parse_bool(
-        get(config, "optional_services.INSTALL_CINDER", False)
-    )
+    install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
 
-    is_lvm_manila_backend_enabled = (
-        get(config, "manila.BACKEND") == "lvm"
-    )
+    is_lvm_manila_backend_enabled = (get(config, "manila.BACKEND") == "lvm")
 
     source = Path(sys.prefix) / "bin" / "deploystack_loopback"
     target = Path("/usr/bin/deploystack_loopback")
@@ -253,56 +193,24 @@ def create_loopback_config(config):
             
             vg = get(config, f"cinder.backends.{backend}.VOLUME_GROUP")
 
-            lvm_image_path = get(
-                config,
-                f"cinder.backends.{backend}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",
-            )
+            lvm_image_path = get(config, f"cinder.backends.{backend}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",)
 
-            physical_volume = get(
-                config,
-                f"cinder.backends.{backend}.PHYSICAL_VOLUME"
-            )
+            physical_volume = get(config, f"cinder.backends.{backend}.PHYSICAL_VOLUME")
 
             if physical_volume:
                 continue
 
-            resources.append(
-                (
-                    f"cinder.{backend}",
-                    lvm_image_path,
-                    vg,
-                    f"/var/lib/deploystack/{backend}_loop_dev",
-                )
-            )
+            resources.append((f"cinder.{backend}", lvm_image_path, vg, f"/var/lib/deploystack/{backend}_loop_dev"))
 
     if install_manila and is_lvm_manila_backend_enabled:
-        vg = get(
-            config,
-            "manila.backends.lvm.storage.SHARE_VOLUME_GROUP",
-        )
-        lvm_image_path = get(
-            config,
-            "manila.backends.lvm.storage.MANILA_LVM_IMAGE_FILE_PATH",
-        )
 
-        set_conf_option(
-            deploystack_loopback_conf_file,
-            "manila.lvm-loopback",
-            "image",
-            toml_string(lvm_image_path),
-        )
-        set_conf_option(
-            deploystack_loopback_conf_file,
-            "manila.lvm-loopback",
-            "vg",
-            toml_string(vg),
-        )
-        set_conf_option(
-            deploystack_loopback_conf_file,
-            "manila.lvm-loopback",
-            "state_file",
-            toml_string("/var/lib/deploystack/manila_loop_dev"),
-        )
+        vg = get(config, "manila.backends.lvm.storage.SHARE_VOLUME_GROUP")
+
+        lvm_image_path = get(config, "manila.backends.lvm.storage.MANILA_LVM_IMAGE_FILE_PATH")
+
+        set_conf_option(deploystack_loopback_conf_file, "manila.lvm-loopback", "image", toml_string(lvm_image_path))
+        set_conf_option(deploystack_loopback_conf_file, "manila.lvm-loopback", "vg", toml_string(vg))
+        set_conf_option(deploystack_loopback_conf_file, "manila.lvm-loopback", "state_file", toml_string("/var/lib/deploystack/manila_loop_dev"))
 
     if not resources:
         return
@@ -312,35 +220,13 @@ def create_loopback_config(config):
     if not os.path.exists(deploystack_loopback_conf_file):
         Path(deploystack_loopback_conf_file).touch()
 
-    set_conf_option(
-        deploystack_loopback_conf_file,
-        "lvm",
-        "config",
-        toml_string("/etc/lvm/lvm.conf"),
-    )
+    set_conf_option(deploystack_loopback_conf_file, "lvm", "config", toml_string("/etc/lvm/lvm.conf"))
 
     for resource, image_path, vg, state_file in resources:
 
-        set_conf_option(
-            deploystack_loopback_conf_file,
-            resource,
-            "image",
-            toml_string(image_path),
-        )
-
-        set_conf_option(
-            deploystack_loopback_conf_file,
-            resource,
-            "vg",
-            toml_string(vg),
-        )
-
-        set_conf_option(
-            deploystack_loopback_conf_file,
-            resource,
-            "state_file",
-            toml_string(state_file),
-        )
+        set_conf_option(deploystack_loopback_conf_file, resource, "image", toml_string(image_path))
+        set_conf_option(deploystack_loopback_conf_file, resource, "vg", toml_string(vg))
+        set_conf_option(deploystack_loopback_conf_file, resource, "state_file", toml_string(state_file))
 
 def install_pkgs(config):
 
@@ -374,7 +260,7 @@ def install_pkgs(config):
 
         devices.append(manila_pv or manila_loop_dev)
 
-    if is_ubuntu_release("24.04"):
+    if not is_ubuntu_release("26.04") and not is_debian():
         os_release = None
 
         if ensure_os_release(config, "gazpacho"):
@@ -384,15 +270,14 @@ def install_pkgs(config):
 
         if os_release:
             print(
-                f"{colors.YELLOW}Warning: Ubuntu 24.04 {os_release.capitalize()} has been detected; "
+                f"{colors.YELLOW}Warning: Ubuntu {get_ubuntu_release()} {os_release.capitalize()} has been detected; "
                 f"OpenStack Client will be installed in an isolated venv to avoid "
                 f"conflicts with system packages.{colors.RESET}\n"
             )
 
             prereqs_pkgs.remove("python3-openstackclient")
 
-            if not create_venv_and_install_openstackclient(os_release):
-                return False
+            if not create_venv_and_install_openstackclient(os_release): return False
 
             print()
         
@@ -443,7 +328,7 @@ def run_setup_prereqs(config):
 
     if not set_openstack_release(config): return False
 
-    create_loopback_config(config)
+    _write_loopback_config(config)
 
     if not install_pkgs(config): return False
 

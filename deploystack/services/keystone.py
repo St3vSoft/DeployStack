@@ -18,7 +18,7 @@ from .utils import get_base_host, ensure_os_release
 
 keystone_conf = "/etc/keystone/keystone.conf"
 
-def get_endpoints(env=None):
+def _get_endpoints(env=None):
     raw = run_command_output(["openstack", "endpoint", "list", "-f", "json"], env=env)
 
     if raw is False:
@@ -26,22 +26,18 @@ def get_endpoints(env=None):
     
     return json.loads(raw or "[]")
 
-def get_role_assignments(env=None):
-    raw = run_command_output(
-        ["openstack", "role", "assignment", "list", "--names", "-f", "json"],
-        env=env
-    )
+def _get_role_assignments(env=None):
+
+    raw = run_command_output(["openstack", "role", "assignment", "list", "--names", "-f", "json"], env=env)
 
     if raw is False:
         return False
 
     return json.loads(raw or "[]")
 
-def get_services(env=None):
-    raw = run_command_output(
-        ["openstack", "service", "list", "-f", "json"],
-        env=env
-    )
+def _get_services(env=None):
+    
+    raw = run_command_output(["openstack", "service", "list", "-f", "json"], env=env)
 
     if raw is False:
             return False
@@ -138,7 +134,7 @@ def create_projects_and_demo_user(config, env):
 
     demo_password = get(config, "passwords.DEMO_PASSWORD")
 
-    assignments = get_role_assignments(env)
+    assignments = _get_role_assignments(env)
 
     if assignments is False:
         return False
@@ -182,8 +178,8 @@ def create_services_users(config, env):
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER"), False)
     install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA"), False)
 
-    services = get_services(env)
-    assignments = get_role_assignments(env)
+    services = _get_services(env)
+    assignments = _get_role_assignments(env)
 
     if services is False or assignments is False:
         return False
@@ -291,7 +287,7 @@ def create_services_endpoints(config, env):
     nova_url = f"http://{get_base_host(config)}:8774/v2.1"
     neutron_url = f"http://{get_base_host(config)}:9696"
 
-    endpoints = get_endpoints(env=env)
+    endpoints = _get_endpoints(env=env)
 
     if endpoints is False:
         return False

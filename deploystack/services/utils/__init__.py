@@ -4,6 +4,32 @@ from ...utils.core.commands import run_command_output
 from ...utils.core.system_utils import is_ubuntu_release
 from ...utils.config.parser import get
 
+UBUNTU_CLOUD_ARCHIVE = {
+    ("focal",   "wallaby"),
+    ("focal",   "xena"),
+    ("focal",   "yoga"),
+    ("jammy",   "zed"),
+    ("jammy",   "antelope"),
+    ("jammy",   "bobcat"),
+    ("jammy",   "caracal"),
+    ("noble",   "dalmatian"),
+    ("noble",   "epoxy"),
+    ("noble",   "flamingo"),
+    ("noble",   "gazpacho")
+}
+
+UBUNTU_NATIVE_OPENSTACK = {
+    "focal":    "ussuri",
+    "jammy":    "yoga",
+    "lunar":    "antelope",
+    "mantic":   "bobcat",
+    "noble":    "caracal",
+    "oracular": "dalmatian",
+    "plucky":   "epoxy",
+    "questing": "epoxy",
+    "resolute": "gazpacho",
+}
+
 DEFAULT_UBUNTU_OPENSTACK_RELEASES = {
     "20.04": "ussuri",
     "22.04": "yoga",
