@@ -77,8 +77,7 @@ def conf_ovn_bridges(config):
 
     custom_bridges = bool(bridges)
 
-    for module in ["openvswitch"]:
-        if not enable_kernel_module(module) : return False
+    if not enable_kernel_module(["openvswitch"]) : return False
 
     if host_default_gateway:
         if iface_exists(public_bridge):
@@ -236,8 +235,6 @@ def conf_ovn_controller(config):
     ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE")
     
     provider_networks = get(config, "neutron.provider_networks", [])
-
-    kernel_modules = ["openvswitch"]
 
     line_printed = False
 

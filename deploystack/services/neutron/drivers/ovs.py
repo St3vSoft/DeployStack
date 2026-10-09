@@ -316,7 +316,7 @@ def finalize(config):
 
     tenant_types = get_tenant_types(config)
 
-    kernel_modules = ["openvswitch"]
+    kernel_modules += ["openvswitch"]
 
     line_printed = False
 
