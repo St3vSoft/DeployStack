@@ -88,15 +88,12 @@ def conf_ovn_bridges(config):
             run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
-    if not clean_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=None, tunnel_bridge=None) :
-        return False
+    if not run_command_sync(["ovs-vsctl", "--timeout=30", "show"]): return False
+    if not run_command_sync(["systemctl", "start", "openvswitch-switch"]) : return False
 
-    for bridge, port in [(public_bridge, public_iface)]:
-        if iface_exists(bridge):
+    if not clean_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=None, tunnel_bridge=None) : return False
 
-            if port:
-                run_command_sync(["ovs-vsctl", "--if-exists", "del-port", bridge, port])
-            run_command_sync(["ovs-vsctl", "--if-exists", "del-br", bridge])
+    run_command_sync(["ovs-vsctl", "--if-exists", "del-br", public_bridge])
 
     print()
 
@@ -153,10 +150,7 @@ def conf_ovn_bridges(config):
     )
 
     if custom_bridges:
-        bridges_interfaces_content = append_custom_bridges_ifaces_config(
-            bridges,
-            bridges_interfaces_content
-        )
+        bridges_interfaces_content = append_custom_bridges_ifaces_config(bridges, bridges_interfaces_content)
         
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)
@@ -173,9 +167,7 @@ def conf_ovn_bridges(config):
         backup_path = os.path.join(backup_dir, backup_name)
         shutil.move(full_path, backup_path)
 
-    if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge], f"Adding bridge {public_bridge}"): return False
-    
-    if not run_command(["ovs-vsctl", "--may-exist", "add-port", public_bridge, public_iface], f"Adding port {public_iface} to {public_bridge}"): return False
+    if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge, "--", "--may-exists", "add-port", public_bridge], f"Adding bridge {public_bridge} with port {public_iface}"): return False
     
     if custom_bridges:
         if not add_custom_bridges(bridges=bridges, public_bridge=public_bridge, tunnel_bridge=None, internal_flat_bridge=None) : return False

@@ -79,8 +79,7 @@ def add_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: 
         if not bridge or not port:
             continue
 
-        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {bridge}"): return False
-        if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {bridge}"): return False        
+        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge, "--", "--may-exists", "add-port", port], f"Adding bridge {bridge} with {port} port"): return False
 
     return True
 
@@ -106,11 +105,10 @@ def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge
             run_command(["ip", "link", "set", port, "down"],
                         f"Bringing {port} down", ignore_errors=True)
 
+            run_command_sync(["ovs-vsctl", "--if-exists", "del-port", bridge, port], f"Deleting port {port} from {bridge}", ignore_errors=True)
             run_command_sync(["ovs-vsctl", "--if-exists", "del-br", bridge], f"Deleting bridge {bridge}", ignore_errors=True)
 
-            run_command_sync(["ovs-vsctl", "--if-exists", "del-port", bridge, port], f"Deleting port {port} from {bridge}", ignore_errors=True)
-
-    return True, line1
+    return True
 
 def create_custom_networks(
         networks_list: list,
