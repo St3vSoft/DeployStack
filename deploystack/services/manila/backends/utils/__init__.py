@@ -66,12 +66,7 @@ def wait_manila_share_agent(env, timeout=300, interval=5):
                 last_check = now
 
                 try:
-                    services = json.loads(
-                        os_run_output(
-                            ["openstack", "share", "service", "list", "-f", "json"],
-                            env=env
-                        ) or "[]"
-                    )
+                    services = json.loads(os_run_output(["openstack", "share", "service", "list", "-f", "json"], env=env ) or "[]")
 
                     for service in services:
                         if (
@@ -118,11 +113,7 @@ def wait_share_available(share_name, env, timeout=600, interval=5):
 
                 try:
                     share_info = json.loads(
-                        os_run_output(
-                            ["openstack", "share", "show", share_name, "-f", "json"],
-                            env=env
-                        ) or "{}"
-                    )
+                        os_run_output(["openstack", "share", "show", share_name, "-f", "json"], env=env ) or "{}")
 
                     status = share_info.get("status", "").lower()
 

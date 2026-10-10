@@ -15,7 +15,7 @@ SUPPORTED_EXTRA_SPECS = {
     "mount_snapshot_support",
 }
 
-def get_share_network_id(share_network_name, env):
+def _get_share_network_id(share_network_name, env):
 
     share_networks = json.loads(
         os_run_output(
@@ -37,7 +37,7 @@ def get_share_network_id(share_network_name, env):
 
     return share_network.get("ID", share_network.get("id"))
 
-def get_share_server_for_share(share_id, env):
+def _get_share_server_for_share(share_id, env):
 
     result = os_run_output(["openstack", "share", "show", share_id, "-f", "json"], env=env)
 
@@ -51,7 +51,7 @@ def get_share_server_for_share(share_id, env):
 
     return share.get("share_server_id") or share.get("Share Server ID")
 
-def get_server_for_share_server(share_server_id, env):
+def _get_server_for_share_server(share_server_id, env):
 
     result = os_run_output(["openstack", "server", "list", "--all-projects", "-f", "json"], env=env)
 
@@ -73,10 +73,10 @@ def get_server_for_share_server(share_server_id, env):
 
     return None
 
-def wait_server_deleted(share_server_id, env, attempts=10, delay=3):
+def _wait_server_deleted(share_server_id, env, attempts=10, delay=3):
 
     for _ in range(attempts):
-        server_id = get_server_for_share_server(share_server_id, env)
+        server_id = _get_server_for_share_server(share_server_id, env)
 
         if not server_id:
             return True
@@ -142,7 +142,7 @@ def create_shares(shares, env, dhss: bool = False):
         if dhss:
             share_network_name = share["share_network"]
 
-            share_network = get_share_network_id(share_network_name, env)
+            share_network = _get_share_network_id(share_network_name, env)
 
         existing_share = next((item for item in share_list if item.get("Name", item.get("name")) == share_name), None)
 
@@ -161,7 +161,7 @@ def create_shares(shares, env, dhss: bool = False):
                 share_server_id = None
 
                 if dhss:
-                    share_server_id = get_share_server_for_share(share_id, env)
+                    share_server_id = _get_share_server_for_share(share_id, env)
 
                     if share_server_id:
                         print(f"{colors.YELLOW}Found share server '{share_server_id}' for failed share '{share_id}'.{colors.RESET}")
@@ -172,14 +172,14 @@ def create_shares(shares, env, dhss: bool = False):
 
                     if not os_run(["openstack", "share", "server", "delete", share_server_id], f"Deleting share server '{share_server_id}'..."): return False
 
-                    orphan_server_id = get_server_for_share_server(share_server_id, env)
+                    orphan_server_id = _get_server_for_share_server(share_server_id, env)
 
                     if orphan_server_id:
                         print(f"{colors.YELLOW}Orphaned Nova instance '{orphan_server_id}' found.{colors.RESET}")
 
                         if not os_run(["openstack", "server", "delete", orphan_server_id], f"Deleting orphaned Nova instance '{orphan_server_id}'..."): return False
 
-                        if not wait_server_deleted(share_server_id, env) : return False
+                        if not _wait_server_deleted(share_server_id, env) : return False
 
             elif status == "available":
                 continue
