@@ -12,7 +12,7 @@ from ..utils.core import colors
 
 from ..utils.config.setter import set_conf_option, toml_string
 
-from ..utils.lvm.loopback import set_lvm_filter
+from ..utils.lvm import set_lvm_filter
 from ..utils.config.helpers import parse_bool
 
 from .utils import ensure_os_release, UBUNTU_CLOUD_ARCHIVE, UBUNTU_NATIVE_OPENSTACK
