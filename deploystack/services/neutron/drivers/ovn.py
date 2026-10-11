@@ -16,14 +16,14 @@ from ....utils.config.helpers import parse_bool
 from ....utils.network.net_utils import get_network_info
 from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, ifaces_config_exclude_patterns, enable_kernel_module
 
-from ..network.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
+from ..network_utils.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
 
 from ....templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 
-from ..network.security_group import add_rules_to_default_sg
+from ..network_utils.security_group import add_rules_to_default_sg
 
-from ..network.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
-from ..network.routers import create_custom_network_router
+from ..network_utils.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
+from ..network_utils.routers import create_custom_network_router
 
 neutron_conf = "/etc/neutron/neutron.conf"
 neutron_ovn_metadata_agent_conf = "/etc/neutron/neutron_ovn_metadata_agent.ini"

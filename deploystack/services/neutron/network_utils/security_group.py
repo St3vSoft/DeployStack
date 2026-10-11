@@ -1,6 +1,6 @@
 import json
 
-from ..network.helpers import rule_matches
+from ..network_utils.helpers import rule_matches
 from ....utils.core import colors
 from ....utils.core.commands import os_run, os_run_output
 

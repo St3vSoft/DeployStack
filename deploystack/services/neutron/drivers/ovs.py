@@ -18,12 +18,12 @@ from ....utils.network.net_utils import get_network_info
 from ....utils.config.helpers import parse_bool
 from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, enable_kernel_module
 
-from ..network.security_group import add_rules_to_default_sg
+from ..network_utils.security_group import add_rules_to_default_sg
 
-from ..network.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
-from ..network.routers import create_custom_network_router
+from ..network_utils.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
+from ..network_utils.routers import create_custom_network_router
 
-from ..network.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
+from ..network_utils.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
 
 neutron_conf="/etc/neutron/neutron.conf"
 conf_ml2="/etc/neutron/plugins/ml2/ml2_conf.ini"
@@ -56,8 +56,8 @@ def conf_ovs_bridges(config):
       
     INTERFACES_FILE = "/etc/network/interfaces.d/openvswitch"
 
-    tenant_network_type = get(config, "neutron.tenant_network.TYPE")
-    use_tenant_bridge = tenant_network_type != "vxlan"
+    tenant_types = get_tenant_types(config)
+    use_tenant_bridge = "vxlan" not in tenant_types
 
     public_iface = get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
     public_bridge = get(config, "neutron.ovs.PUBLIC_BRIDGE")
@@ -95,7 +95,7 @@ def conf_ovs_bridges(config):
 
     bridges_to_manage = [public_bridge]
 
-    if tenant_network_type != "vxlan":
+    if "vxlan" not in tenant_types:
         bridges_to_manage.append(tenant_bridge)
 
     for iface in [public_iface] + bridges_to_manage:
@@ -192,9 +192,9 @@ def conf_ovs_bridges(config):
 
     bridges_to_add = [(public_bridge, public_iface)]
 
-    if tenant_network_type != "vxlan":
+    if "vxlan" not in tenant_types:
         bridges_to_add.append((tenant_bridge, None))
-    elif tenant_network_type == "vxlan":
+    elif "vxlan" in tenant_types:
         bridges_to_add.append((tunnel_bridge, None))
 
     for bridge, port in bridges_to_add:
@@ -328,7 +328,7 @@ def finalize(config):
         print()
         line_printed = True
 
-        if not enable_kernel_module(module_names=kernel_modules) : return False
+    if not enable_kernel_module(module_names=kernel_modules) : return False
 
     write_permanent_modules_conf("/etc/modules-load.d/openvswitch.conf", modules=["openvswitch"])
 
