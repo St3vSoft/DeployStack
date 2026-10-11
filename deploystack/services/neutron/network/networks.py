@@ -31,7 +31,7 @@ def append_custom_bridges_ifaces_config(config, bridges: list, bridges_interface
     with open(INTERFACE_BRIDGE_TEMPLATE, "r") as f:
         template = f.read()
 
-    networks = get(config, "provider_networks", default=[])
+    networks = get(config, "neutron.provider_networks", default=[])
     blocks = []
 
     for b in bridges:
@@ -69,6 +69,7 @@ def append_custom_bridges_ifaces_config(config, bridges: list, bridges_interface
         bridges_interfaces_content += "\n" + "\n".join(blocks)
 
     return bridges_interfaces_content
+
 def bring_up_custom_bridges_ifaces(bridges: list):
     for b in bridges:
             iface = b.get("port")
