@@ -17,20 +17,9 @@ SUPPORTED_EXTRA_SPECS = {
 
 def _get_share_network_id(share_network_name, env):
 
-    share_networks = json.loads(
-        os_run_output(
-            ["openstack", "share", "network", "list", "-f", "json"],
-            env=env,
-        ) or "[]"
-    )
+    share_networks = json.loads(os_run_output(["openstack", "share", "network", "list", "-f", "json"], env=env) or "[]")
 
-    share_network = next(
-        (
-            item for item in share_networks
-            if item.get("Name", item.get("name")) == share_network_name
-        ),
-        None,
-    )
+    share_network = next((item for item in share_networks if item.get("Name", item.get("name")) == share_network_name), None)
 
     if not share_network:
         return None
@@ -85,6 +74,20 @@ def _wait_server_deleted(share_server_id, env, attempts=10, delay=3):
 
     return False
 
+def _wait_share_deleted(share_id, env, attempts=10, delay=3):
+
+    for _ in range(attempts):
+
+        shares = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env,) or "[]")
+
+        if not any(item.get("ID", item.get("id")) == share_id for item in shares): return True
+
+        time.sleep(delay)
+
+    print(f"{colors.RED}Share '{share_id}' was not removed within the expected time.{colors.RESET}")
+
+    return False
+
 def create_share_types(default_type_shares, env):
     
     share_type_list = json.loads(os_run_output(["openstack", "share", "type", "list", "-f", "json"], env=env) or "[]")
@@ -126,151 +129,118 @@ def create_share_types(default_type_shares, env):
 
     return True
 
-def create_shares(shares, env, dhss: bool = False):
+def create_shares(shares, env, dhss=False):
 
     share_list = json.loads(os_run_output(["openstack", "share", "list", "-f", "json"], env=env) or "[]")
 
     for share in shares:
-
-        share_name = share["name"]
+        name, protocol, size = share["name"], share["share_protocol"], share["share_size"]
         share_type = share.get("share_type") or "default_share_type"
-        share_protocol = share["share_protocol"]
-        share_size = share["share_size"]
-        is_public = parse_bool(share["is_public"], False)
-        share_network_name = None
+        is_public = parse_bool(share.get("is_public"), False)
+        share_network = None
 
         if dhss:
-            share_network_name = share["share_network"]
+            share_network = _get_share_network_id(share["share_network"], env)
+            if not share_network:
+                print(f"{colors.RED}Share network '{share['share_network']}' not found.{colors.RESET}")
+                return False
 
-            share_network = _get_share_network_id(share_network_name, env)
+        existing = next((s for s in share_list if s.get("Name", s.get("name")) == name), None)
+        share_id = None
 
-        existing_share = next((item for item in share_list if item.get("Name", item.get("name")) == share_name), None)
-
-        if existing_share:
-            print(f"{colors.YELLOW}{share_name} already exists, checking status...{colors.RESET}")
-            
-            share_id = existing_share.get("ID", existing_share.get("id"))
-            status = existing_share.get("Status", "").lower()
+        if existing:
+            share_id = existing.get("ID", existing.get("id"))
+            status = existing.get("Status", existing.get("status", "")).lower()
 
             if not share_id:
                 print(f"{colors.RED}Could not determine share ID.{colors.RESET}")
                 return False
 
-            if status in ("error", "error_deleting"):
-
-                share_server_id = None
-
-                if dhss:
-                    share_server_id = _get_share_server_for_share(share_id, env)
-
-                    if share_server_id:
-                        print(f"{colors.YELLOW}Found share server '{share_server_id}' for failed share '{share_id}'.{colors.RESET}")
-
-                if not os_run(["openstack", "share", "delete", share_id], f"Deleting failed '{share_id}' share..."): return False
-
-                if dhss and share_server_id:
-
-                    if not os_run(["openstack", "share", "server", "delete", share_server_id], f"Deleting share server '{share_server_id}'..."): return False
-
-                    orphan_server_id = _get_server_for_share_server(share_server_id, env)
-
-                    if orphan_server_id:
-                        print(f"{colors.YELLOW}Orphaned Nova instance '{orphan_server_id}' found.{colors.RESET}")
-
-                        if not os_run(["openstack", "server", "delete", orphan_server_id], f"Deleting orphaned Nova instance '{orphan_server_id}'..."): return False
-
-                        if not _wait_server_deleted(share_server_id, env) : return False
-
-            elif status == "available":
+            if status == "available":
                 continue
-        else:
-            print()
-            
-            share_create_cmd = ["openstack", "share", "create", "--name", share_name, "--share-type", share_type]
+            if status not in ("error", "error_deleting"):
+                print(f"{colors.YELLOW}Share '{name}' is in status '{status}', skipping.{colors.RESET}")
+                continue
 
-            if dhss:
-                share_create_cmd += ["--share-network", share_network]
+            share_server_id = _get_share_server_for_share(share_id, env) if dhss else None
 
-            if is_public:
-                share_create_cmd += ["--public", "true"]
-            
-            share_create_cmd += [share_protocol, str(share_size)]
+            if not os_run(["openstack", "share", "delete", share_id], f"Deleting failed '{name}' share...", env=env):
+                return False
+            if not _wait_share_deleted(share_id, env):
+                return False
 
-            if not os_run(share_create_cmd, f"Creating share '{share_name}'... ", env=env): return False
+            if dhss and share_server_id:
+                if not os_run(["openstack", "share", "server", "delete", share_server_id], f"Deleting share server '{share_server_id}'...", env=env):
+                    return False
 
-            print()
+                orphan_id = _get_server_for_share_server(share_server_id, env)
+                if orphan_id:
+                    if not os_run(["openstack", "server", "delete", orphan_id], f"Deleting orphaned Nova instance '{orphan_id}'...", env=env):
+                        return False
+                    if not _wait_server_deleted(share_server_id, env):
+                        return False
 
-            if dhss:
-                share_info = wait_dhss_share_available(share_name, env)
-            else:
-                share_info = wait_share_available(share_name, env)
-
-            if not share_info: return False
-
-            share_id = share_info.get("id")
+            share_id = None
 
         if not share_id:
-            print(f"\n{colors.RED}ERROR: Unable to retrieve {share_name} id{colors.RESET}")
+            cmd = ["openstack", "share", "create", "--name", name, "--share-type", share_type]
+
+            if dhss:
+                cmd += ["--share-network", share_network]
+            if is_public:
+                cmd += ["--public", "true"]
+
+            cmd += [protocol, str(size)]
+
+            if not os_run(cmd, f"Creating share '{name}'...", env=env):
+                return False
+
+            info = wait_dhss_share_available(name, env) if dhss else wait_share_available(name, env)
+
+            if not info:
+                return False
+            
+            share_id = info.get("id")
+
+        if not share_id:
+            print(f"{colors.RED}ERROR: Unable to retrieve {name} id{colors.RESET}")
             return False
 
         export_path = None
-
         for _ in range(10):
-            share_info = json.loads(os_run_output(["openstack", "share", "show", share_id, "-f", "json"], env=env) or "{}")
-            export_locations = share_info.get("export_locations", "")
-
-            if export_locations:
-                if isinstance(export_locations, str):
-                    for line in export_locations.splitlines():
-                        if line.strip().startswith("path ="):
-                            export_path = line.split("=", 1)[1].strip()
-                            break
-
-                elif isinstance(export_locations, list):
-                    first_location = export_locations[0]
-
-                    if isinstance(first_location, dict):
-                        export_path = first_location.get("path")
-                    elif isinstance(first_location, str):
-                        export_path = first_location
-
-                if export_path:
-                    break
-
+            info = json.loads(os_run_output(["openstack", "share", "show", share_id, "-f", "json"], env=env) or "{}")
+            locations = info.get("export_locations", "")
+            if isinstance(locations, str):
+                export_path = next((line.split("=", 1)[1].strip() for line in locations.splitlines() if line.strip().startswith("path =")), None)
+            elif isinstance(locations, list) and locations:
+                first = locations[0]
+                export_path = first.get("path") if isinstance(first, dict) else first if isinstance(first, str) else None
+            if export_path:
+                break
             time.sleep(3)
 
         if not export_path:
-            print(f"\n{colors.RED}ERROR: {share_name} has no export location available{colors.RESET}")
+            print(f"{colors.RED}ERROR: {name} has no export location available{colors.RESET}")
             return False
-        
-        print()
 
         for rule in share.get("access_rules", []):
-
-            rule_access_type = rule["type"]
-            rule_access = rule["access"]
-            rule_access_level = rule["level"]
-
+            rule_type, access, level = rule["type"], rule["access"], rule["level"]
             access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env) or "[]")
 
-            rule_exists = any(access.get("access_type", access.get("Access Type")) == rule_access_type and access.get("access_to", access.get("Access To")) == rule_access for access in access_list)
-
-            if rule_exists:
-                print(f"{colors.YELLOW}Access rule {rule_access} already exists, skipping creation.{colors.RESET}")
+            if any(a.get("access_type", a.get("Access Type")) == rule_type and a.get("access_to", a.get("Access To")) == access for a in access_list):
+                print(f"{colors.YELLOW}Access rule {access} already exists, skipping.{colors.RESET}")
                 continue
 
-            if not os_run(["openstack", "share", "access", "create", "--access-level", rule_access_level, share_id, rule_access_type, rule_access], f"Adding access rule {rule_access} to '{share_name}'... ", env=env):
+            if not os_run(["openstack", "share", "access", "create", "--access-level", level, share_id, rule_type, access], f"Adding access rule {access} to '{name}'...", env=env):
                 return False
 
             for _ in range(10):
                 access_list = json.loads(os_run_output(["openstack", "share", "access", "list", share_id, "-f", "json"], env=env) or "[]")
-
-                if any(access.get("access_type", access.get("Access Type")) == rule_access_type and access.get("access_to", access.get("Access To")) == rule_access for access in access_list):
+                if any(a.get("access_type", a.get("Access Type")) == rule_type and a.get("access_to", a.get("Access To")) == access for a in access_list):
                     break
-
                 time.sleep(2)
             else:
-                print(f"\n{colors.RED}ERROR: access rule {rule_access} is not created{colors.RESET}")
+                print(f"{colors.RED}ERROR: access rule {access} was not created.{colors.RESET}")
                 return False
 
     return True

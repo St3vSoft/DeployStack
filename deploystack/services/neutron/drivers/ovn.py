@@ -6,8 +6,6 @@ import json
 import time
 import socket
 
-from pathlib import Path
-
 from ....utils.core.commands import run_command, run_command_sync, os_run, os_run_output
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
@@ -154,7 +152,7 @@ def conf_ovn_bridges(config):
     )
 
     if custom_bridges:
-        bridges_interfaces_content = append_custom_bridges_ifaces_config(bridges, bridges_interfaces_content)
+        bridges_interfaces_content = append_custom_bridges_ifaces_config(config, bridges, bridges_interfaces_content)
         
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)
@@ -450,8 +448,7 @@ def finalize(config):
                 print()
                 printed_line = True
 
-            run_command(["systemctl", "disable", "--now", svc],
-            f"Disabling legacy agent {svc}", ignore_errors=True)
+            run_command(["systemctl", "disable", "--now", svc], f"Disabling legacy agent {svc}", ignore_errors=True)
 
     run_command_sync(["udevadm", "control", "--reload-rules"])
 
@@ -598,10 +595,7 @@ def create_ovn_networks(config, env):
     else:
         ovs_services.append("neutron-server")
         
-    if not run_command(
-        ["systemctl", "restart"] + ovs_services,
-        "Restarting OVN services...", False, None, 3, 5
-    ):  return False
+    if not run_command(["systemctl", "restart"] + ovs_services, "Restarting OVN services...", False, None, 3, 5) : return False
 
     return True
 

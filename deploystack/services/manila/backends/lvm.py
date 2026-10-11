@@ -8,9 +8,7 @@ import tempfile
 import ipaddress
 import json
 
-from pathlib import Path
-
-from ....utils.core.commands import run_command, os_run, os_run_output, run_commands, run_command_sync, run_command_output
+from ....utils.core.commands import run_command, os_run, os_run_output, run_commands, run_command_sync
 from ....utils.apt.apt import apt_install
 
 from ....utils.config.parser import get, get_conf_option
@@ -18,8 +16,8 @@ from ....utils.config.setter import set_conf_option
 
 from ....utils.config.helpers import parse_bool
 
-from ....utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service
-from ....utils.lvm import get_vg_for_pv, ensure_system_user_with_run_command
+from ....utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service, configure_lvm_storage
+from ....utils.lvm import get_vg_for_pv
 
 from .utils import wait_manila_share_agent, create_manila_sudoers_rule
 
@@ -319,82 +317,21 @@ def conf_lvm(config):
 
     vg_name = get(config, "manila.backends.lvm.storage.SHARE_VOLUME_GROUP")
 
-    if lvm_physical_volume:
-        lvm_dev = lvm_physical_volume
-    else:
-        lvm_dev = lvm_loop_dev
-
-        image_path = Path(lvm_image_file_path)
-        image_path.parent.mkdir(parents=True, exist_ok=True)
-
-        if not os.path.exists(lvm_image_file_path):
-
-            print() 
-
-            truncate_cmd = [
-                "truncate",
-                "-s",
-                f"{lvm_image_size_in_gb}G",
-                lvm_image_file_path
-            ]
-
-            if not run_command(truncate_cmd, "Allocating LVM disk image..."):
-                return False
-
-            if not ensure_system_user_with_run_command("manila"):
-                return False
-
-            uid = pwd.getpwnam("manila").pw_uid
-            gid = grp.getgrnam("manila").gr_gid
-
-            os.chown(lvm_image_file_path, uid, gid)
-            os.chmod(lvm_image_file_path, 0o600)
-
-            print()
-
-        try:
-            losetup_output = subprocess.check_output(
-                ["losetup", "-j", lvm_image_file_path],
-                text=True
-            )
-        except subprocess.CalledProcessError:
-            losetup_output = ""
-
-        if lvm_image_file_path not in losetup_output:
-            if not run_command(
-                ["losetup", lvm_loop_dev, lvm_image_file_path],
-                f"Associating {lvm_image_file_path} to {lvm_loop_dev}..."
-            ):
-                return False
-            
-    vg = get_vg_for_pv(lvm_dev)
-
-    if vg is None:
-
-        print() 
-
-        if not run_command(
-            ["pvcreate", lvm_dev],
-            f"Creating physical volume on {lvm_dev}..."
-        ):
-            return False
-
-        if not run_command(
-            ["vgcreate", vg_name, lvm_dev],
-            f"Creating volume group {vg_name}..."
-        ):
-            return False
-
-    elif vg == vg_name:
-        pass
-
-    else:
-        print(
-            f"{colors.RED}"
-            f"{lvm_dev} already belongs to VG '{vg}', expected '{vg_name}'"
-            f"{colors.RESET}"
-        )
+    if not configure_lvm_storage(
+        physical_volume=lvm_physical_volume,
+        loop_device=lvm_loop_dev,
+        vg_name=vg_name,
+        image_path=lvm_image_file_path,
+        image_size=lvm_image_size_in_gb,
+        service_user="manila",
+    ):
         return False
+
+    using_loopback = not lvm_physical_volume
+
+    if using_loopback:
+        if not write_loopback_lvm_env("manila", backend="lvm-loopback", description="Manila Loopback LVM", before_services="manila-share.service"): return False   
+        if not setup_loopback_service("manila", backend="lvm-loopback"): return False   
 
     return True
 
@@ -476,14 +413,8 @@ def run_setup_lvm_backend(config, env):
 
     if not conf_lvm(config): return False
 
-    using_loopback = not get(config, "manila.backends.lvm.storage.PHYSICAL_VOLUME")
-
-    if using_loopback:
-        if not write_loopback_lvm_env("manila", backend="lvm-loopback", description="Manila Loopback LVM", before_services="manila-share.service"): return False   
-        if not setup_loopback_service("manila", backend="lvm-loopback"): return False   
-
-        if not is_debian() and is_ubuntu_release("26.04"):
-            if not run_setup_directio_patch(): return False
+    if not is_debian() and is_ubuntu_release("26.04"):
+        if not run_setup_directio_patch(): return False
 
     if not conf_lvm_manila(config): return False
 

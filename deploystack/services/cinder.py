@@ -14,8 +14,8 @@ from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
 from ..utils.core import colors
 from ..utils.core.system_utils import service_exists, is_debian, is_package_installed, get_physical_disk, get_vg_physical_disks, nc_wait
-from ..utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service
-from ..utils.lvm import get_vg_for_pv, ensure_system_user_with_run_command
+from ..utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service, configure_lvm_storage
+from ..utils.lvm import get_vg_for_pv
 
 from ..utils.config.helpers import parse_bool, get_nfs_share_for_path, parse_nfs_source
 
@@ -77,79 +77,23 @@ def conf_lvm_backend(config, backend):
     image_size = get(config, f"{prefix}.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",)
     vg_name = get(config, f"{prefix}.VOLUME_GROUP")
 
-    if physical_volume:
-        lvm_dev = physical_volume
-    else:
-        lvm_dev = loop_path
-
-        image_path = Path(image_path)
-        image_path.parent.mkdir(parents=True, exist_ok=True)
-
-        if not os.path.exists(image_path):
-
-            print() 
-
-            truncate_cmd = [
-                "truncate",
-                "-s",
-                f"{image_size}G",
-                image_path
-            ]
-
-            if not run_command(truncate_cmd, "Allocating LVM disk image..."):
-                return False
-
-            if not ensure_system_user_with_run_command("cinder"):
-                return False
-
-            uid = pwd.getpwnam("cinder").pw_uid
-            gid = grp.getgrnam("cinder").gr_gid
-
-            os.chown(image_path, uid, gid)
-            os.chmod(image_path, 0o600)
-
-            print()
-
-        try:
-            losetup_output = subprocess.check_output(["losetup", "-j", image_path], text=True)
-        except subprocess.CalledProcessError:
-            losetup_output = ""
-
-        image_path = Path(get(config, f"cinder.backends.{backend}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH"))
-
-        losetup_output = run_command_output(["losetup", "-a"])
-
-        if str(image_path) not in losetup_output:
-            if not run_command(["losetup", str(lvm_dev), str(image_path)], f"Associating {str(lvm_dev)} to {str(image_path)}...") : return False
-            
-    vg = get_vg_for_pv(lvm_dev)
-
-    if vg is None:
-
-        print() 
-
-        if not run_command(["pvcreate", lvm_dev], f"Creating physical volume on {lvm_dev}...") : return False
-
-        if not run_command(["vgcreate", vg_name, lvm_dev],  f"Creating volume group {vg_name}..." ) : return False
-
-    elif vg == vg_name:
-        pass
-
-    else:
-        print(
-            f"{colors.RED}"
-            f"{lvm_dev} already belongs to VG '{vg}', expected '{vg_name}'"
-            f"{colors.RESET}"
-        )
+    if not configure_lvm_storage(
+        physical_volume=physical_volume,
+        loop_device=loop_path,
+        vg_name=vg_name,
+        image_path=image_path,
+        image_size=image_size,
+        service_user="cinder",
+    ):
         return False
+
+    using_loopback = not physical_volume
     
     os.makedirs(os.path.dirname(tgt_conf_path), exist_ok=True)
 
     if not os.path.exists(tgt_conf_path):
         with open(tgt_conf_path, "w") as f:
             f.write("include /var/lib/cinder/volumes/*")
-    
-    using_loopback = not physical_volume
     
     if using_loopback:
         if not write_loopback_lvm_env("cinder", backend=backend, description=f"Cinder {backend} Loopback LVM", before_services="cinder-volume.service tgt.service"): return False   
@@ -188,11 +132,7 @@ def conf_nfs_backend(config, backend):
             os.chown(nfs_mount_point, uid, gid)
 
         except (KeyError, OSError) as e:
-            print(
-                f"{colors.RED}"
-                f"ERROR: Unable to set ownership on {nfs_mount_point}: {e}"
-                f"{colors.RESET}"
-            )
+            print(f"{colors.RED}ERROR: Unable to set ownership on {nfs_mount_point}: {e}{colors.RESET}")
             return False
         
         try:
@@ -234,12 +174,7 @@ def conf_nfs_backend(config, backend):
                 f.write(f"{nfs_share}\n")
 
     except OSError as e:
-        print(
-            f"{colors.RED}"
-            f"ERROR: Unable to configure "
-            f"{cinder_nfs_shares}: {e}"
-            f"{colors.RESET}"
-        )
+        print(f"{colors.RED}ERROR: Unable to configure {cinder_nfs_shares}: {e}{colors.RESET}")
         return False
 
     return True

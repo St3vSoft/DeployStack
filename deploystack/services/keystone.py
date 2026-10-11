@@ -4,7 +4,7 @@ import os
 import json
 
 from ..utils.core.commands import run_command, run_command_output, run_commands
-from ..utils.core.system_utils import service_exists, is_debian, nc_wait, is_ubuntu_release
+from ..utils.core.system_utils import service_exists, is_debian, nc_wait
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
@@ -181,8 +181,7 @@ def create_services_users(config, env):
     services = _get_services(env)
     assignments = _get_role_assignments(env)
 
-    if services is False or assignments is False:
-        return False
+    if services is False or assignments is False: return False
 
     services_user_create_cmds = [
         ["openstack", "user", "create", "--domain", "default", "--password", service_password, "glance", "--or-show"],

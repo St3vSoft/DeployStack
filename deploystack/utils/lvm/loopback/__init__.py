@@ -1,97 +1,59 @@
+import grp
 import os
-import re
+import pwd
 import subprocess
+from pathlib import Path
 
-from ....utils.core.commands import run_command
+from ....utils.core.commands import run_command, run_command_output
 from ....utils.core import colors
 from ....templates import LOOPBACK_SERVICE
 
-lvm_conf_path = "/etc/lvm/lvm.conf"
+from ...lvm import ensure_system_user_with_run_command, get_vg_for_pv
 
-def get_root_and_active_lvm_devices():
-    system_devices = set()
- 
-    try:
-        root_dev = subprocess.check_output(["findmnt", "-n", "-o", "SOURCE", "/"], text=True).strip()
-        
-        if "mapper" in root_dev or "loop" in root_dev:
+def create_lvm_loopback_sparse_disk(image_path, image_size, lvm_dev, service_user: str):
 
-            pkname = subprocess.check_output(["lsblk", "-no", "PKNAME", root_dev], text=True).strip()
+    image_path = Path(image_path)
+    image_path.parent.mkdir(parents=True, exist_ok=True)
 
-            for dev in pkname.splitlines():
-                if dev:
-                    system_devices.add(f"/dev/{dev}.*")
-        else:
-            system_devices.add(f"{root_dev}.*")
-            
-    except Exception as e:
-        print(f"{colors.YELLOW}Warning: Unable to detect root device:{e}{colors.RESET}")
+    if not image_path.exists():
+        truncate_cmd = ["truncate", "-s", f"{image_size}G", str(image_path)]
 
-    if os.path.exists("/dev/sda"):
-        system_devices.add("/dev/sda.*")
-        
-    return list(system_devices)
+        if not run_command(truncate_cmd, "Allocating LVM disk image...") : return False
 
-def set_lvm_filter(devices):
+        if not ensure_system_user_with_run_command(service_user) : return False
 
-    system_devices = get_root_and_active_lvm_devices()
+        uid = pwd.getpwnam(service_user).pw_uid
+        gid = grp.getgrnam(service_user).gr_gid
 
-    all_allowed_devices = devices + system_devices
-
-    filters = [f"a|{dev}|" for dev in all_allowed_devices] + ["r|.*|"]
-    filter_value = '[ ' + ', '.join(f'"{f}"' for f in filters) + ' ]'
+        os.chown(image_path, uid, gid)
+        os.chmod(image_path, 0o600)
 
     try:
-        with open(lvm_conf_path, "r") as f:
-            content = f.read()
-    except OSError as e:
-        print(f"{colors.RED}Error: Unable to read {lvm_conf_path}: {e}{colors.RESET}")
+        losetup_output = run_command_output(["losetup", "-a"])
+    except Exception:
         return False
 
-    devices_match = re.search(r'^(\s*)devices\s*{', content, flags=re.MULTILINE)
-    if not devices_match:
-        print(f"{colors.RED}Error: No devices section found in lvm.conf{colors.RESET}")
+    if str(image_path) not in losetup_output:
+        if not run_command(["losetup", str(lvm_dev), str(image_path)], f"Associating {lvm_dev} to {image_path}..."): return False
+
+    return True
+
+def configure_lvm_storage(physical_volume, loop_device, vg_name, image_path=None, image_size=None, service_user=None):
+    using_loopback = not physical_volume
+    lvm_dev = physical_volume or loop_device
+
+    if using_loopback and not create_lvm_loopback_sparse_disk(image_path=image_path, image_size=image_size, lvm_dev=loop_device, service_user=service_user):
         return False
 
-    section_start = devices_match.end()
-    base_indent = devices_match.group(1)
+    vg = get_vg_for_pv(lvm_dev)
 
-    depth = 1
-    pos = section_start
-    while pos < len(content) and depth > 0:
-        if content[pos] == '{':
-            depth += 1
-        elif content[pos] == '}':
-            depth -= 1
-        pos += 1
-    section_end = pos - 1
-    section_content = content[section_start:section_end]
-
-    filter_pattern = r'^([ \t]*)#?[ \t]*filter\s*=\s*.*$'
-    filter_match = re.search(filter_pattern, section_content, flags=re.MULTILINE)
-
-    if filter_match:
-        line_indent = filter_match.group(1)
-        new_line = f"{line_indent}filter = {filter_value}"
-        new_section_content = (
-            section_content[:filter_match.start()]
-            + new_line
-            + section_content[filter_match.end():]
-        )
-    else:
-        pad = base_indent + "    "
-        new_section_content = f"\n{pad}filter = {filter_value}\n" + section_content
-
-    new_content = content[:section_start] + new_section_content + content[section_end:]
-
-    if new_content == content:
-        return True
-
-    try:
-        with open(lvm_conf_path, "w") as f:
-            f.write(new_content)
-    except OSError as e:
-        print(f"{colors.RED}Error: Unable to write {lvm_conf_path}: {e}{colors.RESET}")
+    if vg is None:
+        if not run_command(["pvcreate", lvm_dev], f"Creating physical volume on {lvm_dev}..."):
+            return False
+        if not run_command(["vgcreate", vg_name, lvm_dev], f"Creating volume group {vg_name}..."):
+            return False
+    elif vg != vg_name:
+        print(f"{colors.RED}{lvm_dev} already belongs to VG '{vg}', expected '{vg_name}'{colors.RESET}")
         return False
 
     return True

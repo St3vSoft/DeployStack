@@ -1,8 +1,10 @@
 import json
+import ipaddress
 
 from ....utils.core.commands import run_command, run_command_output, run_command_sync
 from ....utils.config.helpers import parse_bool
 
+from ....utils.config.parser import get
 from ....utils.core.system_utils import iface_exists
 
 from ....utils.core import colors
@@ -19,40 +21,54 @@ def subnet_overlaps(cidr: str, env) -> bool:
         if not existing_cidr:
             continue
 
-        import ipaddress
-
         if ipaddress.ip_network(cidr).overlaps(ipaddress.ip_network(existing_cidr)):
             return True
 
     return False
 
-def append_custom_bridges_ifaces_config(
-    bridges: list,
-    bridges_interfaces_content: str
-) -> str:
-
+def append_custom_bridges_ifaces_config(config, bridges: list, bridges_interfaces_content: str) -> str:
+    
     with open(INTERFACE_BRIDGE_TEMPLATE, "r") as f:
-        ifaces_br_template = f.read()
+        template = f.read()
 
+    networks = get(config, "provider_networks", default=[])
     blocks = []
 
     for b in bridges:
-        port = b.get("port")
-        bridge = b.get("name")
-
-        if not bridge or not port:
+        port, bridge = b.get("port"), b.get("name")
+        if not port or not bridge:
             continue
 
-        blocks.append(ifaces_br_template.format(
+        network = next((n for n in networks if n.get("bridge") == bridge), None)
+        if not network:
+            continue
+
+        subnet = get(network, "subnet", default={})
+        cidr, gateway = subnet.get("cidr"), subnet.get("gateway")
+        if not cidr or not gateway:
+            continue
+
+        dhcp_start = get(subnet, "range.start")
+        dhcp_end = get(subnet, "range.end")
+
+        if get(subnet, "allow_dhcp", False) and dhcp_start and dhcp_end:
+            ip = ipaddress.ip_address(dhcp_start) - 1
+        else:
+            ip = ipaddress.ip_address(gateway) + 1
+
+        netmask = str(ipaddress.ip_network(cidr, strict=False).netmask)
+
+        blocks.append(template.format(
             iface=port,
             bridge=bridge,
+            ip_address=str(ip),
+            ip_address_netmask=netmask,
         ))
 
     if blocks:
         bridges_interfaces_content += "\n" + "\n".join(blocks)
 
     return bridges_interfaces_content
-
 def bring_up_custom_bridges_ifaces(bridges: list):
     for b in bridges:
             iface = b.get("port")

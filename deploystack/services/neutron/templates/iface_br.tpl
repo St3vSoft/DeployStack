@@ -8,6 +8,8 @@ iface {iface} inet manual
 
 auto {bridge}
 iface {bridge} inet manual
+    address {ip_address}
+    netmask {ip_address_netmask}
     pre-up ovs-vsctl --may-exist add-br {bridge}
     pre-up ovs-vsctl --may-exist add-port {bridge} {iface}
     pre-up ip link set {iface} up

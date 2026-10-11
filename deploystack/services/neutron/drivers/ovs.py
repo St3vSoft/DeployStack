@@ -170,7 +170,7 @@ def conf_ovs_bridges(config):
     )
 
     if custom_bridges:
-        bridges_interfaces_content = append_custom_bridges_ifaces_config(bridges, bridges_interfaces_content)
+        bridges_interfaces_content = append_custom_bridges_ifaces_config(config, bridges, bridges_interfaces_content)
 
     with open(INTERFACES_FILE, "w") as f:
         f.write(bridges_interfaces_content)

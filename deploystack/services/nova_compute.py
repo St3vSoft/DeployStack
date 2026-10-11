@@ -13,11 +13,9 @@ from ..utils.core import colors
 nova_conf= "/etc/nova/nova.conf"
 nova_compute_conf= "/etc/nova/nova-compute.conf"
 
-def get_flavors(env=None):
-    raw = os_run_output(
-        ["openstack", "flavor", "list", "-f", "json"],
-        env=env
-    )
+def _get_flavors(env=None):
+
+    raw = os_run_output(["openstack", "flavor", "list", "-f", "json"], env=env)
 
     if raw is False:
         return False
@@ -82,7 +80,7 @@ def finalize():
 
 def create_default_flavors(env):
 
-    flavors_list = get_flavors(env)
+    flavors_list = _get_flavors(env)
 
     existing_flavors = {
         (a["Name"], str(a["RAM"]), str(a["VCPUs"]))
@@ -123,7 +121,8 @@ def run_setup_nova_compute(config, env):
 
     conf_nova_compute(config)  
      
-    if not finalize(): return False   
+    if not finalize(): return False
+    
     if not create_default_flavors(env): return False
     
     print(f"\n{colors.GREEN}Compute Node configured successfully!{colors.RESET}\n")
