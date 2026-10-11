@@ -27,7 +27,7 @@ def subnet_overlaps(cidr: str, env) -> bool:
     return False
 
 def append_custom_bridges_ifaces_config(config, bridges: list, bridges_interfaces_content: str) -> str:
-    
+
     with open(INTERFACE_BRIDGE_TEMPLATE, "r") as f:
         template = f.read()
 
@@ -95,7 +95,7 @@ def add_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: 
         if not bridge or not port:
             continue
 
-        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge, "--", "--may-exist", "add-port", port], f"Adding bridge {bridge} with {port} port"): return False
+        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge, "--", "--may-exist", "add-port", port, bridge], f"Adding bridge {bridge} with {port} port"): return False
 
     return True
 

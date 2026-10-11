@@ -97,8 +97,6 @@ def conf_ovn_bridges(config):
 
     run_command_sync(["ovs-vsctl", "--if-exists", "del-br", public_bridge])
 
-    print()
-
     if isinstance(subnet_dns, list):
         subnet_dns = " ".join(subnet_dns)
 
