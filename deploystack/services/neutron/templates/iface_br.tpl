@@ -7,7 +7,7 @@ iface {iface} inet manual
     down ip link set {iface} down
 
 auto {bridge}
-iface {bridge} inet manual
+iface {bridge} inet static
     address {ip_address}
     netmask {ip_address_netmask}
     pre-up ovs-vsctl --may-exist add-br {bridge}
