@@ -134,7 +134,7 @@ def ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
         print(f"Registering keypair '{keypair_name}' in OpenStack ...\n")
         _os("keypair", "create", "--public-key", pub_key_path, keypair_name)
     else:
-        print(f"Keypair '{keypair_name}' already exists in OpenStack")
+        print(f"Keypair '{keypair_name}' already exists in OpenStack\n")
 
     return keypair_name
 
