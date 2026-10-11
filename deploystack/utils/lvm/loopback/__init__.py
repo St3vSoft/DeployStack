@@ -16,6 +16,8 @@ def create_lvm_loopback_sparse_disk(image_path, image_size, lvm_dev, service_use
     image_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not image_path.exists():
+        print()
+
         truncate_cmd = ["truncate", "-s", f"{image_size}G", str(image_path)]
 
         if not run_command(truncate_cmd, "Allocating LVM disk image...") : return False
@@ -34,6 +36,8 @@ def create_lvm_loopback_sparse_disk(image_path, image_size, lvm_dev, service_use
         return False
 
     if str(image_path) not in losetup_output:
+        print()
+        
         if not run_command(["losetup", str(lvm_dev), str(image_path)], f"Associating {lvm_dev} to {image_path}..."): return False
 
     return True
@@ -48,6 +52,9 @@ def configure_lvm_storage(physical_volume, loop_device, vg_name, image_path=None
     vg = get_vg_for_pv(lvm_dev)
 
     if vg is None:
+
+        print()
+
         if not run_command(["pvcreate", lvm_dev], f"Creating physical volume on {lvm_dev}..."):
             return False
         if not run_command(["vgcreate", vg_name, lvm_dev], f"Creating volume group {vg_name}..."):
