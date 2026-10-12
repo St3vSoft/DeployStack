@@ -311,6 +311,7 @@ def conf_neutron_ovs(config):
 def finalize(config):
 
     udev_rule = 'SUBSYSTEM=="unix", ACTION=="add", DEVPATH=="/var/run/openvswitch/db.sock", MODE="0666"\n'
+    kernel_modules = []
 
     ip_address = get(config, "network.HOST_IP")
 
