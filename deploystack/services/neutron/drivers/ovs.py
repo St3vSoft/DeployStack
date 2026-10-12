@@ -452,7 +452,7 @@ def create_ovs_networks(config, env):
         print(f"{colors.YELLOW}Public network already exists, skipping creation.{colors.RESET}")
 
     if provider_networks:
-        if not create_custom_networks(networks_list=networks_list, subnets_list=subnets_list, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=internal_bridge, tunnel_bridge=tunnel_bridge, env=env) :
+        if not create_custom_networks(networks_list=networks_list, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=internal_bridge, tunnel_bridge=tunnel_bridge, env=env) :
             return False
 
     if not create_tenant_networks(config, networks_list, subnets_list, routers_list, public_network_name=public_network["name"], connect_routers=create_ovs_bridges, legacy_type=tenant_types, env=env) : return False
