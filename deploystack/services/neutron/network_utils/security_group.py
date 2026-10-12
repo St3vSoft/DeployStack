@@ -5,7 +5,6 @@ from ....utils.core import colors
 from ....utils.core.commands import os_run, os_run_output
 
 def add_rules_to_default_sg(
-    create_bridges: bool,
     rules_dict,
     ip_prefix,
     sg_id: str,
@@ -25,9 +24,6 @@ def add_rules_to_default_sg(
 
         if rule_exists:
             print(f"{colors.YELLOW}{rule_type} rule in security group '{sg_id}' already exists, skipping creation.{colors.RESET}")
-            continue
-
-        if not create_bridges:
             continue
 
         cmd = [

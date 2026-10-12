@@ -43,13 +43,13 @@ def create_virtual_env():
 
     return True
 
-def install_novncproxy(config, os_release):
+def install_novncproxy(config):
 
     print()
 
     nova_version = None
 
-    if os_release == "gazpacho" and ensure_os_release(config, "gazpacho"):
+    if ensure_os_release(config, "gazpacho"):
         nova_version = "33.0.0"
 
     install_novncproxy_cmd_pip = [os.path.join(venv_path, "bin", "pip"), "install", f"nova=={nova_version}", "eventlet", "websockify", "pymysql"]
@@ -83,12 +83,12 @@ def patch_novncproxy_systemd_unit():
 
     return True
 
-def run_novncproxy_setup_patches(config, os_release):
+def run_novncproxy_setup_patches(config):
 
     if not add_deadsnaker_ppa() : return False
     if not install_python312() : return False
     if not create_virtual_env() : return False
-    if not install_novncproxy(config, os_release) : return False
+    if not install_novncproxy(config) : return False
 
     if not patch_novncproxy_systemd_unit() : return False
 

@@ -163,7 +163,7 @@ def finalize(config):
             f"{colors.RESET}\n"
         )
 
-        if not run_novncproxy_setup_patches(config, os_release) : return False
+        if not run_novncproxy_setup_patches(config) : return False
 
     if is_debian() and service_exists("nova-serialproxy.service") and service_exists("nova-spicehtml5proxy.service"):
              
