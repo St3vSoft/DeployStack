@@ -11,7 +11,7 @@ from ....utils.core import colors
 
 from ..templates import INTERFACE_BRIDGE_TEMPLATE
 
-def subnet_overlaps(cidr: str, env) -> bool:
+def _subnet_overlaps(cidr: str, env) -> bool:
     out = run_command_output(["openstack", "subnet", "list", "-f", "json"], False, env=env)
     subnets = json.loads(out)
 
@@ -72,13 +72,14 @@ def append_custom_bridges_ifaces_config(config, bridges: list, bridges_interface
 
 def bring_up_custom_bridges_ifaces(bridges: list):
     for b in bridges:
-            iface = b.get("port")
-            bridge = b.get("name")
 
-            if not run_command(["ip", "link", "set", iface, "up"], f"Bringing {iface} up"):
-                return False
-            if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing {bridge} up"):
-                return False
+        iface = b.get("port")
+        bridge = b.get("name")
+
+        if not run_command(["ip", "link", "set", iface, "up"], f"Bringing {iface} up"):
+            return False
+        if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing {bridge} up"):
+            return False
             
     return True
 
@@ -128,13 +129,13 @@ def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge
     return True
 
 def create_custom_networks(
-        networks_list: list,
-        provider_networks: list, 
-        public_bridge: str,
-        tenant_bridge: str,
-        tunnel_bridge: str,
-        env):
-    
+    networks_list: list,
+    provider_networks: list, 
+    public_bridge: str,
+    tenant_bridge: str,
+    tunnel_bridge: str,
+    env):
+
     for pn in provider_networks:
 
         bridge = pn.get("bridge")
@@ -241,7 +242,7 @@ def create_custom_networks(
 
             subnet_cmd.append(subnet_name)
 
-            if not subnet_overlaps(cidr=subnet_cidr, env=env):
+            if not _subnet_overlaps(cidr=subnet_cidr, env=env):
                 if not run_command(subnet_cmd, f"Creating '{network_name}' network subnet...", env=env) : return False
             else:
                 print(f"{colors.YELLOW}'{network_name}' network subnet already exists, skipping creation.{colors.RESET}")

@@ -447,7 +447,7 @@ def create_ovs_networks(config, env):
     if not create_tenant_networks(config, create_ovs_bridges, networks_list, subnets_list, routers_list, public_network_name=public_network["name"], connect_routers=create_ovs_bridges, legacy_type=tenant_types, env=env) : return False
             
     if provider_networks:
-        if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, tenant_bridge=internal_bridge, public_bridge=public_bridge, tunnel_bridge=tunnel_bridge, env=env) : return False
+        if not create_custom_network_router(create_ovs_bridges, provider_networks=provider_networks, tenant_bridge=internal_bridge, public_bridge=public_bridge, tunnel_bridge=tunnel_bridge, env=env) : return False
 
     sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
     sg_demo_list = json.loads(os_run_output([ "openstack", "security", "group", "list", "--project", "demo", "-f", "json"], env=env))

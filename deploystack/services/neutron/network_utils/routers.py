@@ -7,17 +7,17 @@ def safe_json(cmd, env):
     out = os_run_output(cmd, env=env)
     return json.loads(out) if out else {}
 
-def router_exists(router_name, env):
+def _router_exists(router_name, env):
     data = safe_json(["openstack", "router", "list", "-f", "json"], env)
 
     return any(r.get("Name") == router_name for r in data)
 
-def has_gateway(router_name, env):
+def _has_gateway(router_name, env):
     data = safe_json(["openstack", "router", "show", router_name, "-f", "json"], env)
 
     return bool(data.get("external_gateway_info"))
 
-def is_subnet_attached(router_name, subnet_id, env):
+def _is_subnet_attached(router_name, subnet_id, env):
 
     ports = safe_json(["openstack", "port", "list", "--router", router_name, "-f", "json"], env)
 
@@ -31,6 +31,7 @@ def is_subnet_attached(router_name, subnet_id, env):
     return False
 
 def create_custom_network_router(
+    create_bridges,
     provider_networks,
     public_bridge,
     tenant_bridge,
@@ -63,7 +64,7 @@ def create_custom_network_router(
 
         internal_network_subnet = subnet_cfg.get("tenant_subnet")
 
-        if not router_exists(router_name, env):
+        if not _router_exists(router_name, env):
             if not os_run(
                 ["openstack", "router", "create", router_name],
                 f"Creating router {router_name}...",
@@ -71,14 +72,9 @@ def create_custom_network_router(
             ):
                 return False
 
-        if not has_gateway(router_name, env):
-            if not os_run(
-                ["openstack", "router", "set", router_name,
-                 "--external-gateway", network_name],
-                f"Setting external gateway for {router_name}...",
-                env=env
-            ):
-                return False
+        if create_bridges:
+            if not _has_gateway(router_name, env):
+                if not os_run(["openstack", "router", "set", router_name, "--external-gateway", network_name], f"Setting external gateway for {router_name}...", env=env): return False
 
         subnet_list = safe_json(["openstack", "subnet", "list", "--name", internal_network_subnet, "-f", "json"], env)
 
@@ -88,7 +84,7 @@ def create_custom_network_router(
 
         subnet_id = subnet_list[0].get("ID") or subnet_list[0].get("id")
 
-        if not is_subnet_attached(router_name, subnet_id, env):
+        if not _is_subnet_attached(router_name, subnet_id, env):
 
             if not os_run(["openstack", "router", "add", "subnet", router_name, internal_network_subnet], f"Attaching {subnet_name} to {router_name}...", env=env): return False
 

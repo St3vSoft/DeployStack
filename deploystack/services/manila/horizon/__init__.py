@@ -10,7 +10,6 @@ from ....utils.core import colors
 
 from ....utils.core.system_utils import is_debian
 
-from ....utils.config.helpers import parse_bool
 
 local_settings_file = "/etc/openstack-dashboard/local_settings.py"
 manila_shares_settings_file = "/etc/openstack-dashboard/local_settings.d/_90_manila_shares.py"

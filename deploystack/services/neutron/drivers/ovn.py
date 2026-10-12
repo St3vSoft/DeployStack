@@ -542,7 +542,7 @@ def create_ovn_networks(config, env):
         if provider_networks:
             print()
             
-            if not create_custom_network_router(provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=None, tunnel_bridge=None, env=env) : return False
+            if not create_custom_network_router(create_ovn_bridges, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=None, tunnel_bridge=None, env=env) : return False
 
     sg_list = json.loads(os_run_output(["openstack", "security", "group", "list", "-f", "json"], env=env))
 

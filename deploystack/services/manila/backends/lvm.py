@@ -17,7 +17,6 @@ from ....utils.config.setter import set_conf_option
 from ....utils.config.helpers import parse_bool
 
 from ....utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service, configure_lvm_storage
-from ....utils.lvm import get_vg_for_pv
 
 from .utils import wait_manila_share_agent, create_manila_sudoers_rule
 
@@ -29,8 +28,6 @@ from ...patches.manila.directio import run_setup_directio_patch
 
 from .protocols.nfs import run_setup_nfs
 from .protocols.samba import run_setup_samba
-
-from ....utils.core import colors
 
 manila_conf = "/etc/manila/manila.conf"
 
@@ -159,7 +156,6 @@ iface br-shares inet static
             if not run_command(["systemctl", "restart", "neutron-periodic-workers", "apache2", "neutron-openvswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
     
     return True
-
 
 def setup_iptables_rules(config):
 
