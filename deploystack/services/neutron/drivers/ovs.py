@@ -411,18 +411,7 @@ def create_ovs_networks(config, env):
                 public_network["name"]
     ]
 
-    create_flat_internal_network_cmd = ["openstack", "network", "create", "--share",
-                "--provider-network-type", "flat", "--provider-physical-network", "internal",
-                "internal"]
-    
-    create_vxlan_internal_network_cmd = [
-        "openstack", "network", "create",
-        "--share",
-        "internal"
-    ]
-
     create_public_network_cmd = []
-    create_internal_network_cmd = []
 
     if create_ovs_bridges:
         create_public_network_cmd = create_flat_public_network_cmd
@@ -455,7 +444,7 @@ def create_ovs_networks(config, env):
         if not create_custom_networks(networks_list=networks_list, provider_networks=provider_networks, public_bridge=public_bridge, tenant_bridge=internal_bridge, tunnel_bridge=tunnel_bridge, env=env) :
             return False
 
-    if not create_tenant_networks(config, networks_list, subnets_list, routers_list, public_network_name=public_network["name"], connect_routers=create_ovs_bridges, legacy_type=tenant_types, env=env) : return False
+    if not create_tenant_networks(config, create_ovs_bridges, networks_list, subnets_list, routers_list, public_network_name=public_network["name"], connect_routers=create_ovs_bridges, legacy_type=tenant_types, env=env) : return False
             
     if provider_networks:
         if not create_custom_network_router(routers_list=routers_list, provider_networks=provider_networks, tenant_bridge=internal_bridge, public_bridge=public_bridge, tunnel_bridge=tunnel_bridge, env=env) : return False

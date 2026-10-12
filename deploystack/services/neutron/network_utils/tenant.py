@@ -14,7 +14,7 @@ def get_tenant_types(config, default=""):
 
     driver_defaults = {
         "ovn": "geneve",
-        "ovs": "flat",
+        "ovs": "vxlan",
     }
     default = driver_defaults.get(driver, default)
 
@@ -101,6 +101,9 @@ def merge_tenant_bridges(config, bridges):
 def _provider_args(net):
     net_type = net["type"]
 
+    if net_type == "local":
+        return ["--provider-network-type", "local"]
+
     if net_type in OVERLAY_TYPES:
         return ["--provider-network-type", net_type]
 
@@ -130,7 +133,7 @@ def _ensure_router(router, subnet_name, public_network_name, env):
 
     return True
 
-def create_tenant_networks(config, networks_list, subnets_list, routers_list, public_network_name, connect_routers, env, legacy_type="geneve"):
+def create_tenant_networks(config, create_bridges, networks_list, subnets_list, routers_list, public_network_name, connect_routers, env, legacy_type="geneve"):
 
     tenant_networks = get_tenant_networks(config, legacy_type)
 
@@ -145,6 +148,11 @@ def create_tenant_networks(config, networks_list, subnets_list, routers_list, pu
         name = net["name"]
         subnet_name = f"{name}_subnet"
 
+        network_type = net.get("type", legacy_type)
+
+        if not create_bridges:
+            network_type = "local"
+
         print()
 
         if name in existing_networks:
@@ -153,9 +161,11 @@ def create_tenant_networks(config, networks_list, subnets_list, routers_list, pu
             cmd = ["openstack", "network", "create"]
             if net.get("shared", True):
                 cmd.append("--share")
-            cmd += _provider_args(net) + [name]
 
-            if not os_run(cmd, f"Creating tenant network '{name}' ({net['type']})...", env=env) : return False
+            provider_net = {**net, "type": network_type}
+            cmd += _provider_args(provider_net) + [name]
+
+            if not os_run(cmd, f"Creating tenant network '{name}' ({network_type})...", env=env) : return False
 
             existing_networks.add(name)
 
