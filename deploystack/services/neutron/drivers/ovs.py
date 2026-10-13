@@ -198,7 +198,6 @@ def conf_ovs_bridges(config):
         bridges_to_add.append((tunnel_bridge, None))
 
     for bridge, port in bridges_to_add:
-        print()
 
         if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {public_bridge}"): return False
         
@@ -335,6 +334,8 @@ def finalize(config):
         line_printed = True
 
     if not enable_kernel_module(module_names=kernel_modules) : return False
+
+    print()
 
     write_permanent_modules_conf("/etc/modules-load.d/openvswitch.conf", modules=["openvswitch"])
 
