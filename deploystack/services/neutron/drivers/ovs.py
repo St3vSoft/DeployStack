@@ -246,6 +246,8 @@ def conf_neutron_ovs(config):
 
     tenant_types = get_tenant_types(config)
 
+    tunnel_types = [network_type for network_type in tenant_types if network_type in ("vxlan", "geneve")]
+
     flat_networks = [n.get("physnet") or n["name"] for n in provider_networks if n["type"] == "flat"]
     vlan_networks = [n for n in provider_networks if n["type"] == "vlan"]
 
@@ -287,7 +289,7 @@ def conf_neutron_ovs(config):
             set_conf_option(conf_ml2, "ml2_type_vxlan", "vni_ranges", tenant_network_vni_range)
 
             set_conf_option(conf_openvswitch, "agent", "l2_population", "true")
-            set_conf_option(conf_openvswitch, "agent", "tunnel_types", "vxlan")
+            set_conf_option(conf_openvswitch, "agent", "tunnel_types", ",".join(tunnel_types))
 
             set_conf_option(conf_openvswitch, "ovs", "tunnel_bridge", tunnel_bridge)
     else:
