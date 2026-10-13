@@ -253,7 +253,7 @@ def conf_neutron_ovs(config):
     flat_networks = [n.get("physnet") or n["name"] for n in provider_networks if n["type"] == "flat"]
     vlan_networks = [n for n in provider_networks if n["type"] == "vlan"]
 
-    use_tenant_flat_bridge = any(network_type != "vxlan" for network_type in tenant_types)
+    use_tenant_flat_bridge = any(network_type not in overlay_types for network_type in tenant_types)
 
     flat_networks_str = ",".join(flat_networks)
     vlan_networks_str = ",".join(f'{n["name"]}:{n["vlan_range"]}' for n in vlan_networks)

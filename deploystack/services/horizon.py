@@ -63,7 +63,7 @@ Alias /dashboard/static /var/lib/openstack-dashboard/static/
 </Directory>
 """
 
-def enable_cinder_backup_panel():
+def _enable_cinder_backup_panel():
     try:
         OPENSTACK_CINDER_FEATURES = {
             "enable_backup": True
@@ -85,7 +85,7 @@ def enable_cinder_backup_panel():
             + "\n"
         )
 
-        atomic_write(settings_file, content)
+        _atomic_write(settings_file, content)
 
         return True
 
@@ -97,7 +97,7 @@ def enable_cinder_backup_panel():
         )
         return False
     
-def atomic_write(path, content):
+def _atomic_write(path, content):
     dir_name = os.path.dirname(path)
     os.makedirs(dir_name, exist_ok=True)
 
@@ -109,7 +109,7 @@ def atomic_write(path, content):
 
     shutil.move(tmp_path, path)
 
-def set_memcached(settings_file=settings_file, host="127.0.0.1", port=11211):
+def _set_memcached(settings_file=settings_file, host="127.0.0.1", port=11211):
     content = ""
 
     if os.path.exists(settings_file):
@@ -151,9 +151,9 @@ CACHES = {{
     else:
         content += "\n" + memcached_block + "\n"
 
-    atomic_write(settings_file, content)
+    _atomic_write(settings_file, content)
 
-def write_resolv_conf(config):
+def _write_resolv_conf(config):
     dns_servers = get(config, "network.HOST_DNS_SERVERS") or []
 
     if not dns_servers:
@@ -205,7 +205,7 @@ def conf_horizon(config):
     settings_to_set["WEBROOT"] = "'/horizon/'" if is_debian() else "'/dashboard/'"
 
     if install_cinder_backup:
-        if not enable_cinder_backup_panel() : return False
+        if not _enable_cinder_backup_panel() : return False
         
     content = ""
     if os.path.exists(settings_file):
@@ -220,14 +220,14 @@ def conf_horizon(config):
         else:
             content += "\n" + replacement + "\n"
 
-    atomic_write(settings_file, content)
+    _atomic_write(settings_file, content)
 
-    set_memcached(host="127.0.0.1", port=11211)
+    _set_memcached(host="127.0.0.1", port=11211)
 
     apache_conf = debian_apache_conf if is_debian() else ubuntu_apache_conf
     apache_block = debian_apache_block if is_debian() else ubuntu_apache_block
 
-    atomic_write(apache_conf, apache_block)
+    _atomic_write(apache_conf, apache_block)
 
     return True
 
@@ -251,7 +251,7 @@ def run_setup_horizon(config):
     
     install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA", False))
 
-    write_resolv_conf(config)
+    _write_resolv_conf(config)
 
     if not install_pkgs():
         return False
