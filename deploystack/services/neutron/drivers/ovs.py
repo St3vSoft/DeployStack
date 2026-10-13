@@ -335,8 +335,6 @@ def finalize(config):
 
     if not enable_kernel_module(module_names=kernel_modules) : return False
 
-    print()
-
     write_permanent_modules_conf("/etc/modules-load.d/openvswitch.conf", modules=["openvswitch"])
 
     with open("/etc/udev/rules.d/99-openvswitch.rules", "w") as f:
