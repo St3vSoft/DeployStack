@@ -11,10 +11,8 @@ OVERLAY_TYPES = ("geneve", "vxlan")
 VALID_TENANT_TYPES = ("geneve", "vxlan", "vlan", "flat")
 
 def get_tenant_types(config, default="geneve"):
-    
-    driver = get(config, "neutron.DRIVER").lower()
 
-    types = get(config, "neutron.tenant_networks.TYPES", None)
+    types = get(config, "neutron.tenant_network.TYPES", None)
 
     if not types:
         legacy = get(config, "neutron.tenant_network.TYPE", None)
