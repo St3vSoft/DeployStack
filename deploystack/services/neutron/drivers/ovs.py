@@ -16,7 +16,7 @@ from ....utils.core import colors
 from ....templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 from ....utils.network.net_utils import get_network_info
 from ....utils.config.helpers import parse_bool
-from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, enable_kernel_module
+from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, enable_kernel_module, is_module_loaded
 
 from ..network_utils.security_group import add_rules_to_default_sg
 
@@ -34,6 +34,8 @@ conf_nova="/etc/nova/nova.conf"
 
 interfaces_dir = "/etc/network/interfaces.d/"
 backup_dir = "/root/net-backup"
+
+overlay_types = {"vxlan", "geneve"}
 
 def install_pkgs():
 
@@ -192,9 +194,9 @@ def conf_ovs_bridges(config):
 
     bridges_to_add = [(public_bridge, public_iface)]
 
-    if "vxlan" not in tenant_types:
+    if overlay_types.isdisjoint(tenant_types):
         bridges_to_add.append((tenant_bridge, None))
-    elif ("vxlan", "geneve") in tenant_types:
+    else:
         bridges_to_add.append((tunnel_bridge, None))
 
     for bridge, port in bridges_to_add:
@@ -283,19 +285,16 @@ def conf_neutron_ovs(config):
         set_conf_option(conf_openvswitch, "ovs", "bridge_mappings", build_bridge_mappings(config))
 
         if not use_tenant_flat_bridge:
-    
             tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE").lower()
 
-            if "vxlan" in tunnel_types:
-                set_conf_option(conf_ml2, "ml2_type_vxlan", "vni_ranges", tenant_network_vni_range)
+        for tunnel_type in tunnel_types:
+            if tunnel_type in ("vxlan", "geneve"):
+                set_conf_option(conf_ml2, f"ml2_type_{tunnel_type}", "vni_ranges", tenant_network_vni_range)
 
-            if "geneve" in tunnel_types:
-                set_conf_option(conf_ml2, "ml2_type_geneve", "vni_ranges", tenant_network_vni_range)
+        set_conf_option(conf_openvswitch, "agent", "l2_population", "true")
+        set_conf_option(conf_openvswitch, "agent", "tunnel_types", ",".join(tunnel_types))
 
-            set_conf_option(conf_openvswitch, "agent", "l2_population", "true")
-            set_conf_option(conf_openvswitch, "agent", "tunnel_types", ",".join(tunnel_types))
-
-            set_conf_option(conf_openvswitch, "ovs", "tunnel_bridge", tunnel_bridge)
+        set_conf_option(conf_openvswitch, "ovs", "tunnel_bridge", tunnel_bridge)
     else:
         set_conf_option(conf_ml2, "ml2", "tenant_network_types", "local")
 
@@ -335,11 +334,13 @@ def finalize(config):
 
     for encap_type, modules in encap_modules.items():
         if encap_type in tenant_types:
-            if not line_printed:
-                line_printed = True
-                print()
-                
-            kernel_modules += modules
+
+            if not is_module_loaded(encap_type):
+                if not line_printed:
+                    line_printed = True
+                    print()
+
+            kernel_modules += modules  
 
     if not enable_kernel_module(module_names=kernel_modules) : return False
 
