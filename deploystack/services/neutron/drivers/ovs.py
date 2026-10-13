@@ -240,7 +240,7 @@ def conf_neutron_ovs(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    tenant_network_vni_range = get(config, "neutron.tenant_network. VNI_RANGE", "1:1000")
+    tenant_network_vni_range = get(config, "neutron.tenant_network.VNI_RANGE", "1:1000")
 
     provider_networks = get(config, "neutron.provider_networks", [])
 
@@ -286,7 +286,11 @@ def conf_neutron_ovs(config):
     
             tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE").lower()
 
-            set_conf_option(conf_ml2, "ml2_type_vxlan", "vni_ranges", tenant_network_vni_range)
+            if "vxlan" in tunnel_types:
+                set_conf_option(conf_ml2, "ml2_type_vxlan", "vni_ranges", tenant_network_vni_range)
+
+            if "geneve" in tunnel_types:
+                set_conf_option(conf_ml2, "ml2_type_geneve", "vni_ranges", tenant_network_vni_range)
 
             set_conf_option(conf_openvswitch, "agent", "l2_population", "true")
             set_conf_option(conf_openvswitch, "agent", "tunnel_types", ",".join(tunnel_types))
@@ -332,10 +336,6 @@ def finalize(config):
     for encap_type, modules in encap_modules.items():
         if encap_type in tenant_types:
             kernel_modules += modules
-
-    if not line_printed:
-        print()
-        line_printed = True
 
     if not enable_kernel_module(module_names=kernel_modules) : return False
 
