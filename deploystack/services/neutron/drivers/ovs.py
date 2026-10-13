@@ -335,6 +335,10 @@ def finalize(config):
 
     for encap_type, modules in encap_modules.items():
         if encap_type in tenant_types:
+            if not line_printed:
+                line_printed = True
+                print()
+                
             kernel_modules += modules
 
     if not enable_kernel_module(module_names=kernel_modules) : return False
