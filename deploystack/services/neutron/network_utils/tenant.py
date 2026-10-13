@@ -10,15 +10,9 @@ from ....utils.core import colors
 OVERLAY_TYPES = ("geneve", "vxlan")
 VALID_TENANT_TYPES = ("geneve", "vxlan", "vlan", "flat")
 
-def get_tenant_types(config, default=""):
+def get_tenant_types(config, default="geneve"):
     
     driver = get(config, "neutron.DRIVER").lower()
-
-    driver_defaults = {
-        "ovn": "geneve",
-        "ovs": "vxlan",
-    }
-    default = driver_defaults.get(driver, default)
 
     types = get(config, "neutron.tenant_networks.TYPES", None)
 

@@ -11,8 +11,6 @@ from ...utils.core.system_utils import has_hw_virtualization, get_free_loops, ge
 
 from ...templates import OPENSTACK_CONFIG_TEMPLATE
 
-from ...utils.config.helpers import parse_bool
-
 from ...utils.core import colors
 
 config_file_path = ""
@@ -203,8 +201,8 @@ def config_openstack(
 
     # Tenant network
     config_dict["neutron"].setdefault("tenant_network", {})
-    config_dict["neutron"]["tenant_network"]["TYPES"] = ["geneve"] if neutron_driver == "ovn" else ["flat"]
-    config_dict["neutron"]["tenant_network"]["VNI_RANGE"] = "1:65536" if neutron_driver == "ovn" else ""
+    config_dict["neutron"]["tenant_network"]["TYPES"] = ["geneve"] 
+    config_dict["neutron"]["tenant_network"]["VNI_RANGE"] = "1:65536"
 
     config_dict["neutron"]["default_security_group"]["defaults"]["remote_ip_prefix"] = network
 

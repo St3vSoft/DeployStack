@@ -194,7 +194,7 @@ def conf_ovs_bridges(config):
 
     if "vxlan" not in tenant_types:
         bridges_to_add.append((tenant_bridge, None))
-    elif "vxlan" in tenant_types:
+    elif ("vxlan", "geneve") in tenant_types:
         bridges_to_add.append((tunnel_bridge, None))
 
     for bridge, port in bridges_to_add:
