@@ -15,7 +15,7 @@ def get_tenant_types(config, default="geneve"):
     types = get(config, "neutron.tenant_network.TYPES", None)
 
     if not types:
-        legacy = get(config, "neutron.tenant_network.TYPE", None)
+        legacy = get(config, "neutron.tenant_network.TYPES", None)
         types = [legacy] if legacy else [default]
 
     if isinstance(types, str):
