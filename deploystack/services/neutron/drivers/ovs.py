@@ -198,11 +198,16 @@ def conf_ovs_bridges(config):
         bridges_to_add.append((tunnel_bridge, None))
 
     for bridge, port in bridges_to_add:
-        if not run_command(["ovs-vsctl", "--may-exist", "add-br", public_bridge, "--", "--may-exist", "add-port", public_bridge, public_iface], f"Adding bridge {public_bridge} with port {public_iface}"): return False
+        print()
+
+        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {public_bridge}"): return False
         
         print()
 
-        if not run_command(["ip", "link", "set", port, "up"], f"Bringing interface {port} up"): return False
+        if port is not None:
+            if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {public_iface}"): return False
+
+            if not run_command(["ip", "link", "set", port, "up"], f"Bringing interface {public_iface} up"): return False
 
         if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing bridge {bridge} up"): return False
     
