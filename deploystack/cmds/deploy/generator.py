@@ -207,15 +207,15 @@ def config_openstack(
     config_dict["neutron"]["default_security_group"]["defaults"]["remote_ip_prefix"] = network
 
     # Provider networks
-    if neutron_driver == "ovs":
-        config_dict["neutron"]["provider_networks"] = [
-            {"name": "public", "bridge": "br-ex", "type": "flat"},
-            {"name": "internal", "bridge": "br-tenant", "type": "flat"}
-        ]
-    else:
-        config_dict["neutron"]["provider_networks"] = [
-            {"name": "public", "bridge": "br-ex", "type": "flat"}
-        ]
+    #if neutron_driver == "ovs":
+        #config_dict["neutron"]["provider_networks"] = [
+        #    {"name": "public", "bridge": "br-ex", "type": "flat"},
+        #    {"name": "internal", "bridge": "br-tenant", "type": "flat"}
+        #]
+    #else:
+    config_dict["neutron"]["provider_networks"] = [
+        {"name": "public", "bridge": "br-ex", "type": "flat"}
+    ]
 
     # Cinder
     config_dict.setdefault("cinder", {})

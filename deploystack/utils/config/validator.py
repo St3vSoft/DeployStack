@@ -394,11 +394,6 @@ def validate_neutron(config) -> bool:
             print(f"{colors.RED}The interface '{public_bridge_interface_ovs}' specified in neutron.ovs.PUBLIC_BRIDGE_INTERFACE does not exist.{colors.RESET}")
             ok = False
 
-        if "geneve" in tenant_types:
-            print(f"{colors.RED}Error: neutron.tenant_network.TYPE 'geneve' is not supported by OVS{colors.RESET}")
-            ok = False
-
-
     # ==========================
     # OVN
     # ==========================
