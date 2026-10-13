@@ -3,6 +3,8 @@ import json
 
 from ....utils.core.commands import os_run, os_run_output
 from ....utils.config.parser import get
+from ....utils.core.system_utils import is_debian
+
 from ....utils.core import colors
  
 OVERLAY_TYPES = ("geneve", "vxlan")
@@ -116,7 +118,10 @@ def _provider_args(net):
 
 def _ensure_router(router, subnet_name, public_network_name, env):
 
-    gateways = json.loads(os_run_output(["openstack", "router", "show", router, "-f", "json", "-c", "external_gateways"], env=env))
+    if is_debian():
+        gateways = json.loads(os_run_output(["openstack", "router", "show", router, "-f", "json", "-c", "external_gateways"], env=env))
+    else:
+        gateways = json.loads(os_run_output(["openstack", "router", "show", router, "-f", "json", "-c", "external_gateway_info"], env=env))
 
     if not gateways.get("external_gateways"):
         if not os_run(["openstack", "router", "set", router, "--external-gateway", public_network_name], f"Setting external gateway for router '{router}'...", env=env) : return False
