@@ -204,7 +204,7 @@ def conf_ovs_bridges(config):
         print()
 
         if port is not None:
-            if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {public_iface}"): return False
+            if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {bridge}"): return False
 
             if not run_command(["ip", "link", "set", port, "up"], f"Bringing interface {public_iface} up"): return False
 
