@@ -14,7 +14,7 @@ from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, i
 from ....utils.core import colors
 from ....utils.config.helpers import parse_bool
 from ....utils.network.net_utils import get_network_info
-from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, ifaces_config_exclude_patterns, enable_kernel_module
+from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, ifaces_config_exclude_patterns, enable_kernel_module, is_module_loaded
 
 from ..network_utils.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
 
@@ -24,6 +24,8 @@ from ..network_utils.security_group import add_rules_to_default_sg
 
 from ..network_utils.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
 from ..network_utils.routers import create_custom_network_router
+
+overlay_types = {"vxlan", "geneve"}
 
 neutron_conf = "/etc/neutron/neutron.conf"
 neutron_ovn_metadata_agent_conf = "/etc/neutron/neutron_ovn_metadata_agent.ini"
@@ -233,10 +235,17 @@ def conf_ovn_controller(config):
     provider_networks = get(config, "neutron.provider_networks", [])
 
     kernel_modules = []
+    line_printed = False
 
     for encap_type, modules in encap_modules.items():
-        if encap_type in ovn_encap_type:
-            kernel_modules += modules
+
+        if not is_module_loaded(encap_type):
+            if encap_type in ovn_encap_type:
+                if not line_printed:
+                    line_printed = True
+                    print()
+
+                kernel_modules += modules
 
     if not enable_kernel_module(module_names=kernel_modules) : return False
 
@@ -343,11 +352,12 @@ def conf_ovn_neutron(config):
     set_conf_option(neutron_ovn_metadata_agent_conf, "ovn", "ovn_sb_connection", f"tcp:{ip_address}:{ovn_sb_port}")
 
     if create_ovn_bridges:
-        if ovn_encap_type == "geneve":
-            set_conf_option(conf_ml2, "ml2_type_geneve", "vni_ranges", tenant_network_vni_range)
-            set_conf_option(conf_ml2, "ml2_type_geneve", "max_header_size", "38")
-        elif ovn_encap_type == "vxlan":
-            set_conf_option(conf_ml2, "ml2_type_vxlan", "vni_ranges", tenant_network_vni_range)
+        for tunnel_type in tenant_types:
+            if tunnel_type in overlay_types:
+                set_conf_option(conf_ml2, f"ml2_type_{tunnel_type}", "vni_ranges", tenant_network_vni_range)
+
+            if "geneve" in tunnel_type:
+                set_conf_option(conf_ml2, "ml2_type_geneve", "max_header_size", "38")
 
         if flat_networks_str:
             set_conf_option(conf_ml2, "ml2_type_flat", "flat_networks", flat_networks_str)

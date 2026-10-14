@@ -5,8 +5,6 @@ import shutil
 import json
 import time
 
-from pathlib import Path
-
 from ....utils.core.commands import run_command, os_run_output, os_run, run_command_sync
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
