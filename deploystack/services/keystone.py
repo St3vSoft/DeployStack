@@ -103,7 +103,8 @@ def conf_keystone(config):
         "--bootstrap-internal-url", identity_url,
         "--bootstrap-public-url", identity_url,
         "--bootstrap-region-id", os_region_name
-]
+    ]
+    
     print()
 
     if not run_command(bootstrap_cmd, "Bootstrapping Keystone...") : return False

@@ -12,7 +12,7 @@ from ..core.commands import run_command_output
 
 from ..core.system_utils import service_exists, is_debian
 
-from ...services.utils import validate_os_release_available
+from ...services.utils import _validate_os_release_available
 
 from ..core import colors
 
@@ -247,7 +247,7 @@ def check_deployment(include_endpoints: bool = True):
         if include_endpoints:
             add_endpoints_check(["sharev2"])
 
-            if not is_debian() and not validate_os_release_available("gazpacho"):
+            if not is_debian() and not _validate_os_release_available("gazpacho"):
                 add_endpoints_check(["share"])
 
         manila_backend = (get_conf_option(manila_conf, "DEFAULT", "enabled_share_backends") or "").lower()

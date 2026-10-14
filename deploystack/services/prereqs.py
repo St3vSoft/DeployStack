@@ -144,7 +144,7 @@ def set_openstack_release(config):
         else:
             print(f"{colors.RED}OpenStack '{release}' is not supported "
                   f"on Ubuntu '{distro_codename}'.{colors.RESET}")
-            _print_supported_combinations(distro_codename, native)
+            _print_ubuntu_supported_combinations(distro_codename, native)
             return False
 
     elif distro_id == "debian":
@@ -157,7 +157,7 @@ def set_openstack_release(config):
 
     return True
 
-def _print_supported_combinations(current_codename: str, native: str):
+def _print_ubuntu_supported_combinations(current_codename: str, native: str):
     print(f"{colors.YELLOW}Supported combinations:{colors.RESET}")
     for (codename, rel) in sorted(UBUNTU_CLOUD_ARCHIVE):
         marker = " ← you are here" if codename == current_codename else ""
@@ -168,7 +168,6 @@ def _print_supported_combinations(current_codename: str, native: str):
 def _write_loopback_config(config):
 
     install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA", False))
-
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
 
     is_lvm_manila_backend_enabled = (get(config, "manila.BACKEND") == "lvm")
@@ -292,30 +291,32 @@ def install_pkgs(config):
 
     return True
 
-
 def add_rabbitmq_openstack_user(config):
-     
-    print()
 
+    print()
+    
     rabbitmq_password = get(config, "passwords.RABBITMQ_PASSWORD")
 
+    if not isinstance(rabbitmq_password, str) or not rabbitmq_password:
+        return False
+
     try:
-        output = subprocess.check_output(["rabbitmqctl", "list_users"], text=True)
-        user_exists = "openstack" in output
-    except subprocess.CalledProcessError:
-        user_exists = False
+        output = subprocess.check_output(["rabbitmqctl", "list_users"], text=True, stderr=subprocess.PIPE, timeout=30,)
+    except (subprocess.CalledProcessError,
+            FileNotFoundError,
+            PermissionError,
+            subprocess.TimeoutExpired):
+        return False
+
+    user_exists = any(line.split()[0] == "openstack" for line in output.splitlines() if line.split())
 
     if not user_exists:
-        if not run_command(
-            ["rabbitmqctl", "add_user", "openstack", rabbitmq_password],
-            "Creating RabbitMQ OpenStack User..."
-        ): return False
+        if not run_command(["rabbitmqctl", "add_user", "openstack", rabbitmq_password], "Creating RabbitMQ OpenStack User..."): return False
+    else:
+        if not run_command_output(["rabbitmqctl", "change_password", "openstack", rabbitmq_password]): return False
 
-    if not run_command(
-        ["rabbitmqctl", "set_permissions", "openstack", ".*", ".*", ".*"],
-        "Setting permissions for RabbitMQ OpenStack User..."
-    ): return False
-    
+    if not run_command(["rabbitmqctl", "set_permissions", "openstack", ".*", ".*", ".*"], "Setting permissions for RabbitMQ OpenStack User..."): return False
+
     return True
 
 def run_setup_prereqs(config):

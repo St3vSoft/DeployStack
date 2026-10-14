@@ -3,7 +3,6 @@
 import pwd
 import grp
 import os
-import subprocess
 import json
 
 from pathlib import Path
@@ -15,7 +14,6 @@ from ..utils.config.setter import set_conf_option
 from ..utils.core import colors
 from ..utils.core.system_utils import service_exists, is_debian, is_package_installed, get_physical_disk, get_vg_physical_disks, nc_wait
 from ..utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service, configure_lvm_storage
-from ..utils.lvm import get_vg_for_pv
 
 from ..utils.config.helpers import parse_bool, get_nfs_share_for_path, parse_nfs_source
 
@@ -194,7 +192,9 @@ def conf_cinder_backup(config):
 
     if backup_compression_algorithm == "zstd":
         print()
-        if not apt_install(["python3-zstd"], "Installing Python3 zstd Package...") : return False
+
+        if not is_package_installed("python3-zstd"):
+            if not apt_install(["python3-zstd"], "Installing Python3 zstd Package...") : return False
 
     if backup_driver == "posix":
 
@@ -579,7 +579,7 @@ def create_volume_types(config, env):
 
     volumes_types = json.loads(run_command_output(["openstack", "volume", "type", "list", "-f", "json"], env=env))
 
-    def configure_volume_type(backend):
+    def _configure_volume_type(backend):
 
         backend_name = get(config, f"cinder.backends.{backend}.BACKEND_NAME")
         volume_type_name = get(config, f"cinder.backends.{backend}.VOLUME_TYPE_NAME")
@@ -602,7 +602,7 @@ def create_volume_types(config, env):
         return True
 
     for backend in enabled_backends:
-        if not configure_volume_type(backend):
+        if not _configure_volume_type(backend):
             return False
 
     return True
@@ -635,4 +635,3 @@ def run_setup_cinder(config, env):
     
     print(f"\n{colors.GREEN}Cinder configured successfully!{colors.RESET}\n")
     return True
-    

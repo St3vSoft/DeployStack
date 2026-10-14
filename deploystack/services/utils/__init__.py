@@ -5,44 +5,51 @@ from ...utils.core.system_utils import is_ubuntu_release
 from ...utils.config.parser import get
 
 UBUNTU_CLOUD_ARCHIVE = {
-    ("focal",   "wallaby"),
-    ("focal",   "xena"),
-    ("focal",   "yoga"),
-    ("jammy",   "zed"),
-    ("jammy",   "antelope"),
-    ("jammy",   "bobcat"),
-    ("jammy",   "caracal"),
-    ("noble",   "dalmatian"),
-    ("noble",   "epoxy"),
-    ("noble",   "flamingo"),
-    ("noble",   "gazpacho")
+    ("jammy", "zed"),
+    ("jammy", "antelope"),
+    ("jammy", "bobcat"),
+    ("jammy", "caracal"),
+    ("noble", "dalmatian"),
+    ("noble", "epoxy"),
+    ("noble", "flamingo"),
 }
 
 UBUNTU_NATIVE_OPENSTACK = {
-    "focal":    "ussuri",
     "jammy":    "yoga",
     "lunar":    "antelope",
     "mantic":   "bobcat",
     "noble":    "caracal",
     "oracular": "dalmatian",
     "plucky":   "epoxy",
-    "questing": "epoxy",
+    "questing": "flamingo",
     "resolute": "gazpacho",
 }
 
 DEFAULT_UBUNTU_OPENSTACK_RELEASES = {
-    "20.04": "ussuri",
     "22.04": "yoga",
+    "22.10": "zed",
+    "23.04": "antelope",
+    "23.10": "bobcat",
     "24.04": "caracal",
+    "24.10": "dalmatian",
+    "25.04": "epoxy",
+    "25.10": "flamingo",
     "26.04": "gazpacho",
 }
 
 def get_base_host(config):
-    ip = config.get("network", {}).get("HOST_IP")
-    domain = config.get("network", {}).get("HOST_DOMAIN") or None
-    return domain or ip
+    network = config.get("network") or {}
+
+    domain = network.get("HOST_DOMAIN")
+    ip = network.get("HOST_IP")
+
+    domain = domain.strip() if isinstance(domain, str) else None
+    ip = ip.strip() if isinstance(ip, str) else None
+
+    return domain or ip or None
 
 def _get_candidate_version(package_name: str) -> str | None:
+
     try:
         policy_output = run_command_output(["apt-cache", "policy", package_name])
     except Exception as exc:
@@ -62,45 +69,14 @@ def _get_candidate_version(package_name: str) -> str | None:
     version = match.group("version")
     return None if version in ("(none)", "") else version
 
-
-def validate_os_release_available(
-    release_name: str,
-    package_name: str = "keystone",
-) -> bool:
-    release_name = release_name.strip().lower()
-
-    for ubuntu_release, openstack_release in DEFAULT_UBUNTU_OPENSTACK_RELEASES.items():
-        if is_ubuntu_release(ubuntu_release):
-            if openstack_release == release_name:
-                return bool(_get_candidate_version(package_name))
-
-    candidate_version = _get_candidate_version(package_name)
-    if not candidate_version:
-        return False
-
-    try:
-        madison_output = run_command_output(["apt-cache", "madison", package_name])
-    except Exception as exc:
-        return _validate_via_policy(package_name, release_name, candidate_version)
-
-    if not madison_output.strip():
-        return _validate_via_policy(package_name, release_name, candidate_version)
-
-    for line in madison_output.splitlines():
-        parts = [p.strip() for p in line.split("|")]
-        if len(parts) < 3:
-            continue
-
-        line_version = parts[1]
-        source = parts[2]
-
-        if line_version != candidate_version:
-            continue
-
-        if re.search(rf"/{re.escape(release_name)}/", source, re.IGNORECASE):
-            return True
-
-    return False
+def _source_contains_release(source: str, release_name: str) -> bool:
+    return bool(
+        re.search(
+            rf"(?:^|[-/]){re.escape(release_name)}(?:[-/]|$)",
+            source,
+            re.IGNORECASE,
+        )
+    )
 
 def _validate_via_policy(
     package_name: str,
@@ -108,27 +84,111 @@ def _validate_via_policy(
     candidate_version: str,
 ) -> bool:
     try:
-        policy_output = run_command_output(["apt-cache", "policy", package_name])
-    except Exception as exc:
+        output = run_command_output(
+            ["apt-cache", "policy", package_name]
+        )
+    except Exception:
         return False
 
-    table_match = re.search(r"Version table:\s*\n(?P<table>.*)", policy_output, re.DOTALL)
-    version_table = table_match.group("table") if table_match else policy_output
+    if not isinstance(output, str) or not output:
+        return False
 
-    blocks = re.split(r"^(?=\s*\S+\s+\d+\s*$)", version_table, flags=re.MULTILINE)
+    header_re = re.compile(
+        r"^\s*(?:\*\*\*\s+)?(?P<version>\S+)\s+\d+\s*$"
+    )
+    source_re = re.compile(r"^\s+\d+\s+(?P<source>\S.*)$")
 
-    for block in blocks:
-        header_match = re.match(r"\s*(?P<version>\S+)\s+\d+\s*$", block, re.MULTILINE)
-        if not header_match or header_match.group("version") != candidate_version:
+    current_version = None
+
+    for line in output.splitlines():
+        header = header_re.match(line)
+
+        if header:
+            current_version = header.group("version")
             continue
 
-        source_lines = re.findall(r"^\s*\d+\s+(?P<source>\S.*)$", block, re.MULTILINE)
-        for source in source_lines:
-            if re.search(rf"/{re.escape(release_name)}/", source, re.IGNORECASE):
-                return True
+        if current_version != candidate_version:
+            continue
+
+        source_match = source_re.match(line)
+        if source_match and _source_contains_release(
+            source_match.group("source"),
+            release_name,
+        ):
+            return True
 
     return False
 
-def ensure_os_release(config, release):
-    os_release = get(config, "openstack.OPENSTACK_RELEASE").lower()
-    return os_release == release and validate_os_release_available(release)
+def _validate_os_release_available(
+    release_name: str,
+    package_name: str = "keystone",
+) -> bool:
+    if not isinstance(release_name, str) or not release_name.strip():
+        return False
+
+    release_name = release_name.strip().lower()
+
+    # Native OpenStack release for the current Ubuntu version.
+    for ubuntu_version, openstack_release in (
+        DEFAULT_UBUNTU_OPENSTACK_RELEASES.items()
+    ):
+        if (
+            is_ubuntu_release(ubuntu_version)
+            and openstack_release == release_name
+        ):
+            return bool(_get_candidate_version(package_name))
+
+    candidate_version = _get_candidate_version(package_name)
+    if not candidate_version:
+        return False
+
+    try:
+        output = run_command_output(
+            ["apt-cache", "madison", package_name]
+        )
+    except Exception:
+        return _validate_via_policy(
+            package_name, release_name, candidate_version
+        )
+
+    if not isinstance(output, str) or not output.strip():
+        return _validate_via_policy(
+            package_name, release_name, candidate_version
+        )
+
+    for line in output.splitlines():
+        parts = [part.strip() for part in line.split("|", 2)]
+
+        if len(parts) != 3:
+            continue
+
+        _, version, source = parts
+
+        if (
+            version == candidate_version
+            and _source_contains_release(source, release_name)
+        ):
+            return True
+
+    # Try the alternative parser if madison's format did not match.
+    return _validate_via_policy(
+        package_name, release_name, candidate_version
+    )
+
+
+def ensure_os_release(config, release: str) -> bool:
+    configured_release = get(config, "openstack.OPENSTACK_RELEASE")
+
+    if not isinstance(configured_release, str):
+        return False
+
+    if not isinstance(release, str):
+        return False
+
+    configured_release = configured_release.strip().lower()
+    release = release.strip().lower()
+
+    if not configured_release or configured_release != release:
+        return False
+
+    return _validate_os_release_available(release)
