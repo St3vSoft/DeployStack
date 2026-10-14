@@ -54,7 +54,6 @@ def install_pkgs():
     return True
 
 def conf_ovn_bridges(config):
-    print()
 
     INTERFACES_FILE = "/etc/network/interfaces.d/openvswitch"
 
@@ -238,12 +237,12 @@ def conf_ovn_controller(config):
     line_printed = False
 
     for encap_type, modules in encap_modules.items():
-
-        if not is_module_loaded(encap_type):
             if encap_type in ovn_encap_type:
-                if not line_printed:
-                    line_printed = True
-                    print()
+                
+                if not is_module_loaded(encap_type):
+                    if not line_printed:
+                        line_printed = True
+                        print()
 
                 kernel_modules += modules
 
