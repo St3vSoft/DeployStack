@@ -455,14 +455,14 @@ def conf_cinder(config):
             
             target_scsi_ip_address = str(target_scsi_ip_address)
             
-            set_conf_option(cinder_conf, lvm_backend_name, "volume_driver", "cinder.volume.drivers.lvm.LVMVolumeDriver")
-            set_conf_option(cinder_conf, lvm_backend_name, "volume_group", vg_name)
-            set_conf_option(cinder_conf, lvm_backend_name, "volume_backend_name", lvm_backend_name)
-            set_conf_option(cinder_conf, lvm_backend_name, "iscsi_protocol", "iscsi")
-            set_conf_option(cinder_conf, lvm_backend_name, "iscsi_helper", "tgtadm")
-            set_conf_option(cinder_conf, lvm_backend_name, "volume_clear", volume_clear)
-            set_conf_option(cinder_conf, lvm_backend_name, "volume_clear_size", str(volume_clear_size))
-            set_conf_option(cinder_conf, lvm_backend_name, "target_ip_address", target_scsi_ip_address)
+            set_conf_option(cinder_conf, backend, "volume_driver", "cinder.volume.drivers.lvm.LVMVolumeDriver")
+            set_conf_option(cinder_conf, backend, "volume_group", vg_name)
+            set_conf_option(cinder_conf, backend, "volume_backend_name", lvm_backend_name)
+            set_conf_option(cinder_conf, backend, "iscsi_protocol", "iscsi")
+            set_conf_option(cinder_conf, backend, "iscsi_helper", "tgtadm")
+            set_conf_option(cinder_conf, backend, "volume_clear", volume_clear)
+            set_conf_option(cinder_conf, backend, "volume_clear_size", str(volume_clear_size))
+            set_conf_option(cinder_conf, backend, "target_ip_address", target_scsi_ip_address)
 
         elif driver == "nfs":
             nfs_backend_name = get(config, f"cinder.backends.{backend}.BACKEND_NAME")
@@ -471,28 +471,28 @@ def conf_cinder(config):
             nfs_mount_options = get(config, f"cinder.backends.{backend}.MOUNT_OPTIONS") or None
 
             sparsed_volumes = get(config, f"cinder.backends.{backend}.NFS_SPARSED_VOLUMES", "sparse")
-            sparsed_volumes = str(sparsed_volumes).lower() == "sparse"
+            sparsed_volumes_str = str(sparsed_volumes).lower() == "sparse"
 
             nfs_used_ratio = get(config, f"cinder.backends.{backend}.NFS_USED_RATIO", 0.95) 
             nfs_oversub_ratio = get(config, f"cinder.backends.{backend}.NFS_OVERSUB_RATIO", 1.0) 
 
             enable_snapshots = parse_bool(get(config, f"cinder.backends.{backend}.ENABLE_SNAPSHOTS"), False)
 
-            set_conf_option(cinder_conf, nfs_backend_name, "volume_driver", "cinder.volume.drivers.nfs.NfsDriver")
-            set_conf_option(cinder_conf, nfs_backend_name, "volume_backend_name", nfs_backend_name)
-            set_conf_option(cinder_conf, nfs_backend_name, "nfs_shares_config", "/etc/cinder/nfs_shares")
-            set_conf_option(cinder_conf, nfs_backend_name, "nfs_mount_point_base", nfs_mount_point_base)
+            set_conf_option(cinder_conf, backend, "volume_driver", "cinder.volume.drivers.nfs.NfsDriver")
+            set_conf_option(cinder_conf, backend, "volume_backend_name", nfs_backend_name)
+            set_conf_option(cinder_conf, backend, "nfs_shares_config", "/etc/cinder/nfs_shares")
+            set_conf_option(cinder_conf, backend, "nfs_mount_point_base", nfs_mount_point_base)
 
             if nfs_mount_options:
-                set_conf_option(cinder_conf, nfs_backend_name, "nfs_mount_options", nfs_mount_options)
+                set_conf_option(cinder_conf, backend, "nfs_mount_options", nfs_mount_options)
 
-            set_conf_option(cinder_conf, nfs_backend_name, "nfs_sparsed_volumes", str(sparsed_volumes))
+            set_conf_option(cinder_conf, backend, "nfs_sparsed_volumes", str(sparsed_volumes_str))
 
-            set_conf_option(cinder_conf, nfs_backend_name, "nfs_used_ratio", str(nfs_used_ratio))
-            set_conf_option(cinder_conf, nfs_backend_name, "nfs_oversub_ratio", str(nfs_oversub_ratio))
+            set_conf_option(cinder_conf, backend, "nfs_used_ratio", str(nfs_used_ratio))
+            set_conf_option(cinder_conf, backend, "nfs_oversub_ratio", str(nfs_oversub_ratio))
 
             if enable_snapshots:
-                set_conf_option(cinder_conf, nfs_backend_name, "nfs_snapshot_support", "True")
+                set_conf_option(cinder_conf, backend, "nfs_snapshot_support", "True")
 
     set_conf_option(cinder_conf, "service_user", "project_domain_name", "Default")
     set_conf_option(cinder_conf, "service_user", "project_name", "service")
