@@ -45,7 +45,16 @@ def finalize(config):
     ip_address = get(config, "network.HOST_IP")
 
     services = ["mariadb", "mysql"]
-    service = next((s for s in services if run_command_output(["systemctl", "status", s])), None)
+
+    service = next(
+        (
+            s for s in services
+            if run_command_output(
+                ["systemctl", "show", s, "--property=LoadState", "--value"]
+            ) == "loaded"
+        ),
+        None
+    )
 
     if service is None:
         print(f"{colors.RED}ERROR: MariaDB/MySQL systemd service not found.{colors.RESET}")
