@@ -9,7 +9,7 @@ from ..utils.core.commands import run_command, os_run, os_run_output
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
-from ..utils.core.system_utils import nc_wait
+from ..utils.core.system_utils import nc_wait, service_exists
 from ..utils.core import colors
 
 glance_conf= "/etc/glance/glance-api.conf"
@@ -71,7 +71,14 @@ def finalize(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    if not run_command(["systemctl", "restart", "glance-api"], "Restarting Glance service...") : return False
+    service = None
+
+    if service_exists("glance-api.service"):
+        service = "glance-api"
+    else:
+        service = "apache2"
+
+    if not run_command(["systemctl", "restart"] + service, "Restarting Glance service...") : return False
 
     if not nc_wait(ip_address, 9292) : return False
 

@@ -1,10 +1,10 @@
 import shutil
 import os
 
-from ..utils.core.commands import run_command, run_command_output
+from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
-from ..utils.core.system_utils import nc_wait
+from ..utils.core.system_utils import nc_wait, service_exists
 from ..utils.core import colors
 from ..templates import MYSQL_CONFIG
 
@@ -44,23 +44,13 @@ def finalize(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    services = ["mariadb", "mysql"]
-
-    service = next(
-        (
-            s for s in services
-            if run_command_output(
-                ["systemctl", "show", s, "--property=LoadState", "--value"]
-            ) == "loaded"
-        ),
-        None
-    )
+    service = "mariadb" if service_exists("mariadb.service") else "mysql" if service_exists("mysql.service") else None
 
     if service is None:
         print(f"{colors.RED}ERROR: MariaDB/MySQL systemd service not found.{colors.RESET}")
         return False
      
-    restart_cmd = ["systemctl", "restart", service]
+    restart_cmd = ["systemctl", "restart"] + service
 
     if not run_command(restart_cmd, "Restarting MySQL...") : return False
 
