@@ -4,7 +4,7 @@
 
 # DeployStack
 
-DeployStack is a command-line utility for deploying OpenStack on Ubuntu/Debian.  
+DeployStack is a command-line utility for deploying OpenStack on **Ubuntu/Debian**.  
 
 The instructions below describe a **temporary installation** method for development or testing, until an official `.deb` package is released.
 
@@ -84,10 +84,10 @@ If you want to pull the latest changes from the repository:
 
 ```bash
 cd ~/DeployStack
-git pull
+git pull && pip install .
 ```
 
 > [!TIP]
-> The installed package will reflect updates after reinstalling with `pip install .`.
+> The installed package will reflect updates after reinstalling with `pip install .`
 
 For usage instructions and additional documentation, see the Wiki at [DeployStack Wiki](https://github.com/Sorecchione07435/DeployStack/wiki).

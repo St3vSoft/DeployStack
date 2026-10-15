@@ -321,7 +321,7 @@ def conf_ovn_neutron(config):
     vlan_networks = [n for n in provider_networks if n["type"] == "vlan"]
 
     tenant_types = get_tenant_types(config)
-    tenant_network_vni_range = get(config, "neutron.tenant_network. VNI_RANGE", "1:1000")
+    tenant_network_vni_range = get(config, "neutron.tenant_network.VNI_RANGE", "1:1000")
     vlan_ranges_str = build_network_vlan_ranges(config)
 
     flat_networks_str = ",".join(flat_networks)

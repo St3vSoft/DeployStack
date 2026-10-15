@@ -310,6 +310,7 @@ def finalize_generic_backend(config, env):
     if not create_shares_networks(config, env) : return False
 
     if create_shares_enabled:
+
         shares = get(config, "manila.shares") or []
 
         if not create_shares(shares=shares, env=env, dhss=True): return False

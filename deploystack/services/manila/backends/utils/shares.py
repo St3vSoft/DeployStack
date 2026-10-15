@@ -192,6 +192,8 @@ def create_shares(shares, env, dhss=False):
 
             cmd += [protocol, str(size)]
 
+            print()
+
             if not os_run(cmd, f"Creating share '{name}'...", env=env):
                 return False
 
@@ -230,6 +232,8 @@ def create_shares(shares, env, dhss=False):
             if any(a.get("access_type", a.get("Access Type")) == rule_type and a.get("access_to", a.get("Access To")) == access for a in access_list):
                 print(f"{colors.YELLOW}Access rule {access} already exists, skipping.{colors.RESET}")
                 continue
+
+            print()
 
             if not os_run(["openstack", "share", "access", "create", "--access-level", level, share_id, rule_type, access], f"Adding access rule {access} to '{name}'...", env=env):
                 return False
