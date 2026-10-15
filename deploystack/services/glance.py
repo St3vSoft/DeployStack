@@ -71,14 +71,9 @@ def finalize(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    service = None
+    service = "glance-api" if service_exists("glance-api.service") else "apache2"
 
-    if service_exists("glance-api.service"):
-        service = "glance-api"
-    else:
-        service = "apache2"
-
-    if not run_command(["systemctl", "restart"] + service, "Restarting Glance service...") : return False
+    if not run_command(["systemctl", "restart", service], "Restarting Glance service...") : return False
 
     if not nc_wait(ip_address, 9292) : return False
 

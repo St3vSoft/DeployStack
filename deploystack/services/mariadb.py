@@ -50,7 +50,7 @@ def finalize(config):
         print(f"{colors.RED}ERROR: MariaDB/MySQL systemd service not found.{colors.RESET}")
         return False
      
-    restart_cmd = ["systemctl", "restart"] + service
+    restart_cmd = ["systemctl", "restart", service]
 
     if not run_command(restart_cmd, "Restarting MySQL...") : return False
 
