@@ -123,8 +123,8 @@ def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge
             run_command(["ip", "link", "set", port, "down"],
                         f"Bringing {port} down", ignore_errors=True)
 
-            run_command_sync(["ovs-vsctl", "--if-exists", "del-port", bridge, port], f"Deleting port {port} from {bridge}")
-            run_command_sync(["ovs-vsctl", "--if-exists", "del-br", bridge], f"Deleting bridge {bridge}")
+            run_command_sync(["ovs-vsctl", "--if-exists", "del-port", bridge, port])
+            run_command_sync(["ovs-vsctl", "--if-exists", "del-br", bridge])
 
     return True
 
