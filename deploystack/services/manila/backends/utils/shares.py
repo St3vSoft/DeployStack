@@ -1,7 +1,7 @@
 import json
 import time
 
-from .....utils.core.commands import os_run_output, os_run
+from .....utils.core.commands import os_run_output, os_run, run_command_sync
 from ..utils import wait_share_available, wait_dhss_share_available
 
 from .....utils.config.helpers import parse_bool
@@ -164,18 +164,18 @@ def create_shares(shares, env, dhss=False):
 
             share_server_id = _get_share_server_for_share(share_id, env) if dhss else None
 
-            if not os_run(["openstack", "share", "delete", share_id], f"Deleting failed '{name}' share...", env=env):
+            if not run_command_sync(["openstack", "share", "delete", share_id], env=env):
                 return False
             if not _wait_share_deleted(share_id, env):
                 return False
 
             if dhss and share_server_id:
-                if not os_run(["openstack", "share", "server", "delete", share_server_id], f"Deleting share server '{share_server_id}'...", env=env):
+                if not run_command_sync(["openstack", "share", "server", "delete", share_server_id], env=env):
                     return False
 
                 orphan_id = _get_server_for_share_server(share_server_id, env)
                 if orphan_id:
-                    if not os_run(["openstack", "server", "delete", orphan_id], f"Deleting orphaned Nova instance '{orphan_id}'...", env=env):
+                    if not run_command_sync(["openstack", "server", "delete", orphan_id], env=env):
                         return False
                     if not _wait_server_deleted(share_server_id, env):
                         return False
