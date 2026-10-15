@@ -26,6 +26,7 @@ def get_default_openstack_release():
         "25.04": "epoxy",
         "25.10": "epoxy",
         "26.04": "gazpacho",
+        "26.10": "hibiscus"
     }
 
     for ubuntu_version, openstack_release in ubuntu_releases.items():

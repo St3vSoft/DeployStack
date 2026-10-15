@@ -23,6 +23,7 @@ UBUNTU_NATIVE_OPENSTACK = {
     "plucky":   "epoxy",
     "questing": "flamingo",
     "resolute": "gazpacho",
+    "stonking": "hibiscus",
 }
 
 DEFAULT_UBUNTU_OPENSTACK_RELEASES = {
@@ -35,6 +36,7 @@ DEFAULT_UBUNTU_OPENSTACK_RELEASES = {
     "25.04": "epoxy",
     "25.10": "flamingo",
     "26.04": "gazpacho",
+    "26.10": "hibiscus"
 }
 
 def get_base_host(config):
