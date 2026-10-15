@@ -62,7 +62,7 @@ def _get_server_for_share_server(share_server_id, env):
 
     return None
 
-def _wait_server_deleted(share_server_id, env, attempts=10, delay=1000):
+def _wait_server_deleted(share_server_id, env, attempts=10, delay=200):
 
     for _ in range(attempts):
         server_id = _get_server_for_share_server(share_server_id, env)
@@ -74,7 +74,7 @@ def _wait_server_deleted(share_server_id, env, attempts=10, delay=1000):
 
     return False
 
-def _wait_share_deleted(share_id, env, attempts=10, delay=1000):
+def _wait_share_deleted(share_id, env, attempts=10, delay=200):
 
     for _ in range(attempts):
 
