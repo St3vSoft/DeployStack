@@ -1532,7 +1532,7 @@ def validate_manila(config) -> bool:
 
         provider_network_names = set()
 
-        tenant_networks = get("neutron.tenant_network.networks", [])
+        tenant_networks = get(config, "neutron.tenant_network.networks", [])
 
         tenant_network_names = set()
 
