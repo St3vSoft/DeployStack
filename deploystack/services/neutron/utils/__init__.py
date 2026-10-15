@@ -4,7 +4,7 @@ import subprocess
 
 from pathlib import Path
 
-from ....utils.core.system_utils import is_module_loaded
+from ....utils.core.system_utils import is_module_loaded, kernel_module_exists
 from ....utils.core.commands import run_command
 
 encap_modules = {
@@ -20,7 +20,7 @@ ifaces_config_exclude_patterns = {
 def enable_kernel_module(module_names: list[str]) -> bool:
     try:
         for module_name in module_names:
-            if not is_module_loaded(module_name):
+            if not is_module_loaded(module_name) and kernel_module_exists(module_name):
                 if not run_command(["modprobe", module_name], f"Enabling '{module_name}' kernel module... ") : return False
 
         print()
