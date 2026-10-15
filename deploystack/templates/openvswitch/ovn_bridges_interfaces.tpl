@@ -8,7 +8,7 @@ iface {public_iface} inet manual
     up ip link set {public_iface} up
     down ip link set {public_iface} down
 
-auto {public_bridge}
+allow-hotplug {public_bridge}
 iface {public_bridge} inet static
     address {ip_address}
     netmask {ip_address_netmask}
