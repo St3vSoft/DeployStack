@@ -10,11 +10,11 @@ from ....utils.core.commands import run_command, run_command_sync, os_run, os_ru
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
-from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, kernel_module_exists
+from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, kernel_module_exists, is_module_loaded
 from ....utils.core import colors
 from ....utils.config.helpers import parse_bool
 from ....utils.network.net_utils import get_network_info
-from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, ifaces_config_exclude_patterns, enable_kernel_module, is_module_loaded
+from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, ifaces_config_exclude_patterns, enable_kernel_module
 
 from ..network_utils.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
 

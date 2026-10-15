@@ -9,12 +9,12 @@ from ....utils.core.commands import run_command, os_run_output, os_run, run_comm
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
-from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian
+from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, is_module_loaded
 from ....utils.core import colors
 from ....templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 from ....utils.network.net_utils import get_network_info
 from ....utils.config.helpers import parse_bool
-from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, enable_kernel_module, is_module_loaded, kernel_module_exists
+from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, enable_kernel_module, kernel_module_exists
 
 from ..network_utils.security_group import add_rules_to_default_sg
 
