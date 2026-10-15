@@ -7,7 +7,7 @@ import shutil
 from ....utils.core.commands import run_command, os_run, os_run_output
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
-from ....utils.config.setter import set_conf_option
+from ....utils.config.setter import set_conf_option, remove_conf_option
 from ....utils.config.helpers import parse_bool
 from ....utils.core import colors
 
@@ -102,6 +102,9 @@ def conf_generic_backend(config):
         set_conf_option(manila_conf, "generic", "service_instance_user", service_instance_user)
         set_conf_option(manila_conf, "generic", "service_instance_password", service_instance_password)
 
+        remove_conf_option(manila_conf, "generic", "path_to_private_key")
+        remove_conf_option(manila_conf, "generic", "path_to_public_key")
+        
     elif service_image_authentication_method == "ssh_key":
 
         service_instance_private_key = get(config, "manila.backends.generic.SERVICE_IMAGE_AUTHENTICATION.SERVICE_INSTANCE_PRIVATE_KEY", "/etc/manila/ssh/id_manila")

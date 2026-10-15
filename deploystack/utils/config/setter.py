@@ -35,6 +35,23 @@ def set_samba_option(conf_file, section, option, value):
     with open(conf_file, "w") as f:
         f.writelines(out)
 
+def remove_conf_option(conf_file, section, option, interpolation=True):
+    
+    config = configparser.ConfigParser(
+        interpolation=None if not interpolation else configparser.BasicInterpolation()
+    )
+    config.optionxform = str
+    config.read(conf_file)
+
+    if section in config:
+        config.remove_option(section, option)
+
+        if not config.options(section):
+            config.remove_section(section)
+
+        with open(conf_file, "w") as f:
+            config.write(f)
+
 def set_conf_option(conf_file, section, option, value, interpolation = True):
 
     config = configparser.ConfigParser(
