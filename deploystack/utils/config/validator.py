@@ -1531,7 +1531,37 @@ def validate_manila(config) -> bool:
             ok = False
 
         provider_network_names = set()
-        allowed_neutron_networks = {"internal"}
+
+        tenant_networks = get("neutron.tenant_network.networks", [])
+
+        tenant_network_names = set()
+
+        if not isinstance(tenant_networks, list):
+            print(f"{colors.RED}Error: neutron.tenant_network.networks must be a list{colors.RESET}")
+            ok = False
+        else:
+            for tenant in tenant_networks:
+                if not isinstance(tenant, dict):
+                    print(f"{colors.RED}Error: invalid neutron.tenant_network.networks entry '{tenant}'{colors.RESET}")
+                    ok = False
+                    continue
+
+                name = tenant.get("name")
+
+                if not name:
+                    print(f"{colors.RED}Error: neutron.tenant_network.networks.name is missing{colors.RESET}")
+                    ok = False
+                    continue
+
+                name = name.lower()
+
+                if name in tenant_network_names:
+                    print(f"{colors.RED}Error: duplicate neutron.tenant_network.networks.name '{name}'{colors.RESET}")
+                    ok = False
+
+                tenant_network_names.add(name)
+
+        allowed_neutron_networks = set(tenant_network_names)
 
         if not isinstance(provider_networks, list):
             print(f"{colors.RED}Error: neutron.provider_networks must be a list{colors.RESET}")
@@ -1590,6 +1620,11 @@ def validate_manila(config) -> bool:
                 continue
 
             neutron_network = neutron_network.lower()
+
+            overlap = tenant_network_names & provider_network_names
+            if overlap:
+                print(f"{colors.RED}Error: names used both in tenant_network and provider_networks: {sorted(overlap)}{colors.RESET}")
+                ok = False
 
             if neutron_network not in allowed_neutron_networks:
                 print(f"{colors.RED}Error: invalid neutron_network '{neutron_network}'. "
