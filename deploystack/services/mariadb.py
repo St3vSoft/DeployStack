@@ -3,11 +3,12 @@ import os
 from ..utils.core.commands import run_command
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
-from ..utils.core.system_utils import nc_wait
+from ..utils.core.system_utils import nc_wait, is_ubuntu_release
 from ..utils.core import colors
 from ..templates import MYSQL_CONFIG
 
 mysqld_file_path = "/etc/mysql/mariadb.conf.d/99-openstack.cnf"
+mysqld_stoking_file_path = "/etc/mariadb/mariadb.conf.d/99-openstack.cnf"
 
 def install_pkgs():
     
@@ -22,6 +23,7 @@ def conf_mariadb(config):
     ip_address = get(config, "network.HOST_IP", None)
 
     try:
+        conf_file = mysqld_stoking_file_path if is_ubuntu_release("26.10") else mysqld_file_path
 
         with open(MYSQL_CONFIG, "r") as f:
             template = f.read()
@@ -29,7 +31,7 @@ def conf_mariadb(config):
                 ip_address=ip_address,
             )
 
-        with open(mysqld_file_path, "w") as f:
+        with open(conf_file, "w") as f:
             f.write(mysqld_template_content)
     except Exception as e:
         print(f"\n{colors.RED}Unable to configure MariaDB with an unhandled exception: {e}{colors.RESET}")
@@ -40,8 +42,15 @@ def conf_mariadb(config):
 def finalize(config):
 
     ip_address = get(config, "network.HOST_IP")
+
+    service = []
+
+    if is_ubuntu_release("26.10"):
+        service.append("mariadb")
+    else:
+        service.append("mysql")
      
-    restart_cmd = ["systemctl", "restart", "mysql"]
+    restart_cmd = ["systemctl", "restart"] + service
 
     if not run_command(restart_cmd, "Restarting MySQL...") : return False
 
