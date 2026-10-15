@@ -242,6 +242,13 @@ def nc_wait(addr: str, port: int, timeout: int = 30) -> bool:
 
         sleep(1)
 
+def kernel_module_exists(module_name):
+    return subprocess.run(
+        ["modinfo", module_name],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    ).returncode == 0
+
 def is_module_loaded(module_name):
     with open("/proc/modules") as f:
         return any(

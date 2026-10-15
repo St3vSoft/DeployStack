@@ -14,7 +14,7 @@ from ....utils.core import colors
 from ....templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 from ....utils.network.net_utils import get_network_info
 from ....utils.config.helpers import parse_bool
-from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, enable_kernel_module, is_module_loaded
+from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, enable_kernel_module, is_module_loaded, kernel_module_exists
 
 from ..network_utils.security_group import add_rules_to_default_sg
 
@@ -335,7 +335,7 @@ def finalize(config):
     for encap_type, modules in encap_modules.items():
         if encap_type in tenant_types:
 
-            if not is_module_loaded(encap_type):
+            if not is_module_loaded(encap_type) and kernel_module_exists(encap_type):
                 if not line_printed:
                     line_printed = True
                     print()
