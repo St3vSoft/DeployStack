@@ -1,14 +1,15 @@
+import shutil
 import os
 
-from ..utils.core.commands import run_command
+from ..utils.core.commands import run_command, run_command_output
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
-from ..utils.core.system_utils import nc_wait, is_ubuntu_release
+from ..utils.core.system_utils import nc_wait
 from ..utils.core import colors
 from ..templates import MYSQL_CONFIG
 
 mysqld_file_path = "/etc/mysql/mariadb.conf.d/99-openstack.cnf"
-mysqld_stoking_file_path = "/etc/mariadb/mariadb.conf.d/99-openstack.cnf"
+mariadb_file_path = "/etc/mariadb/mariadb.conf.d/99-openstack.cnf"
 
 def install_pkgs():
     
@@ -23,7 +24,7 @@ def conf_mariadb(config):
     ip_address = get(config, "network.HOST_IP", None)
 
     try:
-        conf_file = mysqld_stoking_file_path if is_ubuntu_release("26.10") else mysqld_file_path
+        conf_file = (mariadb_file_path if os.path.isfile(mariadb_file_path) else mysqld_file_path)
 
         with open(MYSQL_CONFIG, "r") as f:
             template = f.read()
@@ -34,7 +35,7 @@ def conf_mariadb(config):
         with open(conf_file, "w") as f:
             f.write(mysqld_template_content)
     except Exception as e:
-        print(f"\n{colors.RED}Unable to configure MariaDB with an unhandled exception: {e}{colors.RESET}")
+        print(f"\n{colors.RED}ERROR: Unable to configure MariaDB with an unhandled exception: {e}{colors.RESET}")
         return False
     
     return True
@@ -43,12 +44,12 @@ def finalize(config):
 
     ip_address = get(config, "network.HOST_IP")
 
-    service = []
+    services = ["mariadb", "mysql"]
+    service = next((s for s in services if run_command_output(["systemctl", "status", s])), None)
 
-    if is_ubuntu_release("26.10"):
-        service.append("mariadb")
-    else:
-        service.append("mysql")
+    if service is None:
+        print(f"{colors.RED}ERROR: MariaDB/MySQL systemd service not found.{colors.RESET}")
+        return False
      
     restart_cmd = ["systemctl", "restart"] + service
 
@@ -67,6 +68,12 @@ def create_services_databases(config):
 
     install_cinder = get(config, "optional_services.INSTALL_CINDER", "no").lower() == "yes"
     install_manila = get(config, "optional_services.INSTALL_MANILA", "no").lower() == "yes"
+    
+    mariadb_binary = shutil.which("mariadb") or shutil.which("mysql")
+
+    if not mariadb_binary:
+        print(f"{colors.RED}ERROR: MariaDB/MySQL client not found. Install mariadb-client.{colors.RESET}")
+        return False
 
     databases = ["keystone", "glance", "placement", "nova_api", "nova_cell0", "nova", "neutron"]
     
@@ -111,7 +118,7 @@ def create_services_databases(config):
 
     sql_string = " ".join(sql_commands)
 
-    if not run_command(["mysql", "-u", "root", "-e", sql_string], "Creating services databases...") : return False
+    if not run_command([mariadb_binary, "-u", "root", "-e", sql_string], "Creating services databases...") : return False
     
     return True
 
