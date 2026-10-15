@@ -10,7 +10,7 @@ from ....utils.core.commands import run_command, run_command_sync, os_run, os_ru
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
-from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, kernel_module_exists, is_module_loaded
+from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, kernel_module_exists, is_module_loaded, kernel_module_exists
 from ....utils.core import colors
 from ....utils.config.helpers import parse_bool
 from ....utils.network.net_utils import get_network_info
