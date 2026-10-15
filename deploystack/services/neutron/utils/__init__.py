@@ -23,8 +23,6 @@ def enable_kernel_module(module_names: list[str]) -> bool:
             if not is_module_loaded(module_name) and kernel_module_exists(module_name):
                 if not run_command(["modprobe", module_name], f"Enabling '{module_name}' kernel module... ") : return False
 
-        print()
-
         return True
     except subprocess.CalledProcessError:
         return False
