@@ -8,7 +8,7 @@ iface {public_iface} inet manual
     up ip link set {public_iface} up
     down ip link set {public_iface} down
 
-allow-hotplug {public_bridge}
+auto {public_bridge}
 iface {public_bridge} inet static
     address {ip_address}
     netmask {ip_address_netmask}
@@ -19,7 +19,7 @@ iface {public_bridge} inet static
     post-down ovs-vsctl --if-exists del-br {public_bridge}
 
 # IF_INTERNAL_BRIDGE_BEGIN
-allow-hotplug {internal_bridge}
+auto {internal_bridge}
 iface {internal_bridge} inet manual
     pre-up ovs-vsctl --may-exist add-br {internal_bridge}
     up ip link set {internal_bridge} up
