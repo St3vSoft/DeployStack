@@ -139,7 +139,7 @@ def _validate_via_policy(
 
     return False
 
-def _validate_os_release_available(
+def validate_os_release_available(
     release_name: str,
     package_name: str = "keystone",
 ) -> bool:
@@ -211,4 +211,4 @@ def ensure_os_release(config, release: str) -> bool:
     if not configured_release or configured_release != release:
         return False
 
-    return _validate_os_release_available(release)
+    return validate_os_release_available(release)

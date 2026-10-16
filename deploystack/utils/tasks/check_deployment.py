@@ -12,7 +12,7 @@ from ..core.commands import run_command_output
 
 from ..core.system_utils import service_exists, is_debian
 
-from ...services.utils import _validate_os_release_available
+from ...services.utils import validate_os_release_available
 
 from ..core import colors
 
@@ -188,10 +188,13 @@ def check_deployment(include_endpoints: bool = True):
     logger.debug(f"check_deployment(include_endpoints={include_endpoints}) started")
     result = CheckResult()
 
-    services_list = ["apache2", "glance-api"]
+    services_list = ["apache2"]
 
     if service_exists("nova-api.service") and is_package_installed("nova-api"):
         services_list.append("nova-api.service")
+
+    if service_exists("glance-api.service") and not validate_os_release_available("hibiscus"):
+        services_list.append("glance-api.service")
 
     if service_exists("neutron-server.service"):
         services_list.append("neutron-server")
@@ -239,15 +242,22 @@ def check_deployment(include_endpoints: bool = True):
 
         logger.debug("Manila detected: adding related checks")
 
+        manila_services = ["manila-api", "manila-scheduler", "manila-share"]
+
         manila_conf = "/etc/manila/manila.conf"
 
         add_config_files_check([manila_conf])
-        add_services_check(["manila-api", "manila-scheduler", "manila-share"])
+
+        if validate_os_release_available("hibiscus"):
+            manila_services.remove("manila-api")
+
+        add_services_check(manila_services)
 
         if include_endpoints:
             add_endpoints_check(["sharev2"])
 
-            if not is_debian() and not _validate_os_release_available("gazpacho"):
+            if (not is_debian() and not validate_os_release_available("gazpacho") 
+                and validate_os_release_available("hibiscus")):
                 add_endpoints_check(["share"])
 
         manila_backend = (get_conf_option(manila_conf, "DEFAULT", "enabled_share_backends") or "").lower()
