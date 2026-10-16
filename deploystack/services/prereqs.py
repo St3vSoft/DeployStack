@@ -15,7 +15,7 @@ from ..utils.config.setter import set_conf_option, toml_string
 from ..utils.lvm import set_lvm_filter
 from ..utils.config.helpers import parse_bool
 
-from .utils import ensure_os_release, UBUNTU_CLOUD_ARCHIVE, UBUNTU_NATIVE_OPENSTACK
+from .utils import ensure_os_release, UBUNTU_CLOUD_ARCHIVE, UBUNTU_NATIVE_OPENSTACK, enable_cloud_archive
 
 from .patches.openstackclient import create_venv_and_install_openstackclient
 
@@ -138,8 +138,11 @@ def set_openstack_release(config):
                   f"on Ubuntu {distro_codename}, skipping Cloud Archive.{colors.RESET}")
 
         elif (distro_codename, release) in UBUNTU_CLOUD_ARCHIVE:
-            if not _add_uca_repo(release):
-                return False
+
+            if release == "hibiscus" and is_ubuntu_release("26.04"):
+                if not enable_cloud_archive("hibiscus", "resolute") : return False
+            else:
+                if not _add_uca_repo(release) : return False
 
         else:
             print(f"{colors.RED}OpenStack '{release}' is not supported "

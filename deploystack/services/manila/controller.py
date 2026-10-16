@@ -10,7 +10,7 @@ from ...utils.core.system_utils import nc_wait
 
 from ...utils.core.system_utils import is_ubuntu_release
 
-from ..patches.manila.manilaclient import install_manilaclient_in_venv
+from ..patches.resolute.manila.manilaclient import install_manilaclient_in_venv
 
 from ...utils.core import colors
 

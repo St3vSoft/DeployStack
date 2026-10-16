@@ -1,8 +1,13 @@
+from pathlib import Path
+
 import re
 
 from ...utils.core.commands import run_command_output
+from ...utils.apt.apt import apt_install, apt_update
 from ...utils.core.system_utils import is_ubuntu_release
 from ...utils.config.parser import get
+
+UCA_URL = "http://ubuntu-cloud.archive.canonical.com/ubuntu"
 
 UBUNTU_CLOUD_ARCHIVE = {
     ("jammy", "zed"),
@@ -12,6 +17,7 @@ UBUNTU_CLOUD_ARCHIVE = {
     ("noble", "dalmatian"),
     ("noble", "epoxy"),
     ("noble", "flamingo"),
+    ("resolute", "hibiscus"),
 }
 
 UBUNTU_NATIVE_OPENSTACK = {
@@ -38,6 +44,19 @@ DEFAULT_UBUNTU_OPENSTACK_RELEASES = {
     "26.04": "gazpacho",
     "26.10": "hibiscus"
 }
+
+def enable_cloud_archive(release: str, series: str) -> bool:
+
+    list_file = Path(f"/etc/apt/sources.list.d/cloudarchive-{release}.list")
+    line = f"deb {UCA_URL} {series}-updates/{release} main\n"
+
+    if not apt_install(["ubuntu-cloud-keyring"], "Installing Ubuntu Cloud Keyring Package... ") : return False
+
+    if not list_file.exists() or list_file.read_text() != line:
+        list_file.write_text(line)
+        if not apt_update() : return False
+
+    return True
 
 def get_base_host(config):
     network = config.get("network") or {}

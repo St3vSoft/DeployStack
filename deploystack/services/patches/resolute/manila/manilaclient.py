@@ -1,8 +1,8 @@
 
-from ....utils.core.system_utils import is_package_installed
-from ....utils.core.commands import run_command
+from .....utils.core.system_utils import is_package_installed
+from .....utils.core.commands import run_command
 
-from ..openstackclient import venv_pip
+from ...openstackclient import venv_pip
 
 def install_manilaclient_in_venv(release):
 

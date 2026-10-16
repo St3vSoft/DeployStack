@@ -1,13 +1,13 @@
 import os
 
-from ....utils.core.commands import run_command
-from ....utils.apt.apt import apt_install, apt_update
+from .....utils.core.commands import run_command
+from .....utils.apt.apt import apt_install, apt_update
 
-from ...utils import ensure_os_release
+from ....utils import ensure_os_release
 
-from ....utils.core.system_utils import is_package_installed
+from .....utils.core.system_utils import is_package_installed
 
-from ....templates import NOVA_NOVNCPROXY_PATCH
+from .....templates import NOVA_NOVNCPROXY_PATCH
 
 novncproxy_dropin_dir = "/etc/systemd/system/nova-novncproxy.service.d"
 venv_path = "/opt/nova-novncproxy-venv"
