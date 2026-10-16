@@ -54,7 +54,6 @@ def enable_cloud_archive(release: str, series: str) -> bool:
 
     if not list_file.exists() or list_file.read_text() != line:
         list_file.write_text(line)
-        if not apt_update() : return False
 
     return True
 

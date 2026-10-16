@@ -11,6 +11,8 @@ from ...utils.core.system_utils import service_exists, is_debian, is_ubuntu_rele
 from ...templates import APACHE2_OVERRIDE_CONF
 from ...utils.core import colors
 
+from ..utils import ensure_os_release
+
 neutron_conf = "/etc/neutron/neutron.conf"
 conf_ml2 = "/etc/neutron/plugins/ml2/ml2_conf.ini"
 conf_metadata_agent = "/etc/neutron/metadata_agent.ini"
@@ -112,7 +114,7 @@ def finalize():
 
     print()
 
-    if not is_debian() and is_ubuntu_release("26.04"):
+    if not is_debian() and is_ubuntu_release("26.04") and ensure_os_release("gazpacho"):
         os.makedirs(apache2_systemd_override_dir, exist_ok=True)
 
         dest_conf_file = os.path.join(apache2_systemd_override_dir, "apache2-override.conf")
