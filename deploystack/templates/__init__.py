@@ -9,7 +9,7 @@ def _t(*parts) -> str:
 NOVA_NOVNCPROXY_PATCH         = _t("patches", "nova", "nova-novncproxy.tpl")     
 APACHE2_OVERRIDE_CONF         = _t("patches", "apache2", "apache2-override.tpl")
 
-MANILA_API_WSGI_CONF          = _t("patches", "hibiscus", "manila_wsgi", "manila-api.conf")
+MANILA_API_WSGI_CONF          = _t("patches", "hibiscus", "manila_wsgi", "manila-api.tpl")
 
 # Loopback
 LOOPBACK_SERVICE         = _t("loopback", "loopback.service.tpl")

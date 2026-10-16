@@ -91,9 +91,6 @@ def conf_ovn_bridges(config):
             run_command(["ip", "addr", "flush", "dev", iface], f"Flushing IPs on {iface}", ignore_errors=True)
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
-    if not run_command_sync(["ovs-vsctl", "--timeout=30", "show"]): return False
-    if not run_command_sync(["systemctl", "start", "openvswitch-switch"]) : return False
-
     if not clean_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=None, tunnel_bridge=None) : return False
 
     if not run_command_sync(["ovs-vsctl", "--if-exists", "del-br", public_bridge]) : return False
