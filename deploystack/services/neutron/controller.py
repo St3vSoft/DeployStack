@@ -110,11 +110,11 @@ def conf_neutron(config):
 
     return True
 
-def finalize():
+def finalize(config):
 
     print()
 
-    if not is_debian() and is_ubuntu_release("26.04") and ensure_os_release("gazpacho"):
+    if not is_debian() and is_ubuntu_release("26.04") and ensure_os_release(config, "gazpacho"):
         os.makedirs(apache2_systemd_override_dir, exist_ok=True)
 
         dest_conf_file = os.path.join(apache2_systemd_override_dir, "apache2-override.conf")
@@ -143,7 +143,7 @@ def run_setup_controller_neutron(config, driver_fn, env):
     
     if not install_pkgs(): return False
     if not conf_neutron(config): return False
-    if not finalize(): return False
+    if not finalize(config): return False
     if not driver_fn(config, env): return False
 
     print(f"\n{colors.GREEN}Neutron configured successfully!{colors.RESET}\n")

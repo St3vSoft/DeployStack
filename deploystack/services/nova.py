@@ -154,7 +154,7 @@ def finalize(config):
 
     services_to_restart = ["nova-scheduler", "nova-conductor", "nova-novncproxy"]
 
-    if not is_debian() and is_ubuntu_release("26.04") and ensure_os_release("gazpacho"):
+    if not is_debian() and is_ubuntu_release("26.04") and ensure_os_release(config, "gazpacho"):
 
         print(
             f"\n{colors.YELLOW}"
