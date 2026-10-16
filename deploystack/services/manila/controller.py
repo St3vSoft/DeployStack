@@ -1,6 +1,7 @@
 # Configure the Shared filesystems service (Manila) (Controller Node)
 
 import os
+import shutil
 
 from ...utils.core.commands import run_command
 from ...utils.apt.apt import apt_install, apt_update
@@ -10,11 +11,14 @@ from ...utils.core.system_utils import nc_wait
 
 from ...utils.core.system_utils import is_ubuntu_release
 
-from ..patches.resolute.manila.manilaclient import install_manilaclient_in_venv
+from ..patches.resolute.gazpacho.manila.manilaclient import install_manilaclient_in_venv
+from ...templates import MANILA_API_WSGI_CONF
 
 from ...utils.core import colors
 
 from ..utils import ensure_os_release
+
+apache2_manila_wsgi_path = "/etc/apache2/sites-enabled/manila-api.conf"
 
 manila_conf = "/etc/manila/manila.conf"
 
@@ -113,7 +117,16 @@ def finalize(config):
 
     print()
 
-    if not run_command(["systemctl", "restart", "manila-scheduler", "manila-api"], "Restarting Manila services...", False, None, 3, 5):
+    services_list = ["manila-scheduler", "manila-api"]
+
+    if ensure_os_release(config, "hibiscus"):
+        services_list.remove("manila-api")
+        services_list.append("apache2")
+
+        if not os.path.exists(apache2_manila_wsgi_path):
+            shutil.copy(MANILA_API_WSGI_CONF, apache2_manila_wsgi_path)
+
+    if not run_command(["systemctl", "restart"] + services_list, "Restarting Manila services...", False, None, 3, 5):
         return False
     
     if os.path.exists("/var/lib/manila/manila.sqlite"):

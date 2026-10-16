@@ -13,7 +13,7 @@ from ..utils.core import colors
 from ..templates import NOVA_NOVNCPROXY_PATCH
 from .utils import ensure_os_release
 
-from .patches.resolute.nova.novncproxy import run_novncproxy_setup_patches
+from .patches.resolute.gazpacho.nova.novncproxy import run_novncproxy_setup_patches
 
 nova_conf = "/etc/nova/nova.conf"
 

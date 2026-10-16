@@ -24,7 +24,7 @@ from .utils.shares import create_shares, create_share_types
 
 from ....utils.core.system_utils import service_exists, is_debian, is_ubuntu_release, is_package_installed
 
-from ...patches.resolute.manila.directio import run_setup_directio_patch
+from ...patches.resolute.gazpacho.manila.directio import run_setup_directio_patch
 
 from .protocols.nfs import run_setup_nfs
 from .protocols.samba import run_setup_samba
