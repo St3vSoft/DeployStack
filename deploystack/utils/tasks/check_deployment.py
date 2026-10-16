@@ -378,6 +378,8 @@ def check_cinder_backup_available() -> bool:
 
     if not all(check_service_active(service) for service in ["cinder-backup"]) : return False
 
+    return True
+
 def is_cinder_backup_available() -> bool:
 
     if not check_cinder_backup_available():
