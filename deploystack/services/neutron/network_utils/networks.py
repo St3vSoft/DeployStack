@@ -109,13 +109,13 @@ def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge
 
         if bridge in (public_bridge, tunnel_bridge, "br-int", internal_flat_bridge):
             continue
-        else:
-            print()
 
         if not bridge or not port:
             continue
 
         if iface_exists(bridge):
+
+            print()
 
             run_command(["ip", "addr", "flush", "dev", port],
                         f"Flushing IPs on {port}", ignore_errors=True)

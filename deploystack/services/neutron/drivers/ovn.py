@@ -55,6 +55,8 @@ def install_pkgs():
 
 def conf_ovn_bridges(config):
 
+    print()
+
     INTERFACES_FILE = "/etc/network/interfaces.d/openvswitch"
 
     public_iface = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE_INTERFACE")
@@ -206,6 +208,7 @@ def conf_ovn_db_connections(config):
     ovn_sb_port = get(config, "neutron.ovn.OVN_SB_PORT")
     ovn_nb_port = get(config, "neutron.ovn.OVN_NB_PORT")
 
+    run_command_sync(["systemctl", "start", "openvswitch-switch"])
     run_command_sync(['ovs-vsctl', 'set-manager', 'ptcp:6640:127.0.0.1'])
 
     run_command(
