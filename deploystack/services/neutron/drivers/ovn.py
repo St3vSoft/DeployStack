@@ -96,7 +96,7 @@ def conf_ovn_bridges(config):
 
     if not clean_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=None, tunnel_bridge=None) : return False
 
-    run_command_sync(["ovs-vsctl", "--if-exists", "del-br", public_bridge])
+    if not run_command_sync(["ovs-vsctl", "--if-exists", "del-br", public_bridge]) : return False
 
     if isinstance(subnet_dns, list):
         subnet_dns = " ".join(subnet_dns)
