@@ -24,7 +24,11 @@ def conf_mariadb(config):
     ip_address = get(config, "network.HOST_IP", None)
 
     try:
-        conf_file = ("/etc/mysql/mariadb.conf.d/" if os.path.isfile("/etc/mysql/mariadb.conf.d/") else "/etc/mysql/mariadb.conf.d/")
+        
+        if os.path.isdir(os.path.dirname(mysqld_file_path)):
+            conf_file = mysqld_file_path
+        elif os.path.isdir(os.path.dirname(mariadb_file_path)):
+            conf_file = mariadb_file_path
 
         with open(MYSQL_CONFIG, "r") as f:
             template = f.read()
