@@ -3,7 +3,7 @@ import os
 from ......utils.core.commands import run_command
 from ......utils.apt.apt import apt_install, apt_update
 
-from .....utils import ensure_os_release
+from .....utils.openstack_repos import ensure_os_release
 
 from ......utils.core.system_utils import is_package_installed
 
