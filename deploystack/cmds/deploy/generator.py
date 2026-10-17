@@ -187,9 +187,9 @@ def config_openstack(config: OpenStackConfig):
     if "cinder" not in config_dict:
         config_dict["cinder"] = {}
 
-    config_dict["optional_services"]["INSTALL_MANILA"] = config.install_manila
-    config_dict["optional_services"]["INSTALL_CINDER"] = config.install_cinder
-    config_dict["optional_services"]["INSTALL_HORIZON"] = config.install_horizon
+    config_dict["optional_services"]["INSTALL_MANILA"] = "yes" if config.install_manila else "no"
+    config_dict["optional_services"]["INSTALL_CINDER"] = "yes" if config.install_cinder else "no"
+    config_dict["optional_services"]["INSTALL_HORIZON"] = "yes" if  config.install_horizon else "no"
 
     if config.install_manila and config.install_cinder:
         cinder_loop, manila_loop = get_free_loops(count=2)
