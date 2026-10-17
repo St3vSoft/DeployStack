@@ -11,7 +11,7 @@ from ..utils.core.system_utils import nc_wait, is_debian, is_ubuntu_release, ser
 from ..utils.core import colors
 
 from ..templates import NOVA_NOVNCPROXY_PATCH
-from .utils import ensure_os_release
+from .utils.openstack_repos import ensure_os_release
 
 from .patches.resolute.gazpacho.nova.novncproxy import run_novncproxy_setup_patches
 
