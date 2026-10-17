@@ -13,7 +13,9 @@ from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
 from ..utils.core import colors
 from ..utils.core.system_utils import service_exists, is_debian, is_package_installed, get_physical_disk, get_vg_physical_disks, nc_wait
-from ..utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service, configure_lvm_storage
+from ..utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service
+
+from ..utils.lvm import configure_lvm_storage
 
 from ..utils.config.helpers import parse_bool, get_nfs_share_for_path, parse_nfs_source
 

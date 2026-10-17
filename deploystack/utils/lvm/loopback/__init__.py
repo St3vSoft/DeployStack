@@ -1,14 +1,14 @@
 import grp
 import os
 import pwd
-import subprocess
+
 from pathlib import Path
 
 from ....utils.core.commands import run_command, run_command_output
 from ....utils.core import colors
 from ....templates import LOOPBACK_SERVICE
 
-from ...lvm import ensure_system_user_with_run_command, get_vg_for_pv
+from ...lvm import ensure_system_user_with_run_command
 
 def create_lvm_loopback_sparse_disk(image_path, image_size, lvm_dev, service_user: str):
 
@@ -39,29 +39,6 @@ def create_lvm_loopback_sparse_disk(image_path, image_size, lvm_dev, service_use
         print()
         
         if not run_command(["losetup", str(lvm_dev), str(image_path)], f"Associating {lvm_dev} to {image_path}..."): return False
-
-    return True
-
-def configure_lvm_storage(physical_volume, loop_device, vg_name, image_path=None, image_size=None, service_user=None):
-    using_loopback = not physical_volume
-    lvm_dev = physical_volume or loop_device
-
-    if using_loopback and not create_lvm_loopback_sparse_disk(image_path=image_path, image_size=image_size, lvm_dev=loop_device, service_user=service_user):
-        return False
-
-    vg = get_vg_for_pv(lvm_dev)
-
-    if vg is None:
-
-        print()
-
-        if not run_command(["pvcreate", lvm_dev], f"Creating physical volume on {lvm_dev}..."):
-            return False
-        if not run_command(["vgcreate", vg_name, lvm_dev], f"Creating volume group {vg_name}..."):
-            return False
-    elif vg != vg_name:
-        print(f"{colors.RED}{lvm_dev} already belongs to VG '{vg}', expected '{vg_name}'{colors.RESET}")
-        return False
 
     return True
 

@@ -16,7 +16,8 @@ from ....utils.config.setter import set_conf_option
 
 from ....utils.config.helpers import parse_bool
 
-from ....utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service, configure_lvm_storage
+from ....utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service
+from ....utils.lvm import configure_lvm_storage
 
 from .utils import wait_manila_share_agent, create_manila_sudoers_rule
 

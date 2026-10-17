@@ -16,7 +16,7 @@ from .....utils.core import colors
 
 smb_conf = "/etc/samba/smb.conf"
 
-def smbpasswd_add(username, password):
+def _smbpasswd_add(username, password):
     child = pexpect.spawn(
         f"smbpasswd -a {username}",
         encoding="utf-8",
@@ -73,7 +73,7 @@ def add_samba_user(config):
         if not run_command(["useradd", "-m", "-s", "/usr/sbin/nologin", samba_username], "Adding Samba User...") : return False
 
     if not samba_user_exists(samba_username):
-        if not smbpasswd_add(samba_username, samba_password):
+        if not _smbpasswd_add(samba_username, samba_password):
             return False
 
     if not user_in_group(samba_username, "manila"):

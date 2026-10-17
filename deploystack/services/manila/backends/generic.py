@@ -37,6 +37,101 @@ def _set_service_auth(conf, section, username, ip_address, region, password):
     set_conf_option(conf, section, "username", username)
     set_conf_option(conf, section, "password", password)
 
+def _create_shares_networks(config, env):
+
+    line_printed = False
+
+    service_networks = get(config, "manila.backends.generic.service_networks") or []
+
+    networks_list = json.loads(os_run_output(["openstack", "network", "list", "-f", "json"], env=env) or "[]")
+
+    demo_env = build_openstack_env_from_file("/root/demo-openrc.sh")
+
+    admin_share_networks_list = json.loads(os_run_output(["openstack", "share", "network", "list", "-f", "json"], env=env) or "[]")
+    demo_share_networks_list = json.loads(os_run_output(["openstack", "share", "network", "list", "-f", "json"], env=demo_env) or "[]")
+
+    project_commands = {
+        "admin": [],
+        "demo": [],
+    }
+
+    project_envs = {
+        "admin": env,
+        "demo": demo_env,
+    }
+
+    for service_net in service_networks:
+
+        network_name = service_net["name"]
+        neutron_network = service_net["neutron_network"]
+
+        neutron_network_id = ""
+    
+        for network in networks_list:
+            if (network.get("Name") or network.get("name")) == neutron_network:
+                neutron_network_id = network.get("ID") or network.get("id")
+                break
+        if not neutron_network_id:
+            print(f"{colors.RED}Neutron network '{neutron_network}' not found.{colors.RESET}")
+            return False
+
+        neutron_network_subnets_list = json.loads(os_run_output(["openstack", "subnet", "list", "--network", neutron_network_id, "-f", "json"], env=env) or "[]")
+
+        neutron_subnet_id = ""
+
+        for subnet in neutron_network_subnets_list:
+            neutron_subnet_id = subnet.get("ID") or subnet.get("id")
+            break
+
+        if not neutron_subnet_id:
+            print(f"{colors.RED}No subnet found for Neutron network '{neutron_network}'.{colors.RESET}")
+            return False
+
+        admin_share_network_exists = any(
+            (sn.get("Name") or sn.get("name")) == network_name
+            for sn in admin_share_networks_list
+        )
+
+        demo_share_network_exists = any(
+            (sn.get("Name") or sn.get("name")) == network_name
+            for sn in demo_share_networks_list
+        )
+
+        share_network_command = [
+            "openstack",
+            "share",
+            "network",
+            "create",
+            "--name", network_name,
+            "--neutron-net-id", str(neutron_network_id),
+            "--neutron-subnet-id", str(neutron_subnet_id),
+        ]
+
+        if not admin_share_network_exists:
+            project_commands["admin"].append({
+                "command": share_network_command.copy(),
+                "name": network_name,
+            })
+
+        if not demo_share_network_exists:
+            project_commands["demo"].append({
+                "command": share_network_command.copy(),
+                "name": network_name,
+            })
+
+    for project, commands in project_commands.items():
+        for item in commands:
+            if not line_printed:
+                line_printed = True
+                print()
+
+            if not os_run(
+                item["command"],
+                f"Creating share network '{item['name']}' for '{project}' project...",
+                env=project_envs[project]): return False
+
+    return True
+
 def install_pkgs():
 
     print()
@@ -140,101 +235,6 @@ def finalize(env):
     if not wait_manila_share_agent(env=env): return False
 
     return True
-
-def create_shares_networks(config, env):
-
-    line_printed = False
-
-    service_networks = get(config, "manila.backends.generic.service_networks") or []
-
-    networks_list = json.loads(os_run_output(["openstack", "network", "list", "-f", "json"], env=env) or "[]")
-
-    demo_env = build_openstack_env_from_file("/root/demo-openrc.sh")
-
-    admin_share_networks_list = json.loads(os_run_output(["openstack", "share", "network", "list", "-f", "json"], env=env) or "[]")
-    demo_share_networks_list = json.loads(os_run_output(["openstack", "share", "network", "list", "-f", "json"], env=demo_env) or "[]")
-
-    project_commands = {
-        "admin": [],
-        "demo": [],
-    }
-
-    project_envs = {
-        "admin": env,
-        "demo": demo_env,
-    }
-
-    for service_net in service_networks:
-
-        network_name = service_net["name"]
-        neutron_network = service_net["neutron_network"]
-
-        neutron_network_id = ""
-    
-        for network in networks_list:
-            if (network.get("Name") or network.get("name")) == neutron_network:
-                neutron_network_id = network.get("ID") or network.get("id")
-                break
-        if not neutron_network_id:
-            print(f"{colors.RED}Neutron network '{neutron_network}' not found.{colors.RESET}")
-            return False
-
-        neutron_network_subnets_list = json.loads(os_run_output(["openstack", "subnet", "list", "--network", neutron_network_id, "-f", "json"], env=env) or "[]")
-
-        neutron_subnet_id = ""
-
-        for subnet in neutron_network_subnets_list:
-            neutron_subnet_id = subnet.get("ID") or subnet.get("id")
-            break
-
-        if not neutron_subnet_id:
-            print(f"{colors.RED}No subnet found for Neutron network '{neutron_network}'.{colors.RESET}")
-            return False
-
-        admin_share_network_exists = any(
-            (sn.get("Name") or sn.get("name")) == network_name
-            for sn in admin_share_networks_list
-        )
-
-        demo_share_network_exists = any(
-            (sn.get("Name") or sn.get("name")) == network_name
-            for sn in demo_share_networks_list
-        )
-
-        share_network_command = [
-            "openstack",
-            "share",
-            "network",
-            "create",
-            "--name", network_name,
-            "--neutron-net-id", str(neutron_network_id),
-            "--neutron-subnet-id", str(neutron_subnet_id),
-        ]
-
-        if not admin_share_network_exists:
-            project_commands["admin"].append({
-                "command": share_network_command.copy(),
-                "name": network_name,
-            })
-
-        if not demo_share_network_exists:
-            project_commands["demo"].append({
-                "command": share_network_command.copy(),
-                "name": network_name,
-            })
-
-    for project, commands in project_commands.items():
-        for item in commands:
-            if not line_printed:
-                line_printed = True
-                print()
-
-            if not os_run(
-                item["command"],
-                f"Creating share network '{item['name']}' for '{project}' project...",
-                env=project_envs[project]): return False
-
-    return True
     
 def finalize_generic_backend(config, env):
 
@@ -310,7 +310,7 @@ def finalize_generic_backend(config, env):
         print()
         if not os_run(["openstack", "flavor", "create", "--id", str(generic_service_instance_flavor_id), "--ram", str(generic_service_instance_flavor_ram), "--disk", str(generic_service_instance_flavor_disk), "--vcpus", str(generic_service_instance_flavor_vcpus), generic_service_instance_flavor_name], "Creating Manila service flavor...", env=env): return False
 
-    if not create_shares_networks(config, env) : return False
+    if not _create_shares_networks(config, env) : return False
 
     if create_shares_enabled:
 

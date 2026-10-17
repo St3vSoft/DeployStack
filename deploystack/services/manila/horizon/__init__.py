@@ -95,9 +95,7 @@ def disable_dhss_dashboard_panels():
                 try:
                     os.rename(src, dst)
                 except OSError as e:
-                    print(
-                        f"{colors.RED}Error: Unable to disable '{panel}' panel with exception: {e}{colors.RESET}"
-                    )
+                    print(f"{colors.RED}Error: Unable to disable '{panel}' panel with exception: {e}{colors.RESET}")
                     return False
 
     return True
