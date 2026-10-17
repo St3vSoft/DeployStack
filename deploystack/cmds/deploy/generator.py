@@ -66,7 +66,7 @@ def config_openstack(config: OpenStackConfig):
 
     dns_list = []
 
-    if config.nova_virt_type == "kvm" and has_hw_virtualization():
+    if config.nova_compute.nova_virt_type == "kvm" and has_hw_virtualization():
         virt_type = "kvm"
     else:
         virt_type = "qemu"
