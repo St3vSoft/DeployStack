@@ -24,12 +24,11 @@ manila_conf = "/etc/manila/manila.conf"
 
 def install_pkgs(config):
 
-    if not apt_update():
-        return False
+    if not apt_update(): return False
 
     manila_packages = ["manila-api", "manila-scheduler", "python3-manilaclient"]
 
-    if is_ubuntu_release("24.04"):
+    if not is_ubuntu_release("26.04"):
 
         os_release = None
 
@@ -124,7 +123,11 @@ def finalize(config):
         services_list.append("apache2")
 
         if not os.path.exists(apache2_manila_wsgi_path):
-            shutil.copy(MANILA_API_WSGI_CONF, apache2_manila_wsgi_path)
+            try:
+                shutil.copy2(MANILA_API_WSGI_CONF, apache2_manila_wsgi_path)
+            except OSError as e:
+                print(f"{colors.RED}ERROR: Failed to copy Apache Manila API WSGI override: {e}{colors.RESET}")
+                return False
 
     if not run_command(["systemctl", "restart"] + services_list, "Restarting Manila services...", False, None, 3, 5):
         return False

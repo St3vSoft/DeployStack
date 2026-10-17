@@ -4,10 +4,10 @@ import sys
 
 from pathlib import Path
 
-from ..utils.core.commands import run_command, run_command_output
+from ..utils.core.commands import run_command, run_command_sync
 from ..utils.apt.apt import apt_install, apt_update
 from ..utils.config.parser import get
-from ..utils.core.system_utils import nc_wait, is_ubuntu_release, is_package_installed, is_debian, get_ubuntu_release
+from ..utils.core.system_utils import nc_wait, is_ubuntu_release, is_debian, get_ubuntu_release
 from ..utils.core import colors
 
 from ..utils.config.setter import set_conf_option, toml_string
@@ -15,7 +15,7 @@ from ..utils.config.setter import set_conf_option, toml_string
 from ..utils.lvm import set_lvm_filter
 from ..utils.config.helpers import parse_bool
 
-from .utils import ensure_os_release, UBUNTU_CLOUD_ARCHIVE, UBUNTU_NATIVE_OPENSTACK, enable_cloud_archive
+from .utils.openstack_repos import ensure_os_release, UBUNTU_CLOUD_ARCHIVE, UBUNTU_NATIVE_OPENSTACK, add_uca_repo, setup_debian_repo, enable_cloud_archive
 
 from .patches.openstackclient import create_venv_and_install_openstackclient
 
@@ -65,57 +65,6 @@ def set_hostname(config):
 
     return True
 
-def _add_uca_repo(release: str):
-    
-    result = run_command(["add-apt-repository", "-y", f"cloud-archive:{release}"], f"Adding Ubuntu Cloud Archive repository for {release}...")
-    
-    if not result:
-        return False
-    
-    return True
-
-def _setup_debian_repo(distro_codename: str, release: str):
-
-    dpkg_conf = "/etc/apt/apt.conf.d/90force-conf"
-    repo_file = "/etc/apt/sources.list.d/debian-backports.list"
-    repo_line = f"deb http://deb.debian.org/debian {distro_codename}-backports main"
-
-    if not os.path.exists(repo_file):
-        with open(repo_file, "w") as f:
-            f.write(repo_line + "\n")
-
-    subprocess.run(
-        'echo "debconf debconf/frontend select Noninteractive" | debconf-set-selections',
-        shell=True, check=True
-    )
-    with open(dpkg_conf, "w") as f:
-        f.write('DPkg::Options {"--force-confdef"; "--force-confold"; };')
-
-    if not is_package_installed("extrepo"):
-        print()
-        if not apt_install(["extrepo"], "Installing extrepo Package...") : return False
-
-    available_releases_repos = run_command_output(["extrepo", "search", "openstack"])
-
-    supported_releases = [
-        line.removeprefix("Found openstack_").removesuffix(":")
-        for line in available_releases_repos.splitlines()
-        if line.startswith("Found openstack_")
-    ]
-
-    if release not in supported_releases:
-        print(f"{colors.RED}ERROR: Unsupported OpenStack release: '{release}'{colors.RESET}")
-        print("\nSupported OpenStack releases:")
-
-        for supported_release in supported_releases:
-            print(f"  - {supported_release}")
-
-        return False
-
-    if not run_command(["extrepo", "enable", f"openstack_{release}"], f"Enabling OpenStack {release} repo...") : return False
-
-    return True
-
 def set_openstack_release(config):
     release = get(config, "openstack.OPENSTACK_RELEASE", "caracal").lower()
 
@@ -142,7 +91,7 @@ def set_openstack_release(config):
             if release == "hibiscus" and is_ubuntu_release("26.04"):
                 if not enable_cloud_archive("hibiscus", "resolute") : return False
             else:
-                if not _add_uca_repo(release) : return False
+                if not add_uca_repo(release) : return False
 
         else:
             print(f"{colors.RED}OpenStack '{release}' is not supported "
@@ -151,7 +100,7 @@ def set_openstack_release(config):
             return False
 
     elif distro_id == "debian":
-        if not _setup_debian_repo(distro_codename, release) : return False
+        if not setup_debian_repo(distro_codename, release) : return False
     else:
         print(f"{colors.YELLOW}Warning: Unknown distribution '{distro_id}'. "
               f"Skipping repository setup.{colors.RESET}")
@@ -316,7 +265,7 @@ def add_rabbitmq_openstack_user(config):
     if not user_exists:
         if not run_command(["rabbitmqctl", "add_user", "openstack", rabbitmq_password], "Creating RabbitMQ OpenStack User..."): return False
     else:
-        if not run_command_output(["rabbitmqctl", "change_password", "openstack", rabbitmq_password]): return False
+        if not run_command_sync(["rabbitmqctl", "change_password", "openstack", rabbitmq_password]): return False
 
     if not run_command(["rabbitmqctl", "set_permissions", "openstack", ".*", ".*", ".*"], "Setting permissions for RabbitMQ OpenStack User..."): return False
 

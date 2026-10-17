@@ -114,7 +114,7 @@ def finalize(config):
 
     print()
 
-    if not is_debian() and is_ubuntu_release("26.04") and ensure_os_release(config, "gazpacho"):
+    if not is_debian() and is_ubuntu_release("26.04", exact=True) and ensure_os_release(config, "gazpacho"):
         os.makedirs(apache2_systemd_override_dir, exist_ok=True)
 
         dest_conf_file = os.path.join(apache2_systemd_override_dir, "apache2-override.conf")

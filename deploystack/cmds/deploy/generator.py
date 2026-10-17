@@ -13,6 +13,8 @@ from ...templates import OPENSTACK_CONFIG_TEMPLATE
 
 from ...utils.core import colors
 
+from .config import OpenStackConfig
+
 config_file_path = ""
 
 def _remove_empty(d):
@@ -32,46 +34,7 @@ def generate_config_file() -> str:
 
     return config_file_path
 
-def config_openstack(
-    install_horizon: str = "yes",
-    install_cinder: str = "yes",
-    install_manila: str = "no",
-    config_file_path: str = "",
-
-    cinder_enabled_backends: str = "",
-    cinder_nfs_snapshots_enabled: str = "",
-
-    cinder_lvm_vg = "",
-    cinder_physical_volume = "",
-
-    manila_lvm_vg = "",
-    manila_lvm_physical_volume = "",
-    cinder_lvm_image_size_in_gb=None,
-    manila_lvm_image_size_in_gb=None,
-    neutron_driver: str = "ovs",   # "ovs" | "ovn"
-    manila_backend: str = "",
-    manila_share_protocols: str = "",
-    manila_dhss_auth_type: str = "",
-    os_release: str = "caracal",
-    os_mgmt_iface: str = "",
-
-    os_mgmt_gateway: str = "",
-    default_gateway: str = "",
-
-    enable_cinder_backup = "no",
-    cinder_backup_driver = "",
-    compression_algorithm = "",
-    backup_file_size_in_bytes = 0,
-    backup_sha_block_size_in_bytes = 0,
-    backup_workers = 0,
-
-    nova_virt_type: str = "",
-    cpu_allocation_ratio: float = 0,
-    ram_allocation_ratio: float = 0,
-    disk_allocation_ratio: float = 0,
-
-    allow_resize_to_same_host: str = ""
-):
+def config_openstack(config: OpenStackConfig):
 
     try:
         with open(config_file_path, "r") as f:
@@ -85,10 +48,10 @@ def config_openstack(
     ip = info["ip"]
     netmask = info["netmask"]
 
-    if default_gateway is None:
+    if config.default_gateway is None:
         gateway = info["gateway"]
     else:
-        gateway = default_gateway
+        gateway = config.default_gateway
 
     ip_cidr = info["network_cidr"]
     network = info["network"]
@@ -103,7 +66,7 @@ def config_openstack(
 
     dns_list = []
 
-    if nova_virt_type == "kvm" and has_hw_virtualization():
+    if config.nova_virt_type == "kvm" and has_hw_virtualization():
         virt_type = "kvm"
     else:
         virt_type = "qemu"
@@ -118,16 +81,16 @@ def config_openstack(
     # Rete
     config_dict.setdefault("network", {})
 
-    if os_mgmt_iface:
+    if config.os_mgmt_iface:
         try:
-            mgmt_iface_info = get_network_info(interface_name=os_mgmt_iface)
+            mgmt_iface_info = get_network_info(interface_name=config.os_mgmt_iface)
         except ValueError:
             os.remove(config_file_path)
 
-            print(f"{colors.RED}The '{os_mgmt_iface}' management interface does not have an assigned IPv4 address. Configure it (DHCP or static IP) before starting the deployment.{colors.RESET}")
+            print(f"{colors.RED}The '{config.os_mgmt_iface}' management interface does not have an assigned IPv4 address. Configure it (DHCP or static IP) before starting the deployment.{colors.RESET}")
             sys.exit(1)
 
-        mgmt_iface = os_mgmt_iface
+        mgmt_iface = config.os_mgmt_iface
         mgmt_ip = mgmt_iface_info["ip"]
         mgmt_ip_cidr = mgmt_iface_info["network_cidr"]
         mgmt_netmask = mgmt_iface_info["netmask"]
@@ -142,8 +105,8 @@ def config_openstack(
     config_dict["network"]["HOST_IP_NETMASK"] = mgmt_netmask
     config_dict["network"]["HOST_IP_CIDR"] = mgmt_ip_cidr
 
-    if os_mgmt_gateway:
-        config_dict["network"]["HOST_MGMT_GATEWAY"] = os_mgmt_gateway
+    if config.os_mgmt_gateway:
+        config_dict["network"]["HOST_MGMT_GATEWAY"] = config.os_mgmt_gateway
     else:
         config_dict["network"]["HOST_DEFAULT_GATEWAY"] = gateway
     
@@ -165,18 +128,18 @@ def config_openstack(
     config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_GATEWAY"] = gateway
     config_dict["neutron"]["public_network"]["PUBLIC_SUBNET_DNS_SERVERS"] = dns_list
     
-    config_dict["neutron"]["DRIVER"] = neutron_driver
+    config_dict["neutron"]["DRIVER"] = config.neutron_driver
 
     # Neutron OVS / OVN
     config_dict["neutron"].setdefault("ovs", {})
-    config_dict["neutron"]["ovs"]["CREATE_BRIDGES"] = "yes" if neutron_driver == "ovs" else ""
-    config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE_INTERFACE"] = iface if neutron_driver == "ovs" else ""
-    config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE"] = "br-ex" if neutron_driver == "ovs" else ""
-    config_dict["neutron"]["ovs"]["TENANT_BRIDGE"] = "br-tenant" if neutron_driver == "ovs" else ""
-    config_dict["neutron"]["ovs"]["TUNNEL_BRIDGE"] = "br-tun" if neutron_driver == "ovs" else ""
+    config_dict["neutron"]["ovs"]["CREATE_BRIDGES"] = "yes" if config.neutron_driver == "ovs" else ""
+    config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE_INTERFACE"] = iface if config.neutron_driver == "ovs" else ""
+    config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE"] = "br-ex" if config.neutron_driver == "ovs" else ""
+    config_dict["neutron"]["ovs"]["TENANT_BRIDGE"] = "br-tenant" if config.neutron_driver == "ovs" else ""
+    config_dict["neutron"]["ovs"]["TUNNEL_BRIDGE"] = "br-tun" if config.neutron_driver == "ovs" else ""
 
     config_dict["neutron"].setdefault("ovn", {})
-    if neutron_driver == "ovn":
+    if config.neutron_driver == "ovn":
         config_dict["neutron"]["ovn"].update({
             "CREATE_BRIDGES": "yes",
             "OVN_NB_PORT": 6641,
@@ -224,51 +187,51 @@ def config_openstack(
     if "cinder" not in config_dict:
         config_dict["cinder"] = {}
 
-    config_dict["optional_services"]["INSTALL_MANILA"] = install_manila.lower()
-    config_dict["optional_services"]["INSTALL_CINDER"] = install_cinder.lower()
-    config_dict["optional_services"]["INSTALL_HORIZON"] = install_horizon.lower()
+    config_dict["optional_services"]["INSTALL_MANILA"] = config.install_manila.lower()
+    config_dict["optional_services"]["INSTALL_CINDER"] = config.install_cinder.lower()
+    config_dict["optional_services"]["INSTALL_HORIZON"] = config.install_horizon.lower()
 
-    if install_manila.lower() == "yes" and install_cinder.lower() == "yes":
+    if config.install_manila.lower() == "yes" and config.install_cinder.lower() == "yes":
         cinder_loop, manila_loop = get_free_loops(count=2)
-    elif install_manila.lower() == "yes" and install_cinder.lower() == "no":
+    elif config.install_manila.lower() == "yes" and config.install_cinder.lower() == "no":
         manila_loop = get_free_loops(count=1)[0]
-    elif install_manila.lower() == "no" and install_cinder.lower() == "yes":
+    elif config.install_manila.lower() == "no" and config.install_cinder.lower() == "yes":
         if cinder_lvm_image_size_in_gb is None:
             cinder_lvm_image_size_in_gb = 5
             
         cinder_loop = get_free_loops(count=1)[0]
 
-    if install_cinder.lower() == "yes":
+    if config.install_cinder.lower() == "yes":
 
         config_dict["cinder"]["ENABLED_BACKENDS"] = []
         config_dict["cinder"]["backends"] = {}
 
-        if enable_cinder_backup.lower() == "yes":
+        if config.cinder.enable_backup:
             config_dict["cinder"]["ENABLE_CINDER_BACKUP"] = "yes"
 
-            config_dict["cinder"]["backup"]["DRIVER"] = cinder_backup_driver
+            config_dict["cinder"]["backup"]["DRIVER"] = config.cinder.cinder_backup_params.backup_driver
 
-            if cinder_backup_driver == "posix":
+            if config.cinder.cinder_backup_params.cinder_backup_driver == "posix":
                 config_dict["cinder"]["backup"]["drivers"]["posix"]["BACKUP_PATH"] = "/var/lib/cinder/backups"
                 
                 config_dict["cinder"]["backup"]["drivers"].pop("nfs", None)
-            elif cinder_backup_driver == "nfs":
+            elif config.cinder.cinder_backup_params.cinder_backup_driver == "nfs":
                 config_dict["cinder"]["backup"]["drivers"]["nfs"]["NFS_SHARE"] = f"{mgmt_ip}:/export/cinder-backups"
                 config_dict["cinder"]["backup"]["drivers"]["nfs"]["MOUNT_POINT_BASE"] = "/var/lib/cinder/cinder/backup" 
 
                 config_dict["cinder"]["backup"]["drivers"].pop("posix", None)
 
-            config_dict["cinder"]["backup"]["COMPRESSION_ALGORITHM"] = compression_algorithm
+            config_dict["cinder"]["backup"]["COMPRESSION_ALGORITHM"] = config.cinder.cinder_backup_params.compression_algorithm
 
-            config_dict["cinder"]["backup"]["BACKUP_FILE_SIZE"] = backup_file_size_in_bytes
-            config_dict["cinder"]["backup"]["BACKUP_SHA_BLOCK_SIZE_BYTES"] = backup_sha_block_size_in_bytes
+            config_dict["cinder"]["backup"]["BACKUP_FILE_SIZE"] = config.cinder.cinder_backup_params.backup_file_size_in_bytes
+            config_dict["cinder"]["backup"]["BACKUP_SHA_BLOCK_SIZE_BYTES"] = config.cinder.cinder_backup_params.backup_sha_block_size_in_bytes
 
-            config_dict["cinder"]["backup"]["BACKUP_WORKERS"] = backup_workers
+            config_dict["cinder"]["backup"]["BACKUP_WORKERS"] = config.cinder.cinder_backup_params.backup_workers
         else:
             config_dict["cinder"]["ENABLE_CINDER_BACKUP"] = "no"
             config_dict["cinder"].pop("backup", None)
         
-        if "lvm" in cinder_enabled_backends:
+        if "lvm" in config.cinder.enabled_backends:
 
             config_dict["cinder"]["ENABLED_BACKENDS"].append("lvm-1")
 
@@ -276,24 +239,24 @@ def config_openstack(
                 "DRIVER": "lvm",
                 "BACKEND_NAME": "lvm-1",
                 "VOLUME_TYPE_NAME": "iscsi",
-                "VOLUME_GROUP": cinder_lvm_vg,
+                "VOLUME_GROUP": config.cinder.lvm_vg,
                 "TARGET_IP_ADDRESS": mgmt_ip,
                 "VOLUME_CLEAR": "zero",
                 "VOLUME_CLEAR_SIZE": 1
             }
 
-            if not cinder_physical_volume or not cinder_physical_volume.strip():
+            if not config.cinder.physical_volume or not config.cinder.physical_volume.strip():
                 lvm_config.update({
                     "CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH": str(cinder_loop),
                     "CINDER_VOLUME_LVM_IMAGE_FILE_PATH": "/var/lib/cinder/images/cinder-volumes.img",
                     "CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB": cinder_lvm_image_size_in_gb,
                 })
             else:
-                lvm_config["PHYSICAL_VOLUME"] = cinder_physical_volume
+                lvm_config["PHYSICAL_VOLUME"] = config.cinder.physical_volume
 
             config_dict["cinder"]["backends"]["lvm-1"] = lvm_config
 
-        if "nfs" in cinder_enabled_backends:
+        if "nfs" in config.cinder.enabled_backends:
             config_dict["cinder"]["ENABLED_BACKENDS"].append("nfs-1")
 
             config_dict["cinder"]["backends"]["nfs-1"] = {
@@ -306,10 +269,10 @@ def config_openstack(
                 "NFS_SPARSED_VOLUMES": "sparse",
                 "NFS_USED_RATIO": 0.95,
                 "NFS_OVERSUB_RATIO": 1.0,
-                "ENABLE_SNAPSHOTS": cinder_nfs_snapshots_enabled
+                "ENABLE_SNAPSHOTS": config.cinder.nfs_snapshots_enabled
             }
 
-    if install_manila.lower() == "yes":
+    if config.install_manila:
 
         share_helpers = []
         shares = []
@@ -317,12 +280,12 @@ def config_openstack(
         service_networks = []
 
         config_dict["manila"]["CREATE_SHARES"] = "yes"
-        config_dict["manila"]["BACKEND"] = manila_backend
+        config_dict["manila"]["BACKEND"] = config.manila.backend
         config_dict["manila"]["SHARE_PROTOCOLS"] = [
-            protocol.upper() for protocol in manila_share_protocols
+            protocol.upper() for protocol in config.manila.share_protocols
         ]
 
-        for protocol in manila_share_protocols:
+        for protocol in config.manila.share_protocols:
             if protocol.lower() == "nfs":
                 share_helpers.append({
                     "NFS": {
@@ -330,7 +293,7 @@ def config_openstack(
                     }
                 })
 
-                if manila_backend.lower() == "generic":
+                if config.manila.backend.lower() == "generic":
 
                     shares.append({
                         "name": "default_nfs_internal_share",
@@ -383,7 +346,7 @@ def config_openstack(
                         ],
                     })
 
-                elif manila_backend.lower() == "lvm":
+                elif config.manila.backend.lower() == "lvm":
                      shares.append({
                         "name": "default_nfs_share",
                         "share_protocol": "NFS",
@@ -410,7 +373,7 @@ def config_openstack(
                     }
                 })
 
-                if manila_backend.lower() == "generic":
+                if config.manila.backend.lower() == "generic":
 
                     service_networks.append([
                         {
@@ -474,7 +437,7 @@ def config_openstack(
                         ],
                     })
 
-                elif manila_backend.lower() == "lvm":
+                elif config.manila.backend.lower() == "lvm":
                     shares.append({
                         "name": "default_cifs_share",
                         "share_protocol": "CIFS",
@@ -493,17 +456,17 @@ def config_openstack(
         config_dict["manila"]["SHARE_HELPERS"] = share_helpers
         config_dict["manila"]["shares"] = shares
 
-        if manila_backend.lower() == "generic":
+        if config.manila.backend.lower() == "generic":
 
             config_dict["manila"]["backends"]["generic"].pop("SERVICE_IMAGE_AUTHENTICATION", {})
 
-            if manila_dhss_auth_type == "password":
+            if config.manila.dhss_auth_type == "password":
                 config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"] = ({
                     "SERVICE_INSTANCE_USER": "manila",
                     "SERVICE_INSTANCE_PASSWORD": "manila",
                     "AUTH_METHOD": "password"
                 })
-            elif manila_dhss_auth_type == "ssh_key":
+            elif config.manila.dhss_auth_type == "ssh_key":
                 config_dict["manila"]["backends"]["generic"]["SERVICE_IMAGE_AUTHENTICATION"] = ({
                     "SERVICE_INSTANCE_PRIVATE_KEY": "/etc/manila/ssh/id_manila",
                     "SERVICE_INSTANCE_PUBLIC_KEY": "/etc/manila/ssh/id_manila.pub",
@@ -519,7 +482,7 @@ def config_openstack(
                 }]
 
             config_dict["manila"]["backends"].pop("lvm", None)
-        elif manila_backend.lower() == "lvm":
+        elif config.manila.backend.lower() == "lvm":
             config_dict["manila"]["share_types"] = [{
                                     "name": "default_share_type",
                                     "is_public": "yes",
@@ -534,7 +497,7 @@ def config_openstack(
 
             config_dict["manila"]["backends"]["lvm"]["SHARE_TENANT_NETWORK_CIDR"] = "10.0.0.0/24"
 
-            for protocol in manila_share_protocols:
+            for protocol in config.manila.share_protocols:
                 if protocol.lower() in "cifs":
                     config_dict["manila"]["backends"]["lvm"].setdefault("samba", {})
                     config_dict["manila"]["backends"]["lvm"]["samba"]["SAMBA_SERVER_USER"] = "samba-user"
@@ -542,17 +505,17 @@ def config_openstack(
                 else:
                     config_dict["manila"]["backends"]["lvm"].pop("samba", None)
 
-            config_dict["manila"]["backends"]["lvm"]["storage"]["SHARE_VOLUME_GROUP"] = manila_lvm_vg
+            config_dict["manila"]["backends"]["lvm"]["storage"]["SHARE_VOLUME_GROUP"] = config.manila.lvm_vg
             
-            if not manila_lvm_physical_volume:
+            if not config.manila.lvm_physical_volume:
                 config_dict["manila"]["backends"]["lvm"]["storage"].update({
                     "MANILA_LVM_IMAGE_FILE_PATH": "/var/lib/manila/images/manila-shares.img",
-                    "MANILA_LVM_IMAGE_SIZE_IN_GB": manila_lvm_image_size_in_gb,
+                    "MANILA_LVM_IMAGE_SIZE_IN_GB": str(config.manila.lvm_image_size_in_gb),
                     "MANILA_LVM_LOOP_PATH": str(manila_loop),
                 })
 
             else:
-                config_dict["manila"]["backends"]["lvm"]["storage"]["PHYSICAL_VOLUME"] = manila_lvm_physical_volume
+                config_dict["manila"]["backends"]["lvm"]["storage"]["PHYSICAL_VOLUME"] = config.manila.lvm_physical_volume
 
                 for key in (
                     "MANILA_LVM_IMAGE_FILE_PATH",
@@ -569,14 +532,14 @@ def config_openstack(
     # Compute
     config_dict.setdefault("compute", {})
     config_dict["compute"]["NOVA_COMPUTE_VIRT_TYPE"] = virt_type
-    config_dict["compute"]["CPU_ALLOCATION_RATIO"] = cpu_allocation_ratio
-    config_dict["compute"]["RAM_ALLOCATION_RATIO"] = ram_allocation_ratio
-    config_dict["compute"]["DISK_ALLOCATION_RATIO"] = disk_allocation_ratio
-    config_dict["compute"]["ALLOW_RESIZE_TO_SAME_HOST"] = allow_resize_to_same_host
+    config_dict["compute"]["CPU_ALLOCATION_RATIO"] = str(config.nova_compute.cpu_allocation_ratio)
+    config_dict["compute"]["RAM_ALLOCATION_RATIO"] = str(config.nova_compute.ram_allocation_ratio)
+    config_dict["compute"]["DISK_ALLOCATION_RATIO"] = str(config.nova_compute.disk_allocation_ratio)
+    config_dict["compute"]["ALLOW_RESIZE_TO_SAME_HOST"] = str(config.nova_compute.allow_resize_to_same_host)
 
     # OpenStack
     config_dict.setdefault("openstack", {})
-    config_dict["openstack"]["OPENSTACK_RELEASE"] = os_release.lower()
+    config_dict["openstack"]["OPENSTACK_RELEASE"] = config.os_release.lower()
     config_dict["openstack"].setdefault("REGION_NAME", "RegionOne")
 
     with open(config_file_path, "w") as f:

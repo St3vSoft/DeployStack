@@ -54,6 +54,7 @@ def resolve_loop_backing_file(loop_device):
         return None 
 
 def resolve_device_to_disk(device):
+
     if not device or not device.startswith("/dev"):
         return None
 
@@ -76,19 +77,14 @@ def resolve_device_to_disk(device):
     return parent
 
 def get_device_for_path(path):
+
     if not path:
         return None
 
     try:
-        result = subprocess.run(
-            ["findmnt", "-n", "-o", "SOURCE", "-T", path],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        result = subprocess.run(["findmnt", "-n", "-o", "SOURCE", "-T", path], capture_output=True, text=True, check=True)
 
         return result.stdout.strip()
-
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
     
@@ -106,33 +102,17 @@ def get_physical_disk(path):
 def get_vg_physical_disks(vg_name):
 
     try:
-        subprocess.run(
-            ["vgscan"],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        subprocess.run(["vgscan"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError:
         pass
 
     try:
-        subprocess.run(
-            ["vgscan", "--cache"],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        subprocess.run(["vgscan", "--cache"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError:
-
         pass
 
     try:
-        result = subprocess.run(
-            ["pvs", "--noheadings", "-o", "pv_name", "--select", f"vg_name={vg_name}"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        result = subprocess.run(["pvs", "--noheadings", "-o", "pv_name", "--select", f"vg_name={vg_name}"], capture_output=True, text=True, check=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
         return []
 
@@ -149,16 +129,9 @@ def get_vg_physical_disks(vg_name):
 def is_package_installed(package_name: str | list[str]) -> bool:
     try:
         if isinstance(package_name, list):
-            return all(
-                is_package_installed(pkg)
-                for pkg in package_name
-            )
+            return all( is_package_installed(pkg) for pkg in package_name)
 
-        result = subprocess.run(
-            ["dpkg", "-s", package_name],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+        result = subprocess.run(["dpkg", "-s", package_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         return result.returncode == 0
 
@@ -173,10 +146,20 @@ def get_ubuntu_release() -> str | None:
 
     return None
 
-def is_ubuntu_release(target_version: str) -> bool:
+def is_ubuntu_release(target_version: str, exact: bool = False) -> bool:
+
     info = platform.freedesktop_os_release()
 
-    return ( info.get("ID") == "ubuntu" and info.get("VERSION_ID") == target_version)
+    if info.get("ID") != "ubuntu":
+        return False
+
+    try:
+        current = tuple(map(int, info["VERSION_ID"].split(".")))
+        target = tuple(map(int, target_version.split(".")))
+    except (KeyError, TypeError, ValueError):
+        return False
+
+    return current == target if exact else current >= target
 
 def is_debian():
     try:
@@ -193,9 +176,7 @@ def is_debian():
         return False
 
 def iface_exists(iface: str) -> bool:
-    result = subprocess.run(["ip", "link", "show", iface],
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
+    result = subprocess.run(["ip", "link", "show", iface], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return result.returncode == 0
 
 def http_wait(addr: str, path: str, timeout: int = 30) -> bool:

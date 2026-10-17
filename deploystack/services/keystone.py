@@ -19,6 +19,7 @@ from .utils import get_base_host, ensure_os_release
 keystone_conf = "/etc/keystone/keystone.conf"
 
 def _get_endpoints(env=None):
+    
     raw = run_command_output(["openstack", "endpoint", "list", "-f", "json"], env=env)
 
     if raw is False:

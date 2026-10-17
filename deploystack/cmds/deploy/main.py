@@ -2,14 +2,19 @@ import ipaddress
 import sys
 import os
 
+from dataclasses import dataclass
 from ...utils.core import colors
 
 from ...utils.core.system_utils import is_ubuntu_release, is_debian
+from ...utils.config.helpers import parse_bool
 
 from .generator import generate_config_file, config_openstack
+
 from .runner import deploy as start_deployment
 
 from .args.validator import validate_deploy_args
+
+from .config import OpenStackConfig, CinderConfig, ManilaConfig, NovaComputeConfig, CinderBackupConfig
 
 def get_default_openstack_release():
 
@@ -442,53 +447,54 @@ def deploy(parser, args) -> None:
             else 5
         ) if manila_flag == "yes" else 0
 
-        config_openstack(
+        os_config = OpenStackConfig(
             config_file_path=config_file_path,
+            install_horizon=parse_bool(horizon_flag),
+            install_cinder=parse_bool(cinder_flag),
+            install_manila=parse_bool(manila_flag),
 
-            install_horizon=horizon_flag,
-            install_cinder=cinder_flag,
-            install_manila=manila_flag,
+            cinder=CinderConfig(
+                enabled_backends=cinder_enabled_backends,
+                nfs_snapshots_enabled=cinder_nfs_snapshots_enabled,
+                lvm_vg=cinder_lvm_volume_group,
+                physical_volume=cinder_physical_volume,
+                lvm_image_size_in_gb=cinder_lvm_size,
+                enable_backup=parse_bool(enable_cinder_backup),
 
-            cinder_enabled_backends=cinder_enabled_backends,
-            cinder_nfs_snapshots_enabled=cinder_nfs_snapshots_enabled,
+                cinder_backup_params=CinderBackupConfig(
+                    compression_algorithm=cinder_backup_compression_algorithm,
+                    backup_file_size_in_bytes=cinder_backup_file_size_in_bytes,
+                    backup_sha_block_size_in_bytes=cinder_backup_sha_block_size_in_bytes,
+                    backup_workers=cinder_backup_workers,
+                    backup_driver=cinder_backup_driver,
 
-            cinder_lvm_vg=cinder_lvm_volume_group,
-            cinder_physical_volume=cinder_physical_volume,
-            cinder_lvm_image_size_in_gb=cinder_lvm_size,
+            ),
 
-            enable_cinder_backup=enable_cinder_backup,
-            cinder_backup_driver=cinder_backup_driver,
-            compression_algorithm=cinder_backup_compression_algorithm,
-            backup_file_size_in_bytes=cinder_backup_file_size_in_bytes,
-            backup_sha_block_size_in_bytes=cinder_backup_sha_block_size_in_bytes,
-            backup_workers=cinder_backup_workers,
-
-            manila_lvm_vg=manila_lvm_vg,
-
-            manila_lvm_physical_volume=manila_lvm_physical_volume,
-            manila_lvm_image_size_in_gb=manila_lvm_size,
-
+            ),
+            manila=ManilaConfig(
+                lvm_vg=manila_lvm_vg,
+                lvm_physical_volume=manila_lvm_physical_volume,
+                lvm_image_size_in_gb=manila_lvm_size,
+                backend=manila_backend,
+                share_protocols=manila_share_protocols,
+                dhss_auth_type=manila_service_instance_auth_method,
+            ),
+            nova_compute=NovaComputeConfig(
+                nova_virt_type=args.virt_type,
+                cpu_allocation_ratio=args.cpu_allocation_ratio,
+                ram_allocation_ratio=args.ram_allocation_ratio,
+                disk_allocation_ratio=args.disk_allocation_ratio,
+                allow_resize_to_same_host=args.allow_resize_to_same_host,
+            ),
+            
             neutron_driver=neutron_driver,
-
-            manila_backend=manila_backend,
-            manila_share_protocols=manila_share_protocols,
-
-            manila_dhss_auth_type=manila_service_instance_auth_method,
-
             os_mgmt_iface=args.os_management_interface,
-
             default_gateway=args.default_gateway,
             os_mgmt_gateway=args.os_management_gateway,
-
             os_release=os_release,
-
-            nova_virt_type=args.virt_type,
-            cpu_allocation_ratio=args.cpu_allocation_ratio,
-            ram_allocation_ratio=args.ram_allocation_ratio,
-            disk_allocation_ratio=args.disk_allocation_ratio,
-
-            allow_resize_to_same_host=args.allow_resize_to_same_host
         )
+
+        config_openstack(config=os_config)
 
         if args.generate_only:
             print(
