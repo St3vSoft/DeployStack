@@ -35,7 +35,7 @@ def get_default_openstack_release():
     }
 
     for ubuntu_version, openstack_release in ubuntu_releases.items():
-        if is_ubuntu_release(ubuntu_version):
+        if is_ubuntu_release(ubuntu_version, exact=True):
             return openstack_release
 
     return "caracal"
