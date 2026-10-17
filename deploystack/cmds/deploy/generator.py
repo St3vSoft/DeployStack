@@ -201,7 +201,7 @@ def config_openstack(config: OpenStackConfig):
             
         cinder_loop = get_free_loops(count=1)[0]
 
-    if config.install_cinder.lower() == "yes":
+    if config.install_cinder:
 
         config_dict["cinder"]["ENABLED_BACKENDS"] = []
         config_dict["cinder"]["backends"] = {}
