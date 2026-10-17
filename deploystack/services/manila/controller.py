@@ -5,18 +5,18 @@ import shutil
 
 from ...utils.core.commands import run_command
 from ...utils.apt.apt import apt_install, apt_update
+
 from ...utils.config.parser import get
 from ...utils.config.setter import set_conf_option
-from ...utils.core.system_utils import nc_wait
 
-from ...utils.core.system_utils import is_ubuntu_release
+from ...utils.core.system_utils import nc_wait, is_ubuntu_release
 
 from ..patches.resolute.gazpacho.manila.manilaclient import install_manilaclient_in_venv
 from ...templates import MANILA_API_WSGI_CONF
 
 from ...utils.core import colors
 
-from ..utils import ensure_os_release
+from ..utils.openstack_repos import ensure_os_release
 
 apache2_manila_wsgi_path = "/etc/apache2/sites-enabled/manila-api.conf"
 

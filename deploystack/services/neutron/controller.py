@@ -11,7 +11,7 @@ from ...utils.core.system_utils import service_exists, is_debian, is_ubuntu_rele
 from ...templates import APACHE2_OVERRIDE_CONF
 from ...utils.core import colors
 
-from ..utils import ensure_os_release
+from ..utils.openstack_repos import ensure_os_release
 
 neutron_conf = "/etc/neutron/neutron.conf"
 conf_ml2 = "/etc/neutron/plugins/ml2/ml2_conf.ini"
