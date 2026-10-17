@@ -196,7 +196,7 @@ def config_openstack(config: OpenStackConfig):
     elif config.install_manila and config.install_cinder == False:
         manila_loop = get_free_loops(count=1)[0]
     elif config.install_manila == False and config.install_cinder:
-        if cinder_lvm_image_size_in_gb is None:
+        if config.cinder.lvm_image_size_in_gb is None:
             cinder_lvm_image_size_in_gb = 5
             
         cinder_loop = get_free_loops(count=1)[0]
