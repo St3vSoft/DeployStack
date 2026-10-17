@@ -23,7 +23,7 @@ UBUNTU_CLOUD_ARCHIVE = {
     ("noble", "dalmatian"),
     ("noble", "epoxy"),
     ("noble", "flamingo"),
-    ("noble", "gazpacho")
+    ("noble", "gazpacho"),
     ("resolute", "hibiscus"),
 }
 
