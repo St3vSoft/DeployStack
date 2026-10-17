@@ -187,15 +187,15 @@ def config_openstack(config: OpenStackConfig):
     if "cinder" not in config_dict:
         config_dict["cinder"] = {}
 
-    config_dict["optional_services"]["INSTALL_MANILA"] = config.install_manila.lower()
-    config_dict["optional_services"]["INSTALL_CINDER"] = config.install_cinder.lower()
-    config_dict["optional_services"]["INSTALL_HORIZON"] = config.install_horizon.lower()
+    config_dict["optional_services"]["INSTALL_MANILA"] = config.install_manila
+    config_dict["optional_services"]["INSTALL_CINDER"] = config.install_cinder
+    config_dict["optional_services"]["INSTALL_HORIZON"] = config.install_horizon
 
-    if config.install_manila.lower() == "yes" and config.install_cinder.lower() == "yes":
+    if config.install_manila and config.install_cinder:
         cinder_loop, manila_loop = get_free_loops(count=2)
-    elif config.install_manila.lower() == "yes" and config.install_cinder.lower() == "no":
+    elif config.install_manila and config.install_cinder == False:
         manila_loop = get_free_loops(count=1)[0]
-    elif config.install_manila.lower() == "no" and config.install_cinder.lower() == "yes":
+    elif config.install_manila.lower == False and config.install_cinder:
         if cinder_lvm_image_size_in_gb is None:
             cinder_lvm_image_size_in_gb = 5
             
