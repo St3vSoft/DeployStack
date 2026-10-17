@@ -249,7 +249,7 @@ def config_openstack(config: OpenStackConfig):
                 lvm_config.update({
                     "CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH": str(cinder_loop),
                     "CINDER_VOLUME_LVM_IMAGE_FILE_PATH": "/var/lib/cinder/images/cinder-volumes.img",
-                    "CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB": cinder_lvm_image_size_in_gb,
+                    "CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB": str(config.cinder.cinder_lvm_image_size_in_gb),
                 })
             else:
                 lvm_config["PHYSICAL_VOLUME"] = config.cinder.physical_volume
