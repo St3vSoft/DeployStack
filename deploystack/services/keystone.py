@@ -268,7 +268,7 @@ def create_services_users(config, env):
 
     if not run_commands(services_user_create_cmds, "Creating services users...", env=env) : return False
 
-    if not run_commands(services_create_cmds, "Creating services...", env=env) : return False
+    if not run_commands(services_create_cmds, "Creating services entities...", env=env) : return False
 
     if not run_commands(services_role_add_cmds, "Assigning services user roles...", env=env) : return False
 
