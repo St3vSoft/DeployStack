@@ -1,8 +1,5 @@
-
-import grp
 import subprocess
 import json
-import pwd
 import os
 import re
 
@@ -120,32 +117,8 @@ def get_vg_for_pv(device):
 
     return None
 
-def ensure_system_user_with_run_command(username="cinder"):
-    success = True
-
-    try:
-        grp.getgrnam(username)
-    except KeyError:
-        if not run_command(
-            ["groupadd", username],
-            message=f"Creating group {username}",
-            ignore_errors=False
-        ):
-            success = False
-
-    try:
-        pwd.getpwnam(username)
-    except KeyError:
-        if not run_command(
-            ["useradd", "-r", "-s", "/bin/false", username],
-            message=f"Creating system user {username}",
-            ignore_errors=False
-        ):
-            success = False
-
-    return success
-
 def configure_lvm_storage(physical_volume, loop_device, vg_name, image_path=None, image_size=None, service_user=None):
+
     using_loopback = not physical_volume
     lvm_dev = physical_volume or loop_device
 
@@ -162,6 +135,7 @@ def configure_lvm_storage(physical_volume, loop_device, vg_name, image_path=None
             return False
         if not run_command(["vgcreate", vg_name, lvm_dev], f"Creating volume group {vg_name}..."):
             return False
+        
     elif vg != vg_name:
         print(f"{colors.RED}{lvm_dev} already belongs to VG '{vg}', expected '{vg_name}'{colors.RESET}")
         return False

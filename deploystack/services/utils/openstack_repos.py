@@ -179,29 +179,30 @@ def validate_os_release_available(
     # Try the alternative parser if madison's format did not match.
     return any(_validate_via_policy( package_name, release, candidate_version) for release in release_names)
 
-def ensure_os_release(config, release: str) -> bool:
+def ensure_os_release(config, releases: str | Sequence[str]) -> bool:
+    
     configured_release = get(config, "openstack.OPENSTACK_RELEASE")
 
     if not isinstance(configured_release, str):
         return False
 
-    if not isinstance(release, str):
+    if isinstance(releases, str):
+        releases = [releases]
+    elif not isinstance(releases, Sequence):
         return False
+
+    allowed_releases = {r.strip().lower() for r in releases if isinstance(r, str) and r.strip()}
 
     configured_release = configured_release.strip().lower()
-    release = release.strip().lower()
 
-    if not configured_release or configured_release != release:
+    if not configured_release or configured_release not in allowed_releases:
         return False
 
-    return validate_os_release_available(release)
+    return validate_os_release_available(configured_release)
 
 def add_uca_repo(release: str):
     
-    result = run_command(["add-apt-repository", "-y", f"cloud-archive:{release}"], f"Adding Ubuntu Cloud Archive repository for {release}...")
-    
-    if not result:
-        return False
+    if not run_command(["add-apt-repository", "-y", f"cloud-archive:{release}"], f"Adding Ubuntu Cloud Archive repository for {release}...") : return False
     
     return True
 

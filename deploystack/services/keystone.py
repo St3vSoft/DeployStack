@@ -344,38 +344,20 @@ def create_services_endpoints(config, env):
 
     if install_manila:
 
-        if ensure_os_release(config, "gazpacho"):
-            manila_url = f"http://{get_base_host(config)}:8786/v2"
-
-            if ("sharev2", "public", os_region_name, manila_url) not in existing_endpoints:
-                endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "public", manila_url])
-
-            if ("sharev2", "internal", os_region_name, manila_url) not in existing_endpoints:
-                endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "internal", manila_url])
-
-            if ("sharev2", "admin", os_region_name, manila_url) not in existing_endpoints:
-                endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "admin", manila_url])
+        if ensure_os_release(config, ["gazpacho", "hibiscus"]):
+            endpoints = [("sharev2", f"http://{get_base_host(config)}:8786/v2")]
         else:
-            manilav1_url = f"http://{get_base_host(config)}:8786/v1/%(tenant_id)s"
-            manilav2_url = f"http://{get_base_host(config)}:8786/v2"
+            endpoints = [
+                ("share", f"http://{get_base_host(config)}:8786/v1/%(tenant_id)s"),
+                ("sharev2", f"http://{get_base_host(config)}:8786/v2"),
+            ]
 
-            if ("share", "public", os_region_name, manilav1_url) not in existing_endpoints:
-                endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "share", "public", manilav1_url])
+        for service, url in endpoints:
+            for interface in ("public", "internal", "admin"):
+                endpoint = (service, interface, os_region_name, url)
 
-            if ("share", "internal", os_region_name, manilav1_url) not in existing_endpoints:
-                endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "share", "internal", manilav1_url])
-
-            if ("share", "admin", os_region_name, manilav1_url) not in existing_endpoints:
-                endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "share", "admin", manilav1_url])
-
-            if ("sharev2", "public", os_region_name, manilav2_url) not in existing_endpoints:
-                endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "public", manilav2_url])
-
-            if ("sharev2", "internal", os_region_name, manilav2_url) not in existing_endpoints:
-                endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "internal", manilav2_url])
-
-            if ("sharev2", "admin", os_region_name, manilav2_url) not in existing_endpoints:
-                endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "sharev2", "admin", manilav2_url])
+                if endpoint not in existing_endpoints:
+                    endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, service, interface, url,])
 
     if install_cinder:
         cinder_url = f"http://{get_base_host(config)}:8776/v3/%(project_id)s"

@@ -6,11 +6,12 @@ from pathlib import Path
 
 from ....utils.core.commands import run_command, run_command_output
 from ....utils.core import colors
+
 from ....templates import LOOPBACK_SERVICE
 
-from ...lvm import ensure_system_user_with_run_command
+from ....utils.core.system_utils import ensure_system_user_with_run_command
 
-def create_lvm_loopback_sparse_disk(image_path, image_size, lvm_dev, service_user: str):
+def create_lvm_loopback_sparse_disk(image_path, image_size, lvm_dev, service_user: str, sparsed: bool = True):
 
     image_path = Path(image_path)
     image_path.parent.mkdir(parents=True, exist_ok=True)
@@ -18,9 +19,14 @@ def create_lvm_loopback_sparse_disk(image_path, image_size, lvm_dev, service_use
     if not image_path.exists():
         print()
 
-        truncate_cmd = ["truncate", "-s", f"{image_size}G", str(image_path)]
+        create_disk_cmd = []
 
-        if not run_command(truncate_cmd, "Allocating LVM disk image...") : return False
+        if sparsed:
+            create_disk_cmd = ["truncate", "-s", f"{image_size}G", str(image_path)]
+        else:
+            create_disk_cmd = ["fallocate", "-l", f"{image_size}G", str(image_path)]
+
+        if not run_command(create_disk_cmd, "Allocating LVM disk image...") : return False
 
         if not ensure_system_user_with_run_command(service_user) : return False
 

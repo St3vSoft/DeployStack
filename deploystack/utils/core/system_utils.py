@@ -3,6 +3,8 @@ import random
 import string
 import socket
 import json
+import grp
+import pwd
 
 import platform
 import subprocess
@@ -14,6 +16,7 @@ import urllib.error
 from time import sleep, time
 
 from ...utils.core import colors
+from ...utils.core.commands import run_command
 from ...utils.config.parser import get
 
 VIRTUAL_FILESYSTEMS = {
@@ -21,6 +24,24 @@ VIRTUAL_FILESYSTEMS = {
     "cgroup", "cgroup2", "devpts", "mqueue", "debugfs", "tracefs",
     "securityfs", "pstore", "bpf", "autofs", "hugetlbfs",
 }
+
+def ensure_system_user_with_run_command(username="cinder"):
+
+    success = True
+
+    try:
+        grp.getgrnam(username)
+    except KeyError:
+        if not run_command(["groupadd", username], message=f"Creating group {username}", ignore_errors=False):
+            success = False
+
+    try:
+        pwd.getpwnam(username)
+    except KeyError:
+        if not run_command(["useradd", "-r", "-s", "/bin/false", username], message=f"Creating system user {username}", ignore_errors=False):
+            success = False
+
+    return success
 
 def get_parent_disk(device):
     dev_name = device.removeprefix("/dev/")
