@@ -260,9 +260,8 @@ def finalize_generic_backend(config, env):
     manila_service_image_exists = any(image.get("Name") == generic_service_image_name for image in images_list)
 
     if not manila_service_image_exists:
-        print()
-
         if not os.path.exists(manila_temp_image_file):
+            print()
             if not run_command(["wget", "--continue", "--progress=dot:giga", "--tries=3", "--timeout=30", "--read-timeout=60","-O", manila_temp_image_file, manila_image_url], "Downloading Manila service image... (this may take a while) ", timeout=3600): return False
 
         print()
