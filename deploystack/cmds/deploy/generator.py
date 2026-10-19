@@ -211,11 +211,11 @@ def config_openstack(config: OpenStackConfig):
 
             config_dict["cinder"]["backup"]["DRIVER"] = config.cinder.cinder_backup_params.backup_driver
 
-            if config.cinder.cinder_backup_params.cinder_backup_driver == "posix":
+            if config.cinder.cinder_backup_params.backup_driver == "posix":
                 config_dict["cinder"]["backup"]["drivers"]["posix"]["BACKUP_PATH"] = "/var/lib/cinder/backups"
                 
                 config_dict["cinder"]["backup"]["drivers"].pop("nfs", None)
-            elif config.cinder.cinder_backup_params.cinder_backup_driver == "nfs":
+            elif config.cinder.cinder_backup_params.backup_driver == "nfs":
                 config_dict["cinder"]["backup"]["drivers"]["nfs"]["NFS_SHARE"] = f"{mgmt_ip}:/export/cinder-backups"
                 config_dict["cinder"]["backup"]["drivers"]["nfs"]["MOUNT_POINT_BASE"] = "/var/lib/cinder/cinder/backup" 
 
