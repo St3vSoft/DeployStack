@@ -16,7 +16,6 @@ import urllib.error
 from time import sleep, time
 
 from ...utils.core import colors
-from ...utils.core.commands import run_command
 from ...utils.config.parser import get
 
 VIRTUAL_FILESYSTEMS = {
@@ -27,21 +26,17 @@ VIRTUAL_FILESYSTEMS = {
 
 def ensure_system_user_with_run_command(username="cinder"):
 
-    success = True
-
     try:
         grp.getgrnam(username)
     except KeyError:
-        if not run_command(["groupadd", username], message=f"Creating group {username}", ignore_errors=False):
-            success = False
+        subprocess.run(["groupadd", username], check=True)
 
     try:
         pwd.getpwnam(username)
     except KeyError:
-        if not run_command(["useradd", "-r", "-s", "/bin/false", username], message=f"Creating system user {username}", ignore_errors=False):
-            success = False
+        subprocess.run(["useradd", "-r", "-s", "/bin/false", username], check=True)
 
-    return success
+    return True
 
 def get_parent_disk(device):
     dev_name = device.removeprefix("/dev/")
