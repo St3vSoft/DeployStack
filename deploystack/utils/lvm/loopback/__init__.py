@@ -11,7 +11,7 @@ from ....templates import LOOPBACK_SERVICE
 
 from ....utils.core.system_utils import ensure_system_user_with_run_command
 
-def create_lvm_loopback_sparse_disk(image_path, image_size, lvm_dev, service_user: str, sparsed: bool = True):
+def create_lvm_loopback_virtual_disk(image_path, image_size, lvm_dev, service_user: str, sparsed: bool = True):
 
     image_path = Path(image_path)
     image_path.parent.mkdir(parents=True, exist_ok=True)

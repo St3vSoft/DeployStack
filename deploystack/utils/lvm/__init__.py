@@ -6,7 +6,7 @@ import re
 from ...utils.core.commands import run_command
 from ...utils.core import colors
 
-from .loopback import create_lvm_loopback_sparse_disk
+from .loopback import create_lvm_loopback_virtual_disk
 
 lvm_conf_path = "/etc/lvm/lvm.conf"
 
@@ -122,7 +122,7 @@ def configure_lvm_storage(physical_volume, loop_device, vg_name, image_path=None
     using_loopback = not physical_volume
     lvm_dev = physical_volume or loop_device
 
-    if using_loopback and not create_lvm_loopback_sparse_disk(image_path=image_path, image_size=image_size, lvm_dev=loop_device, service_user=service_user):
+    if using_loopback and not create_lvm_loopback_virtual_disk(image_path=image_path, image_size=image_size, lvm_dev=loop_device, service_user=service_user):
         return False
 
     vg = get_vg_for_pv(lvm_dev)
