@@ -131,12 +131,18 @@ def generate_openstack_config(config: OpenStackConfig):
     config_dict["neutron"]["DRIVER"] = config.neutron_driver
 
     # Neutron OVS / OVN
-    config_dict["neutron"].setdefault("ovs", {})
-    config_dict["neutron"]["ovs"]["CREATE_BRIDGES"] = "yes" if config.neutron_driver == "ovs" else ""
-    config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE_INTERFACE"] = iface if config.neutron_driver == "ovs" else ""
-    config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE"] = "br-ex" if config.neutron_driver == "ovs" else ""
-    config_dict["neutron"]["ovs"]["TENANT_BRIDGE"] = "br-tenant" if config.neutron_driver == "ovs" else ""
-    config_dict["neutron"]["ovs"]["TUNNEL_BRIDGE"] = "br-tun" if config.neutron_driver == "ovs" else ""
+
+    if config.neutron_driver == "ovs":
+        config_dict["neutron"].setdefault("ovs", {})
+        config_dict["neutron"]["ovs"]["CREATE_BRIDGES"] = "yes"
+        config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE_INTERFACE"] = iface
+        config_dict["neutron"]["ovs"]["PUBLIC_BRIDGE"] = "br-ex"
+        config_dict["neutron"]["ovs"]["TENANT_BRIDGE"] = "br-tenant"
+        config_dict["neutron"]["ovs"]["TUNNEL_BRIDGE"] = "br-tun"
+
+        config_dict.pop("neutron.ovn", {})
+    elif config.neutron_driver == "ovn":
+        config_dict.pop("neutron.ovs", {})
 
     config_dict["neutron"].setdefault("ovn", {})
     if config.neutron_driver == "ovn":
@@ -195,10 +201,7 @@ def generate_openstack_config(config: OpenStackConfig):
         cinder_loop, manila_loop = get_free_loops(count=2)
     elif config.install_manila and config.install_cinder == False:
         manila_loop = get_free_loops(count=1)[0]
-    elif config.install_manila == False and config.install_cinder:
-        if config.cinder.lvm_image_size_in_gb is None:
-            cinder_lvm_image_size_in_gb = 5
-            
+    elif config.install_manila == False and config.install_cinder:     
         cinder_loop = get_free_loops(count=1)[0]
 
     if config.install_cinder:
@@ -271,6 +274,8 @@ def generate_openstack_config(config: OpenStackConfig):
                 "NFS_OVERSUB_RATIO": 1.0,
                 "ENABLE_SNAPSHOTS": config.cinder.nfs_snapshots_enabled
             }
+    else:
+        config_dict.pop("cinder", {})
 
     if config.install_manila:
 

@@ -11,7 +11,7 @@ from .generator import generate_config_file, generate_openstack_config
 
 from .runner import deploy as start_deployment
 
-from .args.build import (add_general_arguments, add_deployment_arguments, add_cinder_arguments, add_cinder_backup_arguments, add_nova_compute_arguments, add_manila_arguments)
+from .args.builder import (add_general_arguments, add_deployment_arguments, add_cinder_arguments, add_cinder_backup_arguments, add_nova_compute_arguments, add_manila_arguments)
 from .args.validator import validate_deploy_args
 
 from .config import OpenStackConfig, CinderConfig, ManilaConfig, NovaComputeConfig, CinderBackupConfig
