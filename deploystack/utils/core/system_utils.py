@@ -309,6 +309,7 @@ def generate_password(length=12):
     return ''.join(random.choice(chars) for _ in range(length))
 
 def build_openstack_env(config):
+    
     env = os.environ.copy()
 
     ip_address = get(config, "network.HOST_IP")
@@ -364,5 +365,3 @@ def build_openstack_env_from_session():
             env[key] = value
 
     return env
-        
-
