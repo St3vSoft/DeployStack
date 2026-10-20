@@ -115,6 +115,9 @@ def deploy(parser, args) -> None:
             else ""
         )
 
+        cinder_physical_volume = None
+        cinder_lvm_size = None
+
         cinder_enabled_backends = None
         cinder_lvm_volume_group = None
 
@@ -122,7 +125,6 @@ def deploy(parser, args) -> None:
 
         cinder_backup_driver = None
         cinder_backup_compression_algorithm = None
-        cinder_physical_volume = None
         cinder_backup_file_size_in_bytes = None
         cinder_backup_sha_block_size_in_bytes = None
         cinder_backup_workers = None
