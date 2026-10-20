@@ -340,3 +340,29 @@ def build_openstack_env_from_file(file_path):
 
     return env
 
+def build_openstack_env_from_session():
+
+    env = os.environ.copy()
+
+    auth_keys = [
+        "OS_USERNAME",
+        "OS_PASSWORD",
+        "OS_PROJECT_NAME",
+        "OS_USER_DOMAIN_NAME",
+        "OS_PROJECT_DOMAIN_NAME",
+        "OS_AUTH_URL",
+        "OS_IDENTITY_API_VERSION",
+    ]
+
+    auth_vars = {}
+
+    for key in auth_keys:
+        auth_vars[key] = os.getenv(key)
+
+    for key, value in auth_vars.items():
+        if value is not None:
+            env[key] = value
+
+    return env
+        
+

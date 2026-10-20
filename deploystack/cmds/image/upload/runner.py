@@ -13,7 +13,7 @@ from ...shell import _run
 
 from .images import get_image_url
 
-from ....utils.core.system_utils import build_openstack_env_from_file
+from ....utils.core.system_utils import build_openstack_env_from_session
 from ....utils.tasks.check_deployment import internal_admin_openrc_file
 
 OS_ADMIN_USERS = {
@@ -170,7 +170,7 @@ def upload_image(
     print("Getting the Download URL for the image...\n")
     image_url = get_image_url(os, version, arch)
 
-    admin_internal_env = build_openstack_env_from_file(internal_admin_openrc_file)
+    current_session_env = build_openstack_env_from_session()
 
     if not output_dir:
         output_dir = "/tmp"
@@ -192,7 +192,7 @@ def upload_image(
 
     _download_image(image_url, temp_file_path)
 
-    if _upload_image_to_glance(temp_file_path, glance_image_name, os, visibility, timeout, env=admin_internal_env):
+    if _upload_image_to_glance(temp_file_path, glance_image_name, os, visibility, timeout, env=current_session_env):
 
         print(f"\n{colors.GREEN}Image successfully uploaded{colors.RESET}")
 

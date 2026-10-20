@@ -5,14 +5,16 @@ import sys
 from ...shell import _run, is_uuid, logger
 from ....utils.core import colors
 
-def _get_image_name_from_uuid(uuid) -> str:
+from ....utils.core.system_utils import build_openstack_env_from_file, build_openstack_env_from_session
+
+def _get_image_name_from_uuid(env, uuid) -> str:
 
     get_image_name_cmd = [
         "openstack", "image", "show", uuid, "-f", "value", "-c", "name"
     ]
 
     try:
-        result = subprocess.run(get_image_name_cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(get_image_name_cmd, capture_output=True, text=True, check=True, env=env)
 
         image_name = result.stdout.strip()
 
@@ -26,14 +28,14 @@ def _get_image_name_from_uuid(uuid) -> str:
         logger.error(f"{colors.RED}Error while trying to getting image name: {e}{colors.RESET}\n")
         sys.exit(1)
 
-def _get_image_id_from_name(name) -> str:
+def _get_image_id_from_name(env, name) -> str:
 
     get_image_id_cmd = [
         "openstack", "image", "show", name, "-f", "value", "-c", "id"
     ]
 
     try:
-        result = subprocess.run(get_image_id_cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(get_image_id_cmd, capture_output=True, text=True, check=True, env=env)
 
         image_id = result.stdout.strip()
 
@@ -47,16 +49,16 @@ def _get_image_id_from_name(name) -> str:
         logger.error(f"{colors.RED}Error while trying to getting image ID: {e}{colors.RESET}\n")
         sys.exit(1)
 
-def _check_image_running_instances(identifier: str) -> bool:
+def _check_image_running_instances(env, identifier: str) -> bool:
 
     check_images_instances_cmd = [
         "openstack", "server", "list", "-f", "value", "-c", "Image"
     ]
 
     try:
-        image_name = identifier if not is_uuid(identifier) else _get_image_name_from_uuid(identifier)
+        image_name = identifier if not is_uuid(identifier) else _get_image_name_from_uuid(env, identifier)
 
-        result = subprocess.run(check_images_instances_cmd, capture_output=True, text=True, check=True)
+        result = subprocess.run(check_images_instances_cmd, capture_output=True, text=True, check=True, env=env)
         running_image_names = [line.strip().lower() for line in result.stdout.splitlines()]
 
         return image_name.lower() in running_image_names
@@ -66,7 +68,7 @@ def _check_image_running_instances(identifier: str) -> bool:
         sys.exit(1)
 
 
-def _remove_glance_image(identifier: str, timeout: int = 30) -> bool:
+def _remove_glance_image(env, identifier: str, timeout: int = 30) -> bool:
     remove_image_cmd = ["openstack", "image", "delete", identifier]
 
     try:
@@ -88,7 +90,8 @@ def _remove_glance_image(identifier: str, timeout: int = 30) -> bool:
                 ["openstack", "image", "list", "-f", "value", "-c", "id"],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
+                env=env
             )
             image_ids = result.stdout.splitlines()
             if identifier not in image_ids:
@@ -104,17 +107,20 @@ def remove_image(
         image: str,
         timeout: int
 ):
+
+    internal_admin_env = build_openstack_env_from_file("/var/lib/deploystack/admin-openrc")
+    current_session_env = build_openstack_env_from_session()
     
-    image_id = image if is_uuid(image) else _get_image_id_from_name(image)
+    image_id = image if is_uuid(image) else _get_image_id_from_name(internal_admin_env, image)
     
     image_identifier = image_id
-    print(f"Removing image with Name: {image} ...")
+    print(f"Removing image with name: {image} ...")
 
-    if _check_image_running_instances(image_identifier):
+    if _check_image_running_instances(internal_admin_env, image_identifier):
         print(f"\n{colors.RED}Error: There are instances still running with the '{image}' image. Please terminate them before attempting removal.{colors.RESET}")
         sys.exit(1)
 
-    if _remove_glance_image(image_identifier, timeout):
+    if _remove_glance_image(current_session_env, image_identifier, timeout):
         print(f"\n{colors.GREEN}Image '{image}' successfully deleted{colors.RESET}")
     else:
         sys.exit(1)
