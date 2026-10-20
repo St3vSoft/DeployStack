@@ -140,9 +140,10 @@ def generate_openstack_config(config: OpenStackConfig):
         config_dict["neutron"]["ovs"]["TENANT_BRIDGE"] = "br-tenant"
         config_dict["neutron"]["ovs"]["TUNNEL_BRIDGE"] = "br-tun"
 
-        config_dict.pop("neutron.ovn", {})
+        config_dict["neutron"].pop("ovn", {})
     elif config.neutron_driver == "ovn":
-        config_dict.pop("neutron.ovs", {})
+        config_dict["neutron"].setdefault("ovn", {})
+        config_dict["neutron"].pop("ovs", {})
 
     config_dict["neutron"].setdefault("ovn", {})
     if config.neutron_driver == "ovn":
