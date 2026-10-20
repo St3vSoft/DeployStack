@@ -34,7 +34,7 @@ def generate_config_file() -> str:
 
     return config_file_path
 
-def config_openstack(config: OpenStackConfig):
+def generate_openstack_config(config: OpenStackConfig):
 
     try:
         with open(config_file_path, "r") as f:

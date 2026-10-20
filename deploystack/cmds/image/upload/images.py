@@ -12,7 +12,7 @@ ARCH_MAP = {
     "arm64":  {"centos": "aarch64", "fedora": "aarch64"},
 }
 
-def get_latest_centos_url(version: str, arch: str) -> str:
+def _get_latest_centos_url(version: str, arch: str) -> str:
 
     internal_ver = centos_version_map.get(version, version)
    
@@ -45,7 +45,7 @@ def get_image_url(os:str, version: str, arch: str) -> str:
     mapped_arch = ARCH_MAP.get(arch, {}).get(os_name, arch)
 
     if os_name == "centos":
-        return get_latest_centos_url(version, mapped_arch)
+        return _get_latest_centos_url(version, mapped_arch)
     
     elif os_name == "ubuntu":
 

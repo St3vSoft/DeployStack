@@ -8,7 +8,7 @@ from ...utils.core import colors
 from ...utils.core.system_utils import is_ubuntu_release, is_debian
 from ...utils.config.helpers import parse_bool
 
-from .generator import generate_config_file, config_openstack
+from .generator import generate_config_file, generate_openstack_config
 
 from .runner import deploy as start_deployment
 
@@ -158,16 +158,19 @@ def init_parser(subparsers):
         help="Enable or disable snapshot support for the Cinder NFS driver. (yes/no)"
     )
 
-    cinder.add_argument(
+    cinder_lvm_storage = cinder.add_mutually_exclusive_group()
+
+    cinder_lvm_storage.add_argument(
         "--cinder-lvm-image-size-in-gb",
         type=int,
         default=None,
         help="Size of the Cinder LVM image in GB (default: 5)"
     )
 
-    cinder.add_argument(
+    cinder_lvm_storage.add_argument(
         "--cinder-physical-volume",
         type=str,
+        default=None,
         help="The physical volume to use for Cinder (example: /dev/sdb)"
     )
 
@@ -386,17 +389,9 @@ def deploy(parser, args) -> None:
                 else 5
                 )
  
-            cinder_physical_volume = (
-                args.cinder_physical_volume
-                if cinder_flag == "yes"
-                else ""
-            )
+            cinder_physical_volume = args.cinder_physical_volume
 
-            cinder_nfs_snapshots_enabled = (
-                args.enable_nfs_snapshots
-                if cinder_flag == "yes"
-                else "yes"
-            )
+            cinder_nfs_snapshots_enabled = args.enable_nfs_snapshots
 
         if enable_cinder_backup == "yes":
             cinder_backup_driver = (
@@ -494,12 +489,12 @@ def deploy(parser, args) -> None:
             os_release=os_release,
         )
 
-        config_openstack(config=os_config)
+        generate_openstack_config(config=os_config)
 
         if args.generate_only:
             print(
                 f"{colors.GREEN}Configuration file generated in "
-                f"'{config_file_path}{colors.RESET}'\n"
+                f"'{config_file_path}'{colors.RESET}\n"
             )
             print(
                 f"You can start the deployment later with "
@@ -515,7 +510,9 @@ def deploy(parser, args) -> None:
             print(
                 f"{colors.RED}Configuration file not found. "
                 f"Generate it first using "
-                f"'deploystack generate-config <file>'{colors.RESET}"
+                f"'deploystack generate-config <file>' "
+                f"or 'deploystack deploy -aio <arguments> --generate-only'"
+                f"{colors.RESET}"
             )
             sys.exit(1)
 

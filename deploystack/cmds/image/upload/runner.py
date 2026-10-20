@@ -24,7 +24,7 @@ OS_ADMIN_USERS = {
     "opensuse": "opensuse",
 }
 
-def generate_temp_filename(os_name: str, version: str, arch: str, url: str, temp_dir: str = None) -> str:
+def _generate_temp_filename(os_name: str, version: str, arch: str, url: str, temp_dir: str = None) -> str:
 
     ext = os_module.path.splitext(url)[-1]
 
@@ -33,7 +33,7 @@ def generate_temp_filename(os_name: str, version: str, arch: str, url: str, temp
     filename = f"{os_name}-{version}-{arch}{ext}"
     return os_module.path.join(temp_dir, filename)
 
-def download_image(url: str, output_path: str):
+def _download_image(url: str, output_path: str):
 
     fd = sys.stdin.fileno()
     old_term = termios.tcgetattr(fd)
@@ -78,7 +78,7 @@ def download_image(url: str, output_path: str):
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_term)
 
-def image_already_exists(image_name) -> bool:
+def _image_already_exists(image_name) -> bool:
 
     list_images_cmd = [
         "openstack", "image", "list", "-f", "value", "-c", "Name"
@@ -94,7 +94,7 @@ def image_already_exists(image_name) -> bool:
         print(f"\n{colors.RED}Error while trying to listing images: {e}{colors.RESET}")
         sys.exit(1)
 
-def wait_for_image(image_name, timeout=300, env=None):
+def _wait_for_image_active(image_name, timeout=300, env=None):
     start = time.time()
     while True:
         result = subprocess.run(
@@ -110,7 +110,7 @@ def wait_for_image(image_name, timeout=300, env=None):
         time.sleep(5)
     print()
 
-def upload_glance_image(
+def _upload_image_to_glance(
         filepath: str,
         name: str,
         os: str,
@@ -142,12 +142,11 @@ def upload_glance_image(
     elif visibility == "community":
         create_image_cmd.append("--community")
 
-    create_image_cmd.append(f"{name}")
+    create_image_cmd.append(name)
     
     try:
         _run(create_image_cmd, env=env)
-
-        wait_for_image(name, timeout, env=env)
+        _wait_for_image_active(name, timeout, env=env)
 
         return True
     except subprocess.CalledProcessError as e:
@@ -178,7 +177,7 @@ def upload_image(
 
     glance_image_name: str
 
-    temp_file_path = generate_temp_filename(os, version, arch, url=image_url, temp_dir=output_dir)
+    temp_file_path = _generate_temp_filename(os, version, arch, url=image_url, temp_dir=output_dir)
 
     temp_file_name = os_module.path.splitext(os_module.path.basename(temp_file_path))[0]
 
@@ -187,13 +186,13 @@ def upload_image(
     else:
         glance_image_name = image_name
 
-    if image_already_exists(glance_image_name):
+    if _image_already_exists(glance_image_name):
         print(f"{colors.RED}Error: Glance image '{glance_image_name}' already exists.{colors.RESET}")
         sys.exit(1)
 
-    download_image(image_url, temp_file_path)
+    _download_image(image_url, temp_file_path)
 
-    if upload_glance_image(temp_file_path, glance_image_name, os, visibility, timeout, env=admin_internal_env):
+    if _upload_image_to_glance(temp_file_path, glance_image_name, os, visibility, timeout, env=admin_internal_env):
 
         print(f"\n{colors.GREEN}Image successfully uploaded{colors.RESET}")
 

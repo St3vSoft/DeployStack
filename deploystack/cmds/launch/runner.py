@@ -29,7 +29,7 @@ DEFAULT_IMAGE   = "cirros"
 DEFAULT_NETWORK = "internal"
 EXTERNAL_NET    = "public"
 
-def is_private_tenant_network(network_id: str) -> bool:
+def _is_private_tenant_network(network_id: str) -> bool:
     result = _os("network", "show", network_id, "-f", "json")
     net = json.loads(result)
 
@@ -50,7 +50,7 @@ def is_private_tenant_network(network_id: str) -> bool:
 
     return True
 
-def get_router_and_provider_network(tenant_network_name: str, env) -> tuple[str | None, str | None]:
+def _get_router_and_provider_network(tenant_network_name: str, env) -> tuple[str | None, str | None]:
     networks = json.loads(_os("network", "list", "--name", tenant_network_name, "-f", "json", "-c", "ID"))
     if not networks:
         return None, None
@@ -70,7 +70,7 @@ def get_router_and_provider_network(tenant_network_name: str, env) -> tuple[str 
 
     return None, None
 
-def get_router_for_external_network(network_id: str) -> str:
+def _get_router_for_external_network(network_id: str) -> str:
 
     routers = json.loads(_os("router", "list", "--long", "-f", "json", "-c", "Name", "-c", "network_id", "-c", "External gateway info"))
 
@@ -88,16 +88,16 @@ def get_router_for_external_network(network_id: str) -> str:
 
     return None
 
-def is_local_network_type_by_id(network_id: str) -> bool:
+def _is_local_network_type_by_id(network_id: str) -> bool:
     network = json.loads(_os("network", "show", network_id, "-f", "json"))
 
     return network.get("provider:network_type") == "local"
 
-def is_external_network_by_id(network_id: str) -> bool:
+def _is_external_network_by_id(network_id: str) -> bool:
     net = json.loads(_os("network", "show", network_id, "-f", "json"))
     return net.get("router:external", False)
 
-def get_external_network(preferred: str | None = None) -> str:
+def _get_external_network(preferred: str | None = None) -> str:
 
     out = _os("network", "list", "-f", "json")
     networks = json.loads(out)
@@ -105,10 +105,10 @@ def get_external_network(preferred: str | None = None) -> str:
     if preferred:
         for net in networks:
             if preferred.lower() in net["Name"].lower() or net["Name"].lower() in preferred.lower():
-                if is_external_network_by_id(net["ID"]):
+                if _is_external_network_by_id(net["ID"]):
                     return net["ID"]
 
-    external_nets = [n for n in networks if is_external_network_by_id(n["ID"])]
+    external_nets = [n for n in networks if _is_external_network_by_id(n["ID"])]
 
     if not external_nets:
         logger.error(f"{colors.RED}No external network (router:external=True) found in the project/cloud.{colors.RESET}")
@@ -116,7 +116,7 @@ def get_external_network(preferred: str | None = None) -> str:
 
     return external_nets[0]["ID"]
 
-def ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
+def _ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
 
     keypair_name = f"{name}-keypair"
 
@@ -138,7 +138,7 @@ def ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
 
     return keypair_name
 
-def get_cirros_image_checksum(image_name="cirros") -> str | None:
+def _get_cirros_image_checksum(image_name="cirros") -> str | None:
     try:
         out = _os("image", "show", image_name, "-f", "value", "-c", "checksum")
         return out.strip()
@@ -146,7 +146,7 @@ def get_cirros_image_checksum(image_name="cirros") -> str | None:
         logger.error(f"{colors.RED}Unable to find checksum for CirrOS image{colors.RESET}")
         sys.exit(1)
 
-def get_image_properties(image_id: str) -> dict:
+def _get_image_properties(image_id: str) -> dict:
 
     out = _os("image", "show", image_id, "-f", "json")
     data = json.loads(out)
@@ -160,7 +160,7 @@ def get_image_properties(image_id: str) -> dict:
         "os_admin_user": props.get("os_admin_user")
     }
 
-def get_default_image(preferred: str) -> str:
+def _get_default_image(preferred: str) -> str:
     out = _os("image", "list", "--status", "active", "-f", "value", "-c", "ID", "-c", "Name")
     for line in out.splitlines():
         parts = line.split(None, 1)
@@ -174,7 +174,7 @@ def get_default_image(preferred: str) -> str:
     logger.error(f"{colors.RED}No active image found with name '{preferred}'{colors.RESET}")
     sys.exit(1)
 
-def get_default_flavor(preferred: str = DEFAULT_FLAVOR) -> str:
+def _get_default_flavor(preferred: str = DEFAULT_FLAVOR) -> str:
     out = _os("flavor", "list", "-f", "value", "-c", "ID", "-c", "Name")
     for line in out.splitlines():
         parts = line.split(None, 1)
@@ -182,13 +182,13 @@ def get_default_flavor(preferred: str = DEFAULT_FLAVOR) -> str:
             return parts[0]
     return out.splitlines()[0].split()[0] if out else "1"
 
-def delete_error_instance(instance_id: str):
+def _delete_error_instance(instance_id: str):
     try:
         subprocess.run(["openstack", "server", "delete", instance_id], check=True)
     except subprocess.CalledProcessError as e:
         print(f"Error when deleting instance {instance_id}: {e}")
 
-def internal_router_has_gateway(router_name: str, env=None) -> bool:
+def _internal_router_has_gateway(router_name: str, env=None) -> bool:
 
     field_name: str
 
@@ -203,8 +203,8 @@ def internal_router_has_gateway(router_name: str, env=None) -> bool:
     gateways = external_gateways.get(field_name, [])
     return bool(gateways)
 
-def get_instance_ip(instance_name: str, network_name: str) -> str:
-    result = _run(["openstack", "server list", "-f", "json"])
+def _get_instance_ip(instance_name: str, network_name: str) -> str:
+    result = _run(["openstack", "server", "list", "-f", "json"])
     servers = json.loads(result.stdout)
     
     for s in servers:
@@ -212,7 +212,7 @@ def get_instance_ip(instance_name: str, network_name: str) -> str:
             return s["Networks"].get(network_name, [None])[0]
     return None
 
-def get_default_network(preferred: str | None = None) -> str:
+def _get_default_network(preferred: str | None = None) -> str:
     out = _os("network", "list", "-f", "value", "-c", "ID", "-c", "Name")
     lines = [line.split(None, 1) for line in out.splitlines() if line.strip()]
 
@@ -224,17 +224,17 @@ def get_default_network(preferred: str | None = None) -> str:
         sys.exit(1)
 
     for net_id, net_name in lines:
-        if "internal" in net_name.lower() and not is_external_network_by_id(net_id):
+        if "internal" in net_name.lower() and not _is_external_network_by_id(net_id):
             return net_id
 
     for net_id, net_name in lines:
-        if not is_external_network_by_id(net_id) and "public" not in net_name.lower():
+        if not _is_external_network_by_id(net_id) and "public" not in net_name.lower():
             return net_id
 
     logger.error("No suitable internal network found. Cannot use public network by default.")
     sys.exit(1)
 
-def get_server_id(name: str) -> str:
+def _get_server_id(name: str) -> str:
 
     out = _os("server", "list", "--name", f"^{name}$", "-f", "value", "-c", "ID", "-c", "Name")
 
@@ -253,7 +253,7 @@ def get_server_id(name: str) -> str:
         sys.exit(1)
     return exact[0]
 
-def get_floating_ip_id(fip_address: str) -> str:
+def _get_floating_ip_id(fip_address: str) -> str:
 
     out = _os("floating", "ip", "list", "--floating-ip-address", fip_address,  "-f", "value", "-c", "ID")
 
@@ -263,7 +263,7 @@ def get_floating_ip_id(fip_address: str) -> str:
         sys.exit(1)
     return fip_id
 
-def generate_user_config(ostype: str, default_user: str, password: str, public_key: str = None) -> str:
+def _generate_user_config(ostype: str, default_user: str, password: str, public_key: str = None) -> str:
 
     if ostype == "linux":
         template_path = (
@@ -312,7 +312,7 @@ def generate_user_config(ostype: str, default_user: str, password: str, public_k
 
     return file_path
 
-def create_server(name: str, image_id: str, flavor_id: str,
+def _create_server(name: str, image_id: str, flavor_id: str,
                   network_id: str, keypair_name: str) -> str:
     """Create server and return its ID."""
 
@@ -346,7 +346,7 @@ def create_server(name: str, image_id: str, flavor_id: str,
         for line in out.stdout.splitlines():
             instance_id, instance_name = line.split(None, 1)
             if name in instance_name:
-                delete_error_instance(instance_id)
+                _delete_error_instance(instance_id)
 
         logger.error(
             f"{colors.RED}"
@@ -358,7 +358,7 @@ def create_server(name: str, image_id: str, flavor_id: str,
         
         sys.exit(1) 
 
-def create_server_with_password(
+def _create_server_with_password(
     name: str,
     image_id: str,
     flavor_id: str,
@@ -371,7 +371,7 @@ def create_server_with_password(
 ) -> str:
     """Create server with cloud-init user config and return its ID."""
 
-    config_drive_file_path = generate_user_config(os_type, username, password, public_key)
+    config_drive_file_path = _generate_user_config(os_type, username, password, public_key)
 
     server_id: str = None
 
@@ -402,7 +402,7 @@ def create_server_with_password(
         for line in out.stdout.splitlines():
             instance_id, instance_name = line.split(None, 1)
             if name in instance_name:
-                delete_error_instance(instance_id)
+                _delete_error_instance(instance_id)
 
         logger.error(
             f"{colors.RED}"
@@ -422,7 +422,7 @@ def create_server_with_password(
             )
             shutil.rmtree(base_dir, ignore_errors=True)
 
-def allocate_floating_ip(external_net: str = EXTERNAL_NET) -> str:
+def _allocate_floating_ip(external_net: str = EXTERNAL_NET) -> str:
     """Allocate a floating IP and return its address."""
     print("Allocating floating IP ...")
     fip = _os_value("floating", "ip", "create", "-c", "floating_ip_address", external_net)
@@ -431,11 +431,11 @@ def allocate_floating_ip(external_net: str = EXTERNAL_NET) -> str:
         sys.exit(1)
     return fip
 
-def attach_floating_ip(server_id: str, fip: str) -> None:
+def _attach_floating_ip(server_id: str, fip: str) -> None:
     print(f"Attaching floating IP {fip} to instance {server_id} ...\n")
     _os("server", "add", "floating", "ip", server_id, fip)
 
-def wait_for_active(server_id: str, timeout: int = 100):
+def _wait_for_active(server_id: str, timeout: int = 100):
 
     deadline = time.time() + timeout
 
@@ -455,7 +455,7 @@ def wait_for_active(server_id: str, timeout: int = 100):
 
             for instance_id in error_ids:
                 if instance_id == server_id:
-                    delete_error_instance(instance_id)
+                    _delete_error_instance(instance_id)
 
             sys.exit(1)
 
@@ -467,7 +467,7 @@ def wait_for_active(server_id: str, timeout: int = 100):
     )
     sys.exit(1)
 
-def print_summary(name: str, fip: str, key_path: str | None, is_password: bool,
+def _print_summary(name: str, fip: str, key_path: str | None, is_password: bool,
                   username: str, password: str, os_type: str, ip_address: str = None, show_access: bool = True) -> None:
 
     os_type = (os_type or "").lower()
@@ -507,11 +507,6 @@ def print_summary(name: str, fip: str, key_path: str | None, is_password: bool,
         )
 
     if is_password:
-        if os_type == "windows":
-            print(f"You can log in with credentials:\n"
-                f"  username: {username} or Administrator\n"
-                f"  password: {password}")
-        elif os_type == "linux":
             print(
                 f"You can log in with credentials:\n"
                 f"  username: {username}\n"
@@ -533,30 +528,30 @@ def launch(
     os.makedirs(SSH_KEY_PATH, exist_ok=True)
     key_path = os.path.join(SSH_KEY_PATH, f"id_{name}")
 
-    image_id   = get_default_image(image)
-    flavor_id  = get_default_flavor(flavor)
-    network_id = get_default_network(network)
-    is_private = is_private_tenant_network(network_id)
-    is_local_network = is_local_network_type_by_id(network_id)
+    image_id   = _get_default_image(image)
+    flavor_id  = _get_default_flavor(flavor)
+    network_id = _get_default_network(network)
+    is_private = _is_private_tenant_network(network_id)
+    is_local_network = _is_local_network_type_by_id(network_id)
 
-    props = get_image_properties(image_id) or {}
+    props = _get_image_properties(image_id) or {}
 
     os_type      = (props.get("os_type") or "").lower()
     os_distro    = (props.get("os_distro") or "").lower()
     image_name   = (props.get("name") or "").lower()
     os_admin_user = (props.get("os_admin_user") or "")
 
-    external_net_id = get_external_network(external_net if external_net != EXTERNAL_NET else None)
+    external_net_id = _get_external_network(external_net if external_net != EXTERNAL_NET else None)
 
     provider_network_id = None
     external_router_name = None
 
     admin_internal_env = build_openstack_env_from_file(internal_admin_openrc_file)
 
-    if is_external_network_by_id(network_id):
-        external_router_name = get_router_for_external_network(external_net_id)
+    if _is_external_network_by_id(network_id):
+        external_router_name = _get_router_for_external_network(external_net_id)
     else:
-        external_router_name, provider_network_id = get_router_and_provider_network(network, admin_internal_env)
+        external_router_name, provider_network_id = _get_router_and_provider_network(network, admin_internal_env)
 
     password_enabled = True
     show_access = True
@@ -573,14 +568,14 @@ def launch(
 
     if not keypair:
         key_path = key_path or os.path.join(SSH_KEY_PATH, f"id_{name}")
-        keypair = ensure_keypair(key_path, name)
+        keypair = _ensure_keypair(key_path, name)
         with open(f"{key_path}.pub", "r") as f:
             public_key = f.read().strip()
     else:
         key_path = None
         public_key = None
 
-    if "cirros" in image_name and get_cirros_image_checksum() is not None and get_cirros_image_checksum() == CIRROS_IMAGE_CHECKSUM and password not in (None, ""):
+    if "cirros" in image_name and _get_cirros_image_checksum() is not None and _get_cirros_image_checksum() == CIRROS_IMAGE_CHECKSUM and password not in (None, ""):
         password_enabled = False
         logger.info(f"{colors.YELLOW}CirrOS detected. Skipping password configuration (unsupported image).{colors.RESET}\n")
 
@@ -597,36 +592,36 @@ def launch(
     )
 
     if password_enabled and password:
-        server_id = create_server_with_password(
+        server_id = _create_server_with_password(
             name, image_id, flavor_id, network_id,
             keypair, os_type, os_admin_user, password, public_key
         )
     else:
-        server_id = create_server(
+        server_id = _create_server(
             name, image_id, flavor_id, network_id, keypair
         )
 
-    wait_for_active(server_id, timeout)
+    _wait_for_active(server_id, timeout)
 
     if is_private:
 
         if not external_router_name:
             logger.warning(f"{colors.YELLOW}No router with external gateway found for tenant network '{network}'.{colors.RESET}\n")
 
-            instance_ip_address = get_instance_ip(name, network)
+            instance_ip_address = _get_instance_ip(name, network)
 
-        elif internal_router_has_gateway(router_name=external_router_name, env=admin_internal_env) and not is_local_network:
+        elif _internal_router_has_gateway(router_name=external_router_name, env=admin_internal_env) and not is_local_network:
 
-            fip = allocate_floating_ip(provider_network_id or network)
+            fip = _allocate_floating_ip(provider_network_id or network)
 
-            attach_floating_ip(server_id, fip)
+            _attach_floating_ip(server_id, fip)
 
             instance_ip_address = fip
 
         else:
-            instance_ip_address = get_instance_ip(name, network)
+            instance_ip_address = _get_instance_ip(name, network)
 
-            if not internal_router_has_gateway():
+            if not _internal_router_has_gateway():
                 logger.warning(
                     f"{colors.YELLOW}"
                     "The internal router is not connected to an external gateway. "
@@ -643,7 +638,7 @@ def launch(
                     f"{colors.RESET}\n"
                 )
     else:
-        instance_ip_address = get_instance_ip(name, network)
+        instance_ip_address = _get_instance_ip(name, network)
 
     if is_local_network:
         instance_ip_address = None
@@ -651,8 +646,8 @@ def launch(
         show_access = False
     
     if password_enabled and password:
-        print_summary(name, fip, key_path, True, os_admin_user, password, os_type, instance_ip_address, show_access)
-    elif "cirros" in image_name and get_cirros_image_checksum() is not None and get_cirros_image_checksum() == CIRROS_IMAGE_CHECKSUM:
-        print_summary(name, fip, key_path, False, "cirros", None, "linux", instance_ip_address, show_access)
+        _print_summary(name, fip, key_path, True, os_admin_user, password, os_type, instance_ip_address, show_access)
+    elif "cirros" in image_name and _get_cirros_image_checksum() is not None and _get_cirros_image_checksum() == CIRROS_IMAGE_CHECKSUM:
+        _print_summary(name, fip, key_path, False, "cirros", None, "linux", instance_ip_address, show_access)
     else:
-        print_summary(name, fip, key_path, False, os_admin_user, None, os_type, instance_ip_address, show_access)
+        _print_summary(name, fip, key_path, False, os_admin_user, None, os_type, instance_ip_address, show_access)

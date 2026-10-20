@@ -5,7 +5,7 @@ import sys
 from ...shell import _run, is_uuid, logger
 from ....utils.core import colors
 
-def get_image_name_from_uuid(uuid) -> str:
+def _get_image_name_from_uuid(uuid) -> str:
 
     get_image_name_cmd = [
         "openstack", "image", "show", uuid, "-f", "value", "-c", "name"
@@ -26,7 +26,7 @@ def get_image_name_from_uuid(uuid) -> str:
         logger.error(f"{colors.RED}Error while trying to getting image name: {e}{colors.RESET}\n")
         sys.exit(1)
 
-def get_image_id_from_name(name) -> str:
+def _get_image_id_from_name(name) -> str:
 
     get_image_id_cmd = [
         "openstack", "image", "show", name, "-f", "value", "-c", "id"
@@ -47,14 +47,14 @@ def get_image_id_from_name(name) -> str:
         logger.error(f"{colors.RED}Error while trying to getting image ID: {e}{colors.RESET}\n")
         sys.exit(1)
 
-def check_image_running_instances(identifier: str) -> bool:
+def _check_image_running_instances(identifier: str) -> bool:
 
     check_images_instances_cmd = [
         "openstack", "server", "list", "-f", "value", "-c", "Image"
     ]
 
     try:
-        image_name = identifier if not is_uuid(identifier) else get_image_name_from_uuid(identifier)
+        image_name = identifier if not is_uuid(identifier) else _get_image_name_from_uuid(identifier)
 
         result = subprocess.run(check_images_instances_cmd, capture_output=True, text=True, check=True)
         running_image_names = [line.strip().lower() for line in result.stdout.splitlines()]
@@ -66,7 +66,7 @@ def check_image_running_instances(identifier: str) -> bool:
         sys.exit(1)
 
 
-def remove_glance_image(identifier: str, timeout: int = 30) -> bool:
+def _remove_glance_image(identifier: str, timeout: int = 30) -> bool:
     remove_image_cmd = ["openstack", "image", "delete", identifier]
 
     try:
@@ -105,16 +105,16 @@ def remove_image(
         timeout: int
 ):
     
-    image_id = image if is_uuid(image) else get_image_id_from_name(image)
+    image_id = image if is_uuid(image) else _get_image_id_from_name(image)
     
     image_identifier = image_id
     print(f"Removing image with Name: {image} ...")
 
-    if check_image_running_instances(image_identifier):
+    if _check_image_running_instances(image_identifier):
         print(f"\n{colors.RED}Error: There are instances still running with the '{image}' image. Please terminate them before attempting removal.{colors.RESET}")
         sys.exit(1)
 
-    if remove_glance_image(image_identifier, timeout):
+    if _remove_glance_image(image_identifier, timeout):
         print(f"\n{colors.GREEN}Image '{image}' successfully deleted{colors.RESET}")
     else:
         sys.exit(1)
