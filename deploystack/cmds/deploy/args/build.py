@@ -1,3 +1,4 @@
+from argparse import _MutuallyExclusiveGroup
 
 def add_deployment_arguments(deployment_group, deployment_options):
 
@@ -20,7 +21,7 @@ def add_deployment_arguments(deployment_group, deployment_options):
         help="Generates a pre-compiled configuration file for the current system without starting the deployment"
     )
 
-def add_general_arguments(parser, os_release: str, gateway_group: str):
+def add_general_arguments(parser, os_release: str, gateway_group: _MutuallyExclusiveGroup):
 
     parser.add_argument(
         "--install-horizon",
@@ -260,5 +261,3 @@ def add_nova_compute_arguments(parser):
         default="no",
         help="Allow resize operations to be performed on the same compute host. (default: no)"
     )
-
-    
