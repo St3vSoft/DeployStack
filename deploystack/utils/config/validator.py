@@ -1,6 +1,5 @@
 import shutil
 import os
-import re
 import ipaddress
 import validators
 
@@ -94,7 +93,7 @@ def validate_host_network(config) -> bool:
 
     if host_domain:
         if not validators.domain(host_domain) and not validators.hostname(host_domain):
-            print(f"{colors.RED}Error: Field 'network.HOST_DOMAIN' has invalid domain name{colors.RESET}")
+            print(f"{colors.RED}Error: Field 'network.HOST_DOMAIN' has invalid host/domain name{colors.RESET}")
             ok = False
 
     return ok
@@ -381,12 +380,6 @@ def validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridg
             _err(f"Invalid tenant network type '{t}' "
                  f"(valid: {', '.join(sorted(VALID_TENANT_TYPES))})")
             ok = False
-
-     # flat tenant network: supportato solo con OVS (per ora)
-    if "flat" in tenant_types and neutron_driver != "ovs":
-        _err(f"'{base}.TYPES' contains 'flat', which is currently supported "
-             f"only with neutron.DRIVER 'ovs' (got '{neutron_driver}')")
-        ok = False
 
     if len(set(tenant_types)) != len(tenant_types):
         _err(f"'{base}.TYPES' contains duplicate values")
@@ -837,11 +830,7 @@ def validate_cinder(config) -> bool:
     OPENSTACK_RESERVED_PORTS.add(8776)
 
     if not cinder_config:
-        print(
-            f"{colors.RED}"
-            f"Error: cinder section is missing"
-            f"{colors.RESET}"
-        )
+        print(f"{colors.RED}Error: cinder section is missing{colors.RESET}")
         return False
 
     # ---------------------------------------------------------
@@ -897,10 +886,7 @@ def validate_cinder(config) -> bool:
         backend = backend.strip()
         backend_prefix = f"cinder.backends.{backend}"
 
-        driver = get(
-            config,
-            f"{backend_prefix}.DRIVER"
-        )
+        driver = get(config, f"{backend_prefix}.DRIVER")
 
         if not driver:
             print(
