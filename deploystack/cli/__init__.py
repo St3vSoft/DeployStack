@@ -46,7 +46,8 @@ def build_parser() -> argparse.ArgumentParser:
         title="Commands",
         dest="command",
         metavar="",
-        required=True
+        required=True,
+        parser_class=ColoredArgumentParser,
     )
 
     deploy_parser(subparsers)
