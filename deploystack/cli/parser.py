@@ -21,9 +21,12 @@ class ColoredArgumentParser(argparse.ArgumentParser):
         if not argv:
             return super().error(message)
 
+        if not argv or argv[0].startswith("-") or argv[0] not in ("deploy", "launch", "generate-config", "image", "volume"):
+            self.print_help()
+            print(f"\n{colors.RED}Error: {message}{colors.RESET}")
+            self.exit(2)
+
         command = argv[0]
 
-        if command in ("deploy", "launch", "generate-config", "image", "volume"):
-            self.print_help_error(message, command)
-        else:
-            super().error(message)
+        self.print_help_error(message, command)
+        super().error(message)
