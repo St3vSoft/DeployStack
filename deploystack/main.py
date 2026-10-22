@@ -2,14 +2,13 @@ import os
 import sys
 
 from .utils.core import colors
-from .cli import build_main_parser, build_deploy_parser, build_launch_parser, build_generate_config_parser, build_images_parser, build_volumes_parser
+from .cli.builder import build_main_parser, build_deploy_parser, build_launch_parser, build_generate_config_parser, build_images_parser, build_volumes_parser
 
 from .cmds.deploy.main import deploy as run_deploy
 from .cmds.launch.main import launch as run_launch
 from .cmds.generate_config import generate_config as run_generate_config
 from .cmds.image import images as run_images
 from .cmds.volumes import volumes as run_volumes
-
 
 def print_banner():
     print(f"{colors.BRIGHT_BLUE}Welcome to DeployStack Utility{colors.RESET}\n")
