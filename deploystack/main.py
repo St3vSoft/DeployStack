@@ -42,7 +42,7 @@ def main():
         case "deploy":
             run_deploy(deploy_parser, deploy_args)
         case "launch":
-            run_launch(launch, launch_args)
+            run_launch(launch_parser, launch_args)
         case "generate-config":
             run_generate_config(generate_config_parser, generate_config_args)
         case "image":

@@ -71,8 +71,6 @@ def init_parser(parser):
 
 def deploy(parser, args) -> None:
 
-    parser = args.cmd_parser
-
     if args.allinone:
 
         validate_deploy_args(parser, args)
