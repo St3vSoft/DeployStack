@@ -5,16 +5,8 @@ import os
 from ...utils.core import colors
 from ...templates import OPENSTACK_CONFIG_TEMPLATE
 
-def init_parser(subparsers): 
-
-    parser = subparsers.add_parser(
-        "generate-config",
-        help="Generate a template configuration file",
-    )
-
+def init_parser(parser): 
     parser.add_argument("file", help="Path to configuration file")
-
-    return parser
 
 def generate_config(parser, args) -> None:
     """

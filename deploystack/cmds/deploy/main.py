@@ -42,14 +42,8 @@ def get_default_openstack_release():
 
     return "caracal"
 
-def init_parser(subparsers):
+def init_parser(parser):
      
-    parser = subparsers.add_parser(
-        "deploy",
-        help="Start the OpenStack Deployment on the current node",
-        
-    )
-
     deployment_options = parser.add_argument_group("Deployment Options")
     general_options = parser.add_argument_group("General Options")
 
@@ -74,8 +68,6 @@ def init_parser(subparsers):
     add_manila_arguments(manila)
 
     parser.set_defaults(cmd_parser=parser)
-
-    return parser
 
 def deploy(parser, args) -> None:
 
@@ -280,7 +272,7 @@ def deploy(parser, args) -> None:
 
         start_deployment(args.config_file, config_generated=False)
 
-    else:
-        
+    else:      
         parser.print_help()
-        sys.exit(0)
+        print(f"\nTip: Run '{colors.BRIGHT_BLUE}deploystack deploy --help{colors.RESET}' for detailed usage of each argument.")
+        sys.exit(1)

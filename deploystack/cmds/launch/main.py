@@ -4,12 +4,9 @@ import sys
 from ...utils.tasks.check_deployment import is_openstack_ready
 from .runner import launch as launch_instance
 
-def init_parser(subparsers): 
+from ...utils.core import colors
 
-    parser = subparsers.add_parser(
-    "launch",
-    help="Launch an OpenStack instance"
-)
+def init_parser(parser): 
 
     parser.add_argument(
         "--name",
@@ -53,14 +50,13 @@ def init_parser(subparsers):
         type=int,
         help="Maximum time to wait for the operation to complete, in seconds (default: 100)."
     )
-
-    return parser
-
+    
 def launch(parser, args) -> None:
 
     if args.command is None:
         parser.print_help()
-        parser.exit()
+        print(f"\nTip: Run '{colors.BRIGHT_BLUE}deploystack launch --help{colors.RESET}' for detailed usage of each argument.")
+        sys.exit(1)
 
     if not is_openstack_ready():
         sys.exit(1)
