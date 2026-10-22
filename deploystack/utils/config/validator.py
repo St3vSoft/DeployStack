@@ -459,7 +459,7 @@ def validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridg
             ok = False
             continue
 
-        name = net.get("Name")
+        name = net.get("name")
         if not name or not isinstance(name, str):
             _err(f"{label}.name is not set")
             ok = False
