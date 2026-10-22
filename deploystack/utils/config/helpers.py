@@ -13,7 +13,6 @@ from pathlib import Path
 prohibited_pw_chars = [' ', '$', '`', '\\']
 VALID_PATH_RE = re.compile(r"^/[A-Za-z0-9._/-]+$")
 
-
 ALLOWED_NFS_OPTIONS = {
     "vers",
     "proto",
@@ -37,7 +36,6 @@ def parse_nfs_source(source):
         return None, None
     server, _, export = source.partition(":")
     return server.strip(), export.strip()
-
 
 def get_nfs_share_for_path(path):
     check_path = path

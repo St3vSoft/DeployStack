@@ -385,7 +385,7 @@ def validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridg
         _err(f"'{base}.TYPES' contains duplicate values")
         ok = False
 
-    uses_vni = any(t in ("geneve", "vxlan") for t in tenant_types):
+    uses_vni = any(t in ("geneve", "vxlan") for t in tenant_types)
     uses_vlan = "vlan" in tenant_types
 
     # ---------- VNI_RANGE ----------
