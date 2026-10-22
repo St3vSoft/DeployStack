@@ -196,19 +196,8 @@ def create_services_users(config, env):
     services_create_cmds = []
     services_role_add_cmds = []
 
-    existing_assignments = {
-        (
-            a["User"],
-            a["Project"],
-            a["Role"]
-        )
-        for a in assignments
-    }
-
-    existing_services = {
-        s.get("Name") or s.get("name")
-        for s in services
-    }
+    existing_assignments = {( a["User"], a["Project"], a["Role"]) for a in assignments}
+    existing_services = {( s.get("Name") or s.get("name"), s.get("Type") or s.get("type"),) for s in services}
 
     if ("glance", "image") not in existing_services:
         services_create_cmds.append(["openstack", "service", "create", "--name", "glance", "--description", "OpenStack Image", "image"])
