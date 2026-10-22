@@ -66,7 +66,7 @@ def build_volumes_parser(main_subparsers: argparse.ArgumentParser_SubParsersActi
 
 def build_main_parser() -> tuple[ColoredArgumentParser, Any]:
 
-    max_cmd_len = max(len(c) for c in cmds.keys())
+    max_cmd_len = max(len(c) for c in cmds)
 
     parser = ColoredArgumentParser(
         description=(
