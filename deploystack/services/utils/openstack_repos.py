@@ -16,6 +16,12 @@ from collections.abc import Sequence
 UCA_URL = "http://ubuntu-cloud.archive.canonical.com/ubuntu"
 
 UBUNTU_CLOUD_ARCHIVE = {
+    ("focal", "ussuri"),
+    ("focal", "victoria"),
+    ("focal", "wallaby"),
+    ("focal", "xena"),
+    ("focal", "yoga"),
+    
     ("jammy", "zed"),
     ("jammy", "antelope"),
     ("jammy", "bobcat"),
