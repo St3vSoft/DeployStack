@@ -440,20 +440,21 @@ def conf_cinder(config):
     set_conf_option(cinder_conf, "keystone_authtoken", "password", service_password)
 
     for backend in enabled_backends:
+        prefix = f"cinder.backends.{backend}"
         driver = get(config, f"cinder.backends.{backend}.DRIVER")
 
         if driver == "lvm":
-            lvm_backend_name = get(config, f"cinder.backends.{backend}.BACKEND_NAME")
+            lvm_backend_name = get(config, f"{prefix}.BACKEND_NAME")
         
-            volume_clear = get(config, f"cinder.backends.{backend}.VOLUME_CLEAR")
-            volume_clear_size = int(get(config, f"cinder.backends.{backend}.VOLUME_CLEAR_SIZE"))
+            volume_clear = get(config, f"{prefix}.VOLUME_CLEAR")
+            volume_clear_size = int(get(config, f"{prefix}.VOLUME_CLEAR_SIZE"))
 
-            target_scsi_ip_address = get(config, f"cinder.backends.{backend}.TARGET_IP_ADDRESS") or ip_address
+            target_scsi_ip_address = get(config, f"{prefix}.TARGET_IP_ADDRESS") or ip_address
     
-            vg_name = get(config, f"cinder.backends.{backend}.VOLUME_GROUP")
+            vg_name = get(config, f"{prefix}.VOLUME_GROUP")
 
             if isinstance(target_scsi_ip_address, dict) or target_scsi_ip_address is None or "{network.HOST_IP}" in str(target_scsi_ip_address):
-                    target_scsi_ip_address = ip_address 
+                target_scsi_ip_address = ip_address 
             
             target_scsi_ip_address = str(target_scsi_ip_address)
             
@@ -467,18 +468,18 @@ def conf_cinder(config):
             set_conf_option(cinder_conf, backend, "target_ip_address", target_scsi_ip_address)
 
         elif driver == "nfs":
-            nfs_backend_name = get(config, f"cinder.backends.{backend}.BACKEND_NAME")
-            nfs_mount_point_base = get(config, f"cinder.backends.{backend}.MOUNT_POINT_BASE") or "/var/lib/cinder/mnt"
+            nfs_backend_name = get(config, f"{prefix}.BACKEND_NAME")
+            nfs_mount_point_base = get(config, f"{prefix}.MOUNT_POINT_BASE") or "/var/lib/cinder/mnt"
 
-            nfs_mount_options = get(config, f"cinder.backends.{backend}.MOUNT_OPTIONS") or None
+            nfs_mount_options = get(config, f"{prefix}.MOUNT_OPTIONS") or None
 
-            sparsed_volumes = get(config, f"cinder.backends.{backend}.NFS_SPARSED_VOLUMES", "sparse")
+            sparsed_volumes = get(config, f"{prefix}.NFS_SPARSED_VOLUMES", "sparse")
             sparsed_volumes_str = str(sparsed_volumes).lower() == "sparse"
 
-            nfs_used_ratio = get(config, f"cinder.backends.{backend}.NFS_USED_RATIO", 0.95) 
-            nfs_oversub_ratio = get(config, f"cinder.backends.{backend}.NFS_OVERSUB_RATIO", 1.0) 
+            nfs_used_ratio = get(config, f"{prefix}.NFS_USED_RATIO", 0.95) 
+            nfs_oversub_ratio = get(config, f"{prefix}.NFS_OVERSUB_RATIO", 1.0) 
 
-            enable_snapshots = parse_bool(get(config, f"cinder.backends.{backend}.ENABLE_SNAPSHOTS"), False)
+            enable_snapshots = parse_bool(get(config, f"{prefix}.ENABLE_SNAPSHOTS"), False)
 
             set_conf_option(cinder_conf, backend, "volume_driver", "cinder.volume.drivers.nfs.NfsDriver")
             set_conf_option(cinder_conf, backend, "volume_backend_name", nfs_backend_name)

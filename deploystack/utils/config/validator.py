@@ -12,6 +12,11 @@ from .parser import get
 
 from ...utils.config.helpers import parse_bool, prohibited_pw_chars
 
+VALID_TENANT_TYPES = {"geneve", "vxlan", "vlan", "flat"}
+
+VNI_MIN, VNI_MAX = 1, 16777215   # 24 bit (VXLAN/Geneve)
+VLAN_MIN, VLAN_MAX = 1, 4094
+
 OPENSTACK_RESERVED_PORTS = {
     5000,   # Keystone
     5672,   # RabbitMQ
@@ -25,6 +30,9 @@ OPENSTACK_RESERVED_PORTS = {
     #8786,   # Manila
     80
 }
+
+def _err(msg) -> None:
+    print(f"{colors.RED}Error: {msg}{colors.RESET}")
 
 # --- Passwords ---
 def validate_passwords(config) -> bool:
@@ -340,15 +348,254 @@ def validate_default_security_group(config) -> bool:
 
     return ok
 
+def parse_range(value, lo, hi, label):
+
+    if not isinstance(value,str) or value.count(":") != 1:
+        _err(f"{label} must be in the 'start:end' (got '{value}')")
+        return None
+
+    try:
+        start, end = (int(x) for x in value.split(":"))
+    except ValueError:
+        _err(f"{label} must contain integers (got '{value}')")
+        return None
+
+    if not (lo <= start <= end <= hi):
+        _err(f"{label} must satisfy {lo} <= start <= end <= {hi} (got '{value}')")
+        return None
+
+    return start, end
+
+def validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridges) -> bool:
+
+    ok = True
+    base = "neutron.tenant_network"
+    defined_bridges = set(defined_bridges or [])
+
+    if not tenant_types:
+        _err(f"'{base}.TYPES' must contain at least one network type")
+        return False
+
+    for t in tenant_types:
+        if t not in VALID_TENANT_TYPES:
+            _err(f"Invalid tenant network type '{t}' "
+                 f"(valid: {', '.join(sorted(VALID_TENANT_TYPES))})")
+            ok = False
+
+     # flat tenant network: supportato solo con OVS (per ora)
+    if "flat" in tenant_types and neutron_driver != "ovs":
+        _err(f"'{base}.TYPES' contains 'flat', which is currently supported "
+             f"only with neutron.DRIVER 'ovs' (got '{neutron_driver}')")
+        ok = False
+
+    if len(set(tenant_types)) != len(tenant_types):
+        _err(f"'{base}.TYPES' contains duplicate values")
+        ok = False
+
+    uses_vni = any(t in ("geneve", "vxlan") for t in tenant_types):
+    uses_vlan = "vlan" in tenant_types
+
+    # ---------- VNI_RANGE ----------
+    vni_bounds = None
+    if uses_vni:
+        vni_range = get(config, f"{base}.VNI_RANGE")
+        if not vni_range:
+            _err(f"'{base}.VNI_RANGE' must be set when TYPES contains geneve or vxlan")
+            ok = False
+        else:
+            vni_bounds = parse_range(vni_range, VNI_MIN, VNI_MAX, f"{base}.VNI_RANGE")
+            if vni_bounds is None:
+                ok = False
+
+    # ---------- VLAN_RANGES ----------
+    vlan_ranges = get(config, f"{base}.VLAN_RANGES") or []
+    physnet_ranges = {}
+
+    if not isinstance(vlan_ranges, list):
+        _err(f"'{base}.VLAN_RANGES' must be a list")
+        ok = False
+        vlan_ranges = []
+
+    if uses_vlan and not vlan_ranges:
+        _err(f"'{base}.VLAN_RANGES' must not be empty when TYPES contains 'vlan'")
+        ok = False
+
+    for i, entry, in enumerate(vlan_ranges):
+        label = f"{base}.VLAN_RANGES[{i}]"
+        if not isinstance(entry, dict):
+            _err(f"{label} must be a mapping with physnet/range/bridge")
+            ok = False
+            continue
+
+        physnet = entry.get("physnet")
+        bridge = entry.get("bridge")
+        rng = entry.get("range")
+
+        if not physnet:
+            _err(f"{label}.physnet is not set")
+            ok = False
+        if not bridge:
+            _err(f"{label}.bridge is not set")
+            ok = False
+        elif defined_bridges and bridge not in defined_bridges:
+            _err(f"{label}.bridge '{bridge}' is not defined in neutron.bridges")
+            ok = False
+
+        parsed = parse_range(rng, VLAN_MIN, VLAN_MAX, f"{label}.range")
+        if parsed is None:
+            ok = False
+        elif physnet:
+            physnet_ranges.setdefault(physnet, []).append(parsed)
+
+    # ---------- networks ----------
+
+    networks = get(config, f"{base}.networks") or []
+
+    if not isinstance(networks, list):
+        _err(f"'{base}.networks' must be a list")
+        return False
+
+    seen_names = set()
+    cidrs_by_router = {}
+    all_cidrs = []
+
+    for i, net in enumerate(networks):
+        label = f"{base}.networks[{i}]"
+        if not isinstance(net, dict):
+            _err(f"{label} must be a mapping")
+            ok = False
+            continue
+
+        name = net.get("Name")
+        if not name or not isinstance(name, str):
+            _err(f"{label}.name is not set")
+            ok = False
+        else:
+            label = f"{base}.networks['{name}']"
+            if name in seen_names:
+                _err(f"{label}: duplicate network name")
+                ok = False
+            seen_names.add(name)
+
+        # type
+        net_type = str(net.get("type") or "").lower()
+
+        if not net_type:
+            _err(f"{label}.type is not set")
+            ok = False
+        elif net_type not in tenant_types:
+            _err(f"{label}.type '{net_type}' is not enabled in TYPES {tenant_types}")
+            ok = False
+
+        # segmentation_id / physnet based on type
+        seg_id = net.get("segmentation_id")
+        if net_type == "vlan":
+            physnet = net.get("physnet")
+            if not physnet:
+                _err(f"{label}.physnet is required for vlan networks")
+                ok = False
+            elif physnet not in physnet_ranges:
+                _err(f"{label}.physnet '{physnet}' has no entry in VLAN_RANGES")
+                ok = False
+            if seg_id is not None:
+                if not isinstance(seg_id, int) or isinstance(seg_id, bool):
+                    _err(f"{label}.segmentation_id must be an integer")
+                    ok = False
+                elif physnet in physnet_ranges and not any(s <= seg_id <= e for s, e in physnet_ranges[physnet]):
+                    _err(f"{label}.segmentation_id {seg_id} is outside the VLAN ranges of physnet '{physnet}'")
+                    ok = False
+        elif net_type in ("geneve", "vxlan"):
+            if seg_id is not None:
+                if not isinstance(seg_id, int) or isinstance(seg_id, bool):
+                    _err(f"{label}.segmentation_id must be an integer")
+                    ok = False
+                elif vni_bounds and not (vni_bounds[0] <= seg_id <= vni_bounds[1]):
+                    _err(f"{label}.segmentation_id {seg_id} is outside VNI_RANGE")
+                    ok = False
+
+        # subnet
+        cidr_raw = net.get("subnet_cidr")
+        cidr = None
+
+        if not cidr_raw:
+            _err(f"{label}.subnet_cidr is not set")
+            ok = False
+        else:
+            try:
+                cidr = ipaddress.ip_network(cidr_raw, strict=True)
+            except ValueError as e:
+                _err(f"{label}.subnet_cidr invalid: {e}")
+                ok = False
+
+        # gateway
+        gw_raw = net.get("gateway")
+
+        if gw_raw:
+            try:
+                gw = ipaddress.ip_address(str(gw_raw))
+                if cidr is not None:
+                    if gw.version != cidr.version or gw not in cidr:
+                        _err(f"{label}.gateway '{gw}' is not inside {cidr}")
+                        ok = False
+                    elif gw in (cidr.network_address, getattr(cidr, "broadcast_address", None)):
+                        _err(f"{label}.gateway '{gw}' cannot be the network/broadcast address")
+                        ok = False
+            except ValueError:
+                _err(f"{label}.gateway '{gw_raw}' is not a valid IP address")
+                ok = False
+
+        # dns_servers
+        dns = net.get("dns_servers", [])
+        if not isinstance(dns, list):
+            _err(f"{label}.dns_servers must be a list")
+            ok = False
+        else:
+            for d in dns:
+                try:
+                    ipaddress.ip_address(str(d))
+                except:
+                    _err(f"{label}.dns_servers contains an invalid IP '{d}'")
+                    ok = False
+
+        if "enable_dhcp" in net and not isinstance(net["enable_dhcp"], bool):
+            _err(f"{label}.enable_dhcp must be true or false")
+            ok = False
+
+        # router
+        router = net.get("router")
+        if router is not None and (not isinstance(router, str) or not router):
+            _err(f"{label}.router must be a non-empty string")
+            ok = False
+        elif router and cidr is not None:
+            for other_name, other_cidr, in cidrs_by_router.get(router, []):
+                if other_cidr.version == cidr.version and cidr.overlaps(other_cidr):
+                    _err(f"{label}.subnet_cidr {cidr} overlaps with '{other_name}' "
+                         f"({other_cidr}) on the same router '{router}'")
+                    ok = False
+                cidrs_by_router.setdefault(router, []).append((name, cidr))
+
+        if cidr is not None:
+            all_cidrs.append((name, cidr))
+
+    # Overlaps between different networks (warning: valid only if isolated by different routers)
+    for i in range(len(all_cidrs)):
+        for j in range(i + 1, len(all_cidrs)):
+            (n1, c1), (n2, c2) = all_cidrs[i], all_cidrs[j]
+            if c1.version == c2.version and c1.overlaps(c2):
+                print(f"{colors.YELLOW}Warning: subnets of '{n1}' ({c1}) and "
+                      f"'{n2}' ({c2}) overlap{colors.RESET}")
+
+    return ok
+
 # --- Neutron ---
 def validate_neutron(config) -> bool:
     ok = True
 
     neutron_driver = (get(config, "neutron.DRIVER") or "").lower()
+
     tenant_types = get(config, "neutron.tenant_network.TYPES") or []
     ovs_create_bridges = get(config, "neutron.ovs.CREATE_BRIDGES")
     public_bridge_interface_ovs = get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
-    ovn_encap_type = (get(config, "neutron.ovn.OVN_ENCAP_TYPE") or "").lower()
 
     provider_networks = get(config, "neutron.provider_networks", [])
     bridges = get(config, "neutron.bridges", [])
@@ -358,6 +605,15 @@ def validate_neutron(config) -> bool:
 
     tenant_types = [t.lower() for t in tenant_types]
     valid_tenant_types = {"geneve", "vxlan"}
+
+    tenant_types = get(config, "neutron.tenant_network.TYPES")
+    if not tenant_type:
+        legacy = get(config, "neutron.tenant_network.TYPE")
+        tenant_types = [legacy] if legacy else []
+    if isinstance(tenant_types, str):
+        tenant_types = [tenant_types]
+
+    tenant_types = [str(t).lower() for t in tenant_types]
 
     if neutron_driver not in ("ovs", "ovn"):
         print(f"{colors.RED}Error: neutron.DRIVER must be 'ovs' or 'ovn' (got '{neutron_driver}'){colors.RESET}")
@@ -458,10 +714,12 @@ def validate_neutron(config) -> bool:
     ok_bridges, defined_bridges = validate_bridges(config, bridges)
     ok_networks = validate_provider_networks(config, provider_networks, defined_bridges)
     ok_default_security_group = validate_default_security_group(config)
+    ok_tenant_networks = validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridges)
 
     ok &= ok_bridges
     ok &= ok_networks
     ok &= ok_default_security_group
+    ok &= ok_tenant_networks
 
     return ok
 
@@ -1033,9 +1291,7 @@ def validate_cinder(config) -> bool:
                 f"{backend_prefix}.USE_EXTERNAL_SHARE"
             )
 
-            if nfs_share and not is_valid_nfs_share(
-                nfs_share
-            ):
+            if nfs_share and not is_valid_nfs_share(nfs_share):
                 print(
                     f"{colors.RED}"
                     f"Error: '{backend_prefix}.NFS_SHARE' "
@@ -1044,10 +1300,7 @@ def validate_cinder(config) -> bool:
                 )
                 ok = False
 
-            if mount_point_base and not is_valid_path(
-                mount_point_base,
-                f"{backend_prefix}.MOUNT_POINT_BASE"
-            ):
+            if mount_point_base and not is_valid_path(mount_point_base, f"{backend_prefix}.MOUNT_POINT_BASE"):
                 ok = False
 
             if mount_options:
@@ -1067,14 +1320,9 @@ def validate_cinder(config) -> bool:
 
             if sparsed_volumes:
 
-                sparsed_volumes = str(
-                    sparsed_volumes
-                ).lower()
+                sparsed_volumes = str(sparsed_volumes).lower()
 
-                if sparsed_volumes not in (
-                    "sparse",
-                    "thick",
-                ):
+                if sparsed_volumes not in ("sparse", "thick"):
                     print(
                         f"{colors.RED}"
                         f"Error: Invalid value for "
@@ -1343,12 +1591,14 @@ def validate_manila(config) -> bool:
 
         lvm_share_driver = get(config, "manila.backends.lvm.SHARE_DRIVER") or ""
         lvm_share_export_ip = get(config, "manila.backends.lvm.SHARE_EXPORT_IP") or ""
+        lvm_share_tenant_network_cidr = get(config, "manila.backends.lvm.SHARE_TENANT_NETWORK_CIDR") or ""
 
         lvm_backend_fields = [
             "manila.backends.lvm.BACKEND_NAME",
             "manila.backends.lvm.SHARE_DRIVER",
             "manila.backends.lvm.storage.SHARE_VOLUME_GROUP",
             "manila.backends.lvm.SHARE_EXPORT_IP",
+            "manila.backends.lvm.SHARE_TENANT_NETWORK_CIDR"
         ]
 
         for protocol in share_protocols:
@@ -1531,10 +1781,10 @@ def validate_manila(config) -> bool:
             ok = False
 
         provider_network_names = set()
-
-        tenant_networks = get(config, "neutron.tenant_network.networks", [])
-
         tenant_network_names = set()
+
+        tenant_network = get(config, "neutron.tenant_network", [])
+        tenant_networks = get(config, "neutron.tenant_network.networks", [])
 
         if not isinstance(tenant_networks, list):
             print(f"{colors.RED}Error: neutron.tenant_network.networks must be a list{colors.RESET}")
@@ -1746,37 +1996,92 @@ def validate_manila(config) -> bool:
 
         if enabled_backend == "lvm":
             network = ip_network(f"{lvm_share_export_ip}/24", strict=False)
-
-        if enabled_backend == "lvm":
+            tenant_network_cidr = None
+               
             try:
                 export_ip = ip_address(lvm_share_export_ip)
                 network = ip_network(f"{export_ip}/24", strict=False)
             except ValueError:
-                print(
-                    f"{colors.RED}Error: lvm_share_export_ip must be a valid IP address{colors.RESET}"
-                )
+                print(f"{colors.RED}Error: lvm_share_export_ip must be a valid IP address{colors.RESET}")
                 ok = False
+
+            try:
+                tenant_network_cidr = ip_network(lvm_share_tenant_network_cidr, strict=False)
+            except ValueError:
+                print(f"{colors.RED}Error: 'manila.backends.lvm.SHARE_TENANT_NETWORK_CIDR' must be a valid IP address{colors.RESET}")
+                ok = False
+
+            tenant_cidr_found = False
+
+            for net in tenant_network.get("networks", []):
+                if not isinstance(net, dict):
+                    continue
+
+                cidr = net.get("subnet_cidr")
+                if not cidr:
+                    continue
+
+                try:
+                    ip_network(cidr, strict=True)
+                    tenant_cidr_found = True
+                    break
+                except ValueError:
+                    continue
+
+            if not tenant_cidr_found:
+                print(f"{colors.RED}Error: 'manila.backends.lvm.SHARE_TENANT_NETWORK_CIDR' must be a CIDR IP address defined within a 'subnet_cidr' in a 'neutron.tenant_network.networks' network.{colors.RESET}")
+                ok = False
+
+            lvm_export_ip_found = False
+            lvm_cidr_found = False
+
+            try:
+                export_ip = ip_address(lvm_share_export_ip)
+            except ValueError:
+                export_ip = None
+
+            try:
+                tenant_network = ip_network(
+                    lvm_share_tenant_network_cidr,
+                    strict=True
+                )
+            except ValueError:
+                tenant_network = None
 
             for share in shares:
                 for rule in share.get("access_rules", []):
-                    if rule.get("type") == "ip":
-                        try:
-                            access_network = ip_network(rule.get("access"), strict=True)
+                    if rule.get("type") != "ip":
+                        continue
 
-                            if access_network == network:
-                                lvm_cidr_found = True
-                                break
+                    try:
+                        access_network = ip_network(
+                            rule.get("access", ""),
+                            strict=True
+                        )
+                    except ValueError:
+                        continue
 
-                        except ValueError:
-                            continue
+                    if export_ip and export_ip in access_network:
+                        lvm_export_ip_found = True
 
-                if lvm_cidr_found:
+                    if tenant_network and access_network == tenant_network:
+                        lvm_cidr_found = True
+
+                if lvm_export_ip_found and lvm_cidr_found:
                     break
+
+            if not lvm_export_ip_found:
+                print(
+                    f"{colors.RED}Error: at least one LVM share must contain "
+                    f"the export IP {lvm_share_export_ip} in access_rules{colors.RESET}"
+                )
+                ok = False
 
             if not lvm_cidr_found:
                 print(
                     f"{colors.RED}Error: at least one LVM share must contain "
-                    f"the CIDR {network} in access_rules{colors.RESET}"
+                    f"the tenant network CIDR {lvm_share_tenant_network_cidr} "
+                    f"in access_rules{colors.RESET}"
                 )
                 ok = False
 

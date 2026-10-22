@@ -133,6 +133,7 @@ def configure_lvm_storage(physical_volume, loop_device, vg_name, image_path=None
 
         if not run_command(["pvcreate", lvm_dev], f"Creating physical volume on {lvm_dev}..."):
             return False
+        
         if not run_command(["vgcreate", vg_name, lvm_dev], f"Creating volume group {vg_name}..."):
             return False
         
