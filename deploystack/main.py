@@ -13,6 +13,19 @@ from .cmds.volumes import volumes as run_volumes
 def print_banner():
     print(f"{colors.BRIGHT_BLUE}Welcome to DeployStack Utility{colors.RESET}\n")
 
+def dispatch_command(command, parser, args):
+    match command:
+        case "deploy":
+            run_deploy(parser, args)
+        case "launch":
+            run_launch(parser, args)
+        case "generate-config":
+            run_generate_config(parser, args)
+        case "image":
+            run_images(parser, args)
+        case "volume":
+            run_volumes(parser, args)
+
 def main():
     print_banner()
 
@@ -30,30 +43,11 @@ def main():
         "image": build_images_parser(subparsers),
         "volume": build_volumes_parser(subparsers),
     }
-    
-    # Only parse known args to avoid automatic error exit
-    main_args = main_parser.parse_args()
 
+    # Only parse known args to avoid automatic error exit
+    
+    main_args = main_parser.parse_args()
     command_parser = command_parsers[main_args.command]
 
-    match main_args.command:
-        case "deploy":
-            run_deploy(command_parser, main_args)
-
-        case "launch":
-            run_launch(command_parser, main_args)
-
-        case "generate-config":
-            run_generate_config(command_parser, main_args)
-
-        case "image":
-            run_images(command_parser, main_args)
-
-        case "volume":
-            run_volumes(command_parser, main_args)
-
-        case None:
-            print(f"{colors.YELLOW}No command provided. Available commands:{colors.RESET}\n")
-            main_parser.print_help()
-            print(f"\nTip: Run '{colors.BRIGHT_BLUE}deploystack <command> --help{colors.RESET}' for detailed usage of each command.")
-            sys.exit(1)
+    dispatch_command(main_args.command, command_parser, main_args)
+        
