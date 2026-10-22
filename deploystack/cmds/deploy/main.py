@@ -68,8 +68,6 @@ def init_parser(parser):
 
 def deploy(parser, args) -> None:
 
-    parser = args.
-
     if args.allinone:
 
         validate_deploy_args(parser, args)
