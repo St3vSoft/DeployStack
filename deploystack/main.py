@@ -23,32 +23,33 @@ def main():
 
     main_parser, subparsers = build_main_parser()
 
-    deploy_parser = build_deploy_parser(subparsers)
-    launch_parser = build_launch_parser(subparsers)
-    generate_config_parser = build_generate_config_parser(subparsers)
-    images_parser = build_images_parser(subparsers)
-    volumes_parser = build_volumes_parser(subparsers)
-
+    command_parsers = {
+        "deploy": build_deploy_parser(subparsers),
+        "launch": build_launch_parser(subparsers),
+        "generate-config": build_generate_config_parser(subparsers),
+        "image": build_images_parser(subparsers),
+        "volume": build_volumes_parser(subparsers),
+    }
     # Only parse known args to avoid automatic error exit
     main_args = main_parser.parse_args()
 
-    deploy_args = deploy_parser.parse_args()
-    launch_args = launch_parser.parse_args()
-    generate_config_args = generate_config_parser.parse_args()
-    images_args = images_parser.parse_args()
-    volumes_args = volumes_parser.parse_args()
+    command_parser = command_parsers[main_args.command]
 
-    match main_args:
+    match main_args.command:
         case "deploy":
-            run_deploy(deploy_parser, deploy_args)
+            run_deploy(command_parser, main_args)
+
         case "launch":
-            run_launch(launch_parser, launch_args)
+            run_launch(command_parser, main_args)
+
         case "generate-config":
-            run_generate_config(generate_config_parser, generate_config_args)
+            run_generate_config(command_parser, main_args)
+
         case "image":
-            run_images(images_parser, images_args)
+            run_images(command_parser, main_args)
+
         case "volume":
-            run_volumes(volumes_parser, volumes_args)
+            run_volumes(command_parser, main_args)
 
         case None:
             print(f"{colors.YELLOW}No command provided. Available commands:{colors.RESET}\n")
