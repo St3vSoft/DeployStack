@@ -6,8 +6,16 @@ from ..utils.core import colors
 class ColoredArgumentParser(argparse.ArgumentParser):
     
     def error(self, message):
-        if self.prog.endswith(" deploy"):
-            self.print_help()
-            self.exit(2, f"\nError: {message}\n")
+
+        argv = sys.argv[1:]
+
+        if "deploy" in argv:
+            for action in self._actions:
+                if isinstance(action ,argparse._SubParsersAction):
+                    deploy_parser = action.choices.get("deploy")
+
+                    if deploy_parser is not None:
+                        deploy_parser.print_help()
+                        self.exit(2, f"\nError: {message}\n")
 
         super().error(message)
