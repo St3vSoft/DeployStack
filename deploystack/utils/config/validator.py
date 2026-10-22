@@ -600,7 +600,7 @@ def validate_neutron(config) -> bool:
     valid_tenant_types = {"geneve", "vxlan"}
 
     tenant_types = get(config, "neutron.tenant_network.TYPES")
-    if not tenant_type:
+    if not tenant_types:
         legacy = get(config, "neutron.tenant_network.TYPE")
         tenant_types = [legacy] if legacy else []
     if isinstance(tenant_types, str):
