@@ -30,6 +30,7 @@ def main():
         "image": build_images_parser(subparsers),
         "volume": build_volumes_parser(subparsers),
     }
+    
     # Only parse known args to avoid automatic error exit
     main_args = main_parser.parse_args()
 

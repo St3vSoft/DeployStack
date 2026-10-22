@@ -1,9 +1,9 @@
 import argparse
 import sys
 
-from ...cli.parser import ColoredArgumentParser
+from ...cli.parser import MainArgumentParser
 
-class DeployArgumentParser(ColoredArgumentParser):
+class DeployArgumentParser(MainArgumentParser):
 
     def error(self, message):
         if self.prog.endswith(" deploy"):
