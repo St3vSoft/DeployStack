@@ -139,8 +139,7 @@ def create_projects_and_demo_user(config, env):
 
     assignments = _get_role_assignments(env)
 
-    if assignments is False:
-        return False
+    if assignments is False: return False
 
     existing_assignments = {(a["User"], a["Project"], a["Role"]) for a in assignments}
 
