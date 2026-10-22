@@ -59,5 +59,3 @@ class MainArgumentParser(argparse.ArgumentParser):
                 return
 
         self.print_help_error(message, (command,))
-
-
