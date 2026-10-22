@@ -1,4 +1,3 @@
-import ipaddress
 import sys
 import os
 
@@ -13,8 +12,6 @@ from .runner import deploy as start_deployment
 
 from .args.builder import (add_general_arguments, add_deployment_arguments, add_cinder_arguments, add_cinder_backup_arguments, add_nova_compute_arguments, add_manila_arguments)
 from .args.validator import validate_deploy_args
-
-# from .parser import DeployArgumentParser
 
 from .config import OpenStackConfig, CinderConfig, ManilaConfig, NovaComputeConfig, CinderBackupConfig
 

@@ -22,15 +22,15 @@ cmds = (
     "volume",
 )
 
-def build_deploy_parser(main_subparsers: argparse.ArgumentParser_SubParsersAction) -> MainArgumentParser:
+def build_deploy_parser(main_subparsers: argparse._SubParsersAction) -> MainArgumentParser:
 
-    deploy_parser = main_subparsers.add_parser("deploy",  help="Start the OpenStack Deployment on the current node")
+    deploy_parser = main_subparsers.add_parser("deploy", help="Start the OpenStack Deployment on the current node")
 
     build_deploy_subparser(deploy_parser)
 
     return deploy_parser
 
-def build_launch_parser(main_subparsers: argparse.ArgumentParser_SubParsersAction) -> MainArgumentParser:
+def build_launch_parser(main_subparsers: argparse._SubParsersAction) -> MainArgumentParser:
 
     launch_parser = main_subparsers.add_parser("launch", help="Launch an OpenStack instance")
 
@@ -38,7 +38,7 @@ def build_launch_parser(main_subparsers: argparse.ArgumentParser_SubParsersActio
 
     return launch_parser
 
-def build_generate_config_parser(main_subparsers: argparse.ArgumentParser_SubParsersAction) -> MainArgumentParser:
+def build_generate_config_parser(main_subparsers: argparse._SubParsersAction) -> MainArgumentParser:
 
     generate_config_parser = main_subparsers.add_parser("generate-config", help="Generate a template configuration file")
 
@@ -46,7 +46,7 @@ def build_generate_config_parser(main_subparsers: argparse.ArgumentParser_SubPar
 
     return generate_config_parser
 
-def build_images_parser(main_subparsers: argparse.ArgumentParser_SubParsersAction) -> MainArgumentParser:
+def build_images_parser(main_subparsers: argparse._SubParsersAction) -> MainArgumentParser:
 
     image_parser = main_subparsers.add_parser("image", help="Manage cloud images")
     image_subparsers = image_parser.add_subparsers(dest="image_cmd", metavar="<command>", required=True, parser_class=MainArgumentParser)
@@ -55,7 +55,7 @@ def build_images_parser(main_subparsers: argparse.ArgumentParser_SubParsersActio
 
     return image_subparsers
 
-def build_volumes_parser(main_subparsers: argparse.ArgumentParser_SubParsersAction) -> MainArgumentParser:
+def build_volumes_parser(main_subparsers: argparse._SubParsersAction) -> MainArgumentParser:
 
     volume_parser = main_subparsers.add_parser(name="volume", help="Manage volumes")
     volume_subparsers = volume_parser.add_subparsers(dest="volume_cmd", metavar="<command>", required=True, parser_class=MainArgumentParser)
