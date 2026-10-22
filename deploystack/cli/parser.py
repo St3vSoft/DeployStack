@@ -6,8 +6,6 @@ from ..utils.core import colors
 class ColoredArgumentParser(argparse.ArgumentParser):
     
     def error(self, message):
-        if self.prog.endswith(" deploy"):
-            self.print_help()
-            self.exit(2, f"\nError: {message}\n")
-
-        super().error(message)
+        print(f"{colors.RED}Error: {message}{colors.RESET}\n")
+        self.print_help()
+        sys.exit(2)
