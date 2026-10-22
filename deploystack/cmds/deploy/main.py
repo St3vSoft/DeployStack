@@ -264,16 +264,20 @@ def deploy(parser, args) -> None:
 
         start_deployment(config_file_path, config_generated=True)
 
-    else:
+    elif args.config_file is None or not os.path.exists(args.config_file):
 
-        if args.config_file is None or not os.path.exists(args.config_file):
-            print(
-                f"{colors.RED}Configuration file not found. "
-                f"Generate it first using "
-                f"'deploystack generate-config <file>' "
-                f"or 'deploystack deploy -aio <arguments> --generate-only'"
-                f"{colors.RESET}"
-            )
-            sys.exit(1)
+        print(
+            f"{colors.RED}Configuration file not found. "
+            f"Generate it first using "
+            f"'deploystack generate-config <file>' "
+            f"or 'deploystack deploy -aio <arguments> --generate-only'"
+            f"{colors.RESET}"
+        )
+        sys.exit(1)
 
         start_deployment(args.config_file, config_generated=False)
+
+    else:
+        
+        parser.print_help()
+        sys.exit(0)

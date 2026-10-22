@@ -24,6 +24,12 @@ VIRTUAL_FILESYSTEMS = {
     "securityfs", "pstore", "bpf", "autofs", "hugetlbfs",
 }
 
+def is_service_active(service_name: str):
+    result = subprocess.run(
+        ["systemctl", "is-active", "--quiet", service_name]
+    )
+    return result.returncode == 0
+
 def ensure_system_user_with_run_command(username="cinder"):
 
     try:

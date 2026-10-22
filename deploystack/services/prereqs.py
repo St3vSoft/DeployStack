@@ -7,7 +7,7 @@ from pathlib import Path
 from ..utils.core.commands import run_command, run_command_sync
 from ..utils.apt.apt import apt_install, apt_update
 from ..utils.config.parser import get
-from ..utils.core.system_utils import nc_wait, is_ubuntu_release, is_debian, get_ubuntu_release
+from ..utils.core.system_utils import nc_wait, is_ubuntu_release, is_debian, get_ubuntu_release, is_service_active
 from ..utils.core import colors
 
 from ..utils.config.setter import set_conf_option, toml_string
@@ -67,6 +67,9 @@ def set_hostname(config):
 
 def set_openstack_release(config):
     release = get(config, "openstack.OPENSTACK_RELEASE", "caracal").lower()
+
+    if is_service_active("unattended-upgrades.service"):
+        if not run_command(["systemctl", "stop", "unattended-upgrades"], "Stopping unattended-upgrades service...") : return False
 
     try:
         distro_id = subprocess.check_output(
