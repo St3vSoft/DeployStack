@@ -15,7 +15,7 @@ def init_parser(parser):
 
 def images(parser, args) -> None:
 
-    match args.command:
+    match args.image_cmd:
         case "upload":
             run_upload(parser, args)
         case "remove":

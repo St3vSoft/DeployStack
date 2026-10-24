@@ -23,7 +23,7 @@ def init_parser(parser):
 
 def volumes(parser, args) -> None:
 
-    match args.command:
+    match args.volume_cmd:
         case "create":
             run_create(parser, args)
         case "attach":
