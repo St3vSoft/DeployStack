@@ -230,7 +230,7 @@ def create_services_users(config, env):
 
         manila_services = [
             ("manilav2", "OpenStack Shared File Systems V2", "sharev2")
-        ] if ensure_os_release(config, "gazpacho") else [
+        ] if ensure_os_release(config, ["gazpacho", "hibiscus"]) else [
             ("manila", "OpenStack Shared File Systems", "share"),
             ("manilav2", "OpenStack Shared File Systems V2", "sharev2"),
         ]
