@@ -9,7 +9,7 @@ import termios
 
 from ....utils.core import colors
 
-from ...shell import _run
+from ...shell import _run, _os
 
 from .images import get_image_url
 
@@ -23,6 +23,21 @@ OS_ADMIN_USERS = {
     "centos": "cloud-user",
     "opensuse": "opensuse",
 }
+
+def _has_glance_public_image_permission(env) -> bool:
+
+    output = _os(
+        "image", "create",
+        "--disk-format", "raw",
+        "--container-format", "bare",
+        "--visibility", "public",
+        env=env,
+    )
+
+    return (
+        "You are not authorized to complete publicize_image action"
+        not in output
+    )
 
 def _generate_temp_filename(os_name: str, version: str, arch: str, url: str, temp_dir: str = None) -> str:
 
@@ -39,7 +54,7 @@ def _download_image(url: str, output_path: str):
     old_term = termios.tcgetattr(fd)
 
     new_term = termios.tcgetattr(fd)
-    new_term[3] &= ~termios.ECHO  # disabilita echo input
+    new_term[3] &= ~termios.ECHO
 
     try:
         termios.tcsetattr(fd, termios.TCSADRAIN, new_term)
@@ -166,16 +181,20 @@ def upload_image(
     arch: str,
     timeout: int
 ):
+
+    image_url = get_image_url(os, version, arch)
+    current_session_env = build_openstack_env_from_session()
+
+    glance_image_name: str
+
+    if not _has_glance_public_image_permission(current_session_env):
+        print(f"{colors.RED}ERROR: The user '{current_session_env.get("OS_USERNAME")}' does not have permission to make images public on Glance; please try again using a different visibility setting, such as --private, --community, or --shared.{colors.RESET}")
+        sys.exit(1)
     
     print("Getting the Download URL for the image...\n")
-    image_url = get_image_url(os, version, arch)
-
-    current_session_env = build_openstack_env_from_session()
 
     if not output_dir:
         output_dir = "/tmp"
-
-    glance_image_name: str
 
     temp_file_path = _generate_temp_filename(os, version, arch, url=image_url, temp_dir=output_dir)
 
