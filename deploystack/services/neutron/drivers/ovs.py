@@ -9,7 +9,7 @@ from ....utils.core.commands import run_command, os_run_output, os_run, run_comm
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
-from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, is_module_loaded, kernel_module_exists
+from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, is_module_loaded, kernel_module_exists, is_service_active
 from ....utils.core import colors
 from ....templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 from ....utils.network.net_utils import get_network_info
@@ -105,7 +105,10 @@ def conf_ovs_bridges(config):
             run_command(["ip", "link", "set", iface, "down"], f"Bringing {iface} down", ignore_errors=True)
 
     if not clean_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=tenant_bridge, tunnel_bridge=tunnel_bridge) : return False
-    
+
+    if is_service_active("openvswitch.service"):
+        if not run_command(["systemctl", "start", "openvswitch"], "Starting OpenvSwitch...") : return False
+
     if not run_command_sync(["ovs-vsctl", "--if-exists", "del-br", public_bridge]) : return False
 
     print()
