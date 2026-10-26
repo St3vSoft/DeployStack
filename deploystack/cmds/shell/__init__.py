@@ -17,7 +17,6 @@ def _run(args: list[str], check=True, env=None) -> subprocess.CompletedProcess:
         logger.error(f"Timeout executing: {' '.join(args)}")
         sys.exit(1)
 
-
 def _os(*args, env=None, check=True) -> str:
 
     if env:

@@ -35,6 +35,8 @@ def _has_glance_public_image_permission(env) -> bool:
         check=False
     )
 
+    print(output)
+
     return (
         "You are not authorized to complete publicize_image action"
         not in output
@@ -189,7 +191,7 @@ def upload_image(
     glance_image_name: str
 
     if not _has_glance_public_image_permission(current_session_env):
-        print(f"{colors.RED}ERROR: The user '{current_session_env.get("OS_USERNAME")}' does not have permission to make images public on Glance; please try again using a different visibility setting, such as --private, --community, or --shared.{colors.RESET}")
+        print(f"{colors.RED}ERROR: The user '{current_session_env.get('OS_USERNAME')}' does not have permission to make images public on Glance; please try again using a different visibility setting, such as --private, --community, or --shared.{colors.RESET}")
         sys.exit(1)
     
     print("Getting the Download URL for the image...\n")
