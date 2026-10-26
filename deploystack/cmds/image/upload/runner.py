@@ -44,31 +44,38 @@ def _has_glance_image_permission(visibility_type: str, env) -> bool:
     output = f"{result.stdout}\n{result.stderr}"
 
     if result.returncode != 0:
-        if "You are not authorized to complete publicize_image action" in output:
+        if (
+            "You are not authorized to complete publicize_image action"
+            in output
+        ):
             return False
 
         logger.error(
-            "Unable to verify Glance public image permission: %s",
+            "Unable to verify Glance image permission: %s",
             output,
         )
         return False
 
+    image_id = None
+
     try:
         image = json.loads(result.stdout)
         image_id = image["id"]
-    except (json.JSONDecodeError, KeyError, TypeError):
-        logger.error("Unable to retrieve the temporary image ID: %s", result.stdout)
-        return False
-    finally:
-        pass
-
-    try:
         return True
+
+    except (json.JSONDecodeError, KeyError, TypeError):
+        logger.exception(
+            "Unable to retrieve the temporary Glance image ID: %s",
+            result.stdout,
+        )
+        return False
+
     finally:
-        try:
-            _os("image", "delete", image_id, env=env, check=True)
-        except (subprocess.CalledProcessError, SystemExit):
-            logger.exception("Failed to delete temporary Glance image %s", image_id)
+        if image_id:
+            try:
+                _os("image", "delete", image_id, env=env, check=True)
+            except (subprocess.CalledProcessError, SystemExit):
+                logger.exception( "Failed to delete temporary Glance image %s", image_id)
 
 def _generate_temp_filename(os_name: str, version: str, arch: str, url: str, temp_dir: str = None) -> str:
 
@@ -223,8 +230,8 @@ def upload_image(
 
         print(
             f"{colors.RED}"
-            f"ERROR: The user '{username}' does not have permission "
-            "to make images public on Glance.\n"
+            f"ERROR: User '{username}' does not have permission "
+            f"to create an image with visibility '{visibility}'.\n"
             "Please try again using a different visibility setting, "
             "such as --private, --community, or --shared."
             f"{colors.RESET}"
