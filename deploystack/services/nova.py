@@ -166,8 +166,6 @@ def finalize(config):
         if not run_novncproxy_setup_patches(config) : return False
 
     if is_debian() and service_exists("nova-serialproxy.service") and service_exists("nova-spicehtml5proxy.service"):
-             
-        print()
 
         novncproxy_dropin = os.path.join(novncproxy_dropin_dir, "nova-novncproxy-patch.conf")
 
