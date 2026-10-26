@@ -106,7 +106,7 @@ def conf_ovs_bridges(config):
 
     if not clean_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=tenant_bridge, tunnel_bridge=tunnel_bridge) : return False
 
-    if is_service_active("openvswitch.service"):
+    if not is_service_active("openvswitch.service"):
         print()
         if not run_command(["systemctl", "start", "openvswitch"], "Starting OpenvSwitch...") : return False
 
