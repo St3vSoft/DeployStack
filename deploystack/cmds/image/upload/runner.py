@@ -66,11 +66,7 @@ def _has_glance_public_image_permission(env) -> bool:
         return True
     finally:
         try:
-            _os(
-                "image", "delete", image_id,
-                env=env,
-                check=True,
-            )
+            _os("image", "delete", image_id, env=env, check=True)
         except (subprocess.CalledProcessError, SystemExit):
             logger.exception("Failed to delete temporary Glance image %s", image_id)
 
@@ -84,7 +80,6 @@ def _generate_temp_filename(os_name: str, version: str, arch: str, url: str, tem
     return os_module.path.join(temp_dir, filename)
 
 def _download_image(url: str, output_path: str):
-
     fd = sys.stdin.fileno()
     old_term = termios.tcgetattr(fd)
 
@@ -93,6 +88,10 @@ def _download_image(url: str, output_path: str):
 
     try:
         termios.tcsetattr(fd, termios.TCSADRAIN, new_term)
+
+        # Hide cursor
+        sys.stdout.write("\033[?25l")
+        sys.stdout.flush()
 
         response = requests.get(url, stream=True)
         response.raise_for_status()
@@ -105,27 +104,24 @@ def _download_image(url: str, output_path: str):
 
         with open(output_path, "wb") as f:
             for chunk in response.iter_content(chunk_size=chunk_size):
-
                 if chunk:
                     f.write(chunk)
                     downloaded += len(chunk)
 
-                    percent = int(downloaded / total_size * 100)
+                    percent = (int(downloaded / total_size * 100) if total_size > 0 else 0)
                     spin_char = next(spinner)
 
-                    sys.stdout.write(
-                        f"\rDownloading {os_module.path.basename(output_path)}: {percent}% {spin_char}"
-                    )
-
+                    sys.stdout.write(f"\rDownloading " f"{os_module.path.basename(output_path)}: " f"{percent}% {spin_char}")
                     sys.stdout.flush()
                     time.sleep(0.1)
 
-        line = f"Downloading {os_module.path.basename(output_path)}: 100%"
-
+        line = (f"Downloading {os_module.path.basename(output_path)}: 100%")
         sys.stdout.write("\r" + line + " " * 10 + "\n")
         sys.stdout.flush()
 
     finally:
+        sys.stdout.write("\033[?25h")
+        sys.stdout.flush()
         termios.tcsetattr(fd, termios.TCSADRAIN, old_term)
 
 def _image_already_exists(image_name) -> bool:
@@ -223,9 +219,18 @@ def upload_image(
     glance_image_name: str
 
     if not _has_glance_public_image_permission(current_session_env):
-        print(f"{colors.RED}ERROR: The user '{current_session_env.get('OS_USERNAME')}' does not have permission to make images public on Glance; please try again using a different visibility setting, such as --private, --community, or --shared.{colors.RESET}")
+        username = current_session_env.get("OS_USERNAME")
+
+        print(
+            f"{colors.RED}"
+            f"ERROR: The user '{username}' does not have permission "
+            "to make images public on Glance.\n"
+            "Please try again using a different visibility setting, "
+            "such as --private, --community, or --shared."
+            f"{colors.RESET}"
+        )
         sys.exit(1)
-    
+        
     print("Getting the Download URL for the image...\n")
 
     if not output_dir:
