@@ -219,8 +219,8 @@ def create_services_users(config, env):
     if ("nova", "service", "admin") not in existing_assignments:
         services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "nova", "admin"])
 
-        if ("nova", "service", "service") not in existing_assignments:
-            services_role_add_cmds.append(["openstack", "role", "add", "--user", "nova", "--project", "service", "service"])
+    if ("nova", "service", "service") not in existing_assignments:
+        services_role_add_cmds.append(["openstack", "role", "add", "--user", "nova", "--project", "service", "service"])
 
     if ("neutron", "service", "admin") not in existing_assignments:
         services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "neutron", "admin"])
@@ -251,8 +251,8 @@ def create_services_users(config, env):
         if ("cinder", "service", "admin") not in existing_assignments:
             services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "cinder", "admin"])
 
-            if ("cinder", "service", "service") not in existing_assignments:
-                services_role_add_cmds.append(["openstack", "role", "add", "--user", "cinder", "--project", "service", "service"])
+        if ("cinder", "service", "service") not in existing_assignments:
+            services_role_add_cmds.append(["openstack", "role", "add", "--user", "cinder", "--project", "service", "service"])
 
     if not run_commands(services_user_create_cmds, "Creating services users...", env=env) : return False
 
