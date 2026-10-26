@@ -39,7 +39,7 @@ def _is_private_tenant_network(network_id: str) -> bool:
     subnets = net.get("subnets", [])
 
     for subnet_id in subnets:
-        s = json.loads(_os("subnet", "show", subnet_id, "-f", "json"))
+        s = json.loads(_os("subnet", "show", subnet_id, "-f", "json").stdout)
         cidr = s.get("cidr")
 
         if not cidr:
