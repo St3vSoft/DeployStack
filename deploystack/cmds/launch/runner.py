@@ -180,7 +180,9 @@ def _get_default_flavor(preferred: str = DEFAULT_FLAVOR) -> str:
         parts = line.split(None, 1)
         if len(parts) == 2 and preferred.lower() in parts[1].lower():
             return parts[0]
-    return out.stdout.splitlines()[0].split()[0] if out else "1"
+        
+    lines = out.stdout.splitlines()
+    return lines[0].split()[0] if lines else "1"
 
 def _delete_error_instance(instance_id: str):
     try:
@@ -257,7 +259,7 @@ def _get_floating_ip_id(fip_address: str) -> str:
 
     out = _os("floating", "ip", "list", "--floating-ip-address", fip_address,  "-f", "value", "-c", "ID")
 
-    fip_id = out.stdout.strip().splitlines()[0] if out.strip() else ""
+    fip_id = out.stdout.strip().splitlines()[0] if out.stdout.strip() else ""
     if not fip_id:
         logger.error(f"Floating IP {fip_address} not found")
         sys.exit(1)
