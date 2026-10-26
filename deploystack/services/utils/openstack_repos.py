@@ -224,7 +224,6 @@ def setup_debian_repo(distro_codename: str, release: str):
         f.write('DPkg::Options {"--force-confdef"; "--force-confold"; };')
 
     if not is_package_installed("extrepo"):
-        print()
         if not apt_install(["extrepo"], "Installing extrepo Package...") : return False
 
     available_releases_repos = run_command_output(["extrepo", "search", "openstack"])
