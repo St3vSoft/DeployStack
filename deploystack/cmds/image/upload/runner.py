@@ -32,6 +32,7 @@ def _has_glance_public_image_permission(env) -> bool:
         "--container-format", "bare",
         "--visibility", "public",
         env=env,
+        check=False
     )
 
     return (

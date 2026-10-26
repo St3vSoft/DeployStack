@@ -18,12 +18,12 @@ def _run(args: list[str], check=True, env=None) -> subprocess.CompletedProcess:
         sys.exit(1)
 
 
-def _os(*args, env=None) -> str:
+def _os(*args, env=None, check=True) -> str:
 
     if env:
-        result = _run(["openstack"] + list(args), env=env)
+        result = _run(["openstack"] + list(args), env=env, check=check)
     else:
-        result = _run(["openstack"] + list(args))
+        result = _run(["openstack"] + list(args), check=check)
 
     return result.stdout.strip()
 
