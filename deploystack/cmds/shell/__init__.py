@@ -17,14 +17,10 @@ def _run(args: list[str], check=True, env=None) -> subprocess.CompletedProcess:
         logger.error(f"Timeout executing: {' '.join(args)}")
         sys.exit(1)
 
-def _os(*args, env=None, check=True) -> str:
-
+def _os(*args, env=None, check=True) -> subprocess.CompletedProcess:
     if env:
-        result = _run(["openstack"] + list(args), env=env, check=check)
-    else:
-        result = _run(["openstack"] + list(args), check=check)
-
-    return result.stdout.strip()
+        return _run(["openstack"] + list(args), env=env, check=check)
+    return _run(["openstack"] + list(args), check=check)
 
 def _os_value(*args) -> str:
     result = _run(["openstack"] + list(args) + ["-f", "value"])

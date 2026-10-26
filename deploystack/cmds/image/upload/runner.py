@@ -9,7 +9,7 @@ import termios
 
 from ....utils.core import colors
 
-from ...shell import _run, _os
+from ...shell import _run, _os, logger
 
 from .images import get_image_url
 
@@ -25,22 +25,25 @@ OS_ADMIN_USERS = {
 }
 
 def _has_glance_public_image_permission(env) -> bool:
-
-    output = _os(
+    result = _os(
         "image", "create",
         "--disk-format", "raw",
         "--container-format", "bare",
         "--visibility", "public",
         env=env,
-        check=False
+        check=False,
     )
 
-    print(output)
+    output = f"{result.stdout}\n{result.stderr}"
 
-    return (
-        "You are not authorized to complete publicize_image action"
-        not in output
-    )
+    if "You are not authorized to complete publicize_image action" in output:
+        return False
+
+    if result.returncode != 0:
+        logger.error("Unable to verify Glance public image permission: %s", output)
+        return False
+
+    return True
 
 def _generate_temp_filename(os_name: str, version: str, arch: str, url: str, temp_dir: str = None) -> str:
 
