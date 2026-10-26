@@ -104,6 +104,7 @@ def set_openstack_release(config):
 
     elif distro_id == "debian":
         if not setup_debian_repo(distro_codename, release) : return False
+        print()
     else:
         print(f"{colors.YELLOW}Warning: Unknown distribution '{distro_id}'. "
               f"Skipping repository setup.{colors.RESET}")
