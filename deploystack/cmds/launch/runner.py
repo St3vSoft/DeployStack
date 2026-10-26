@@ -31,7 +31,7 @@ EXTERNAL_NET    = "public"
 
 def _is_private_tenant_network(network_id: str) -> bool:
     result = _os("network", "show", network_id, "-f", "json")
-    net = json.loads(result)
+    net = json.loads(result.stdout)
 
     if net.get("router:external", False):
         return False
@@ -51,18 +51,18 @@ def _is_private_tenant_network(network_id: str) -> bool:
     return True
 
 def _get_router_and_provider_network(tenant_network_name: str, env) -> tuple[str | None, str | None]:
-    networks = json.loads(_os("network", "list", "--name", tenant_network_name, "-f", "json", "-c", "ID"))
+    networks = json.loads(_os("network", "list", "--name", tenant_network_name, "-f", "json", "-c", "ID").stdout)
     if not networks:
         return None, None
 
     network_id = networks[0]["ID"]
-    subnets = json.loads(_os("subnet", "list", "--network", network_id, "-f", "json", "-c", "ID"))
+    subnets = json.loads(_os("subnet", "list", "--network", network_id, "-f", "json", "-c", "ID").stdout)
     subnet_ids = {subnet["ID"] for subnet in subnets}
 
-    routers = json.loads(_os("router", "list", "-f", "json", env=env))
+    routers = json.loads(_os("router", "list", "-f", "json", env=env).stdout)
 
     for router in routers:
-        router_info = json.loads(_os("router", "show", router["ID"], "-f", "json", env=env))
+        router_info = json.loads(_os("router", "show", router["ID"], "-f", "json", env=env).stdout)
         if any(interface.get("subnet_id") in subnet_ids for interface in router_info.get("interfaces_info", [])):
             gateway = router_info.get("external_gateway_info")
             if gateway:
@@ -72,7 +72,7 @@ def _get_router_and_provider_network(tenant_network_name: str, env) -> tuple[str
 
 def _get_router_for_external_network(network_id: str) -> str:
 
-    routers = json.loads(_os("router", "list", "--long", "-f", "json", "-c", "Name", "-c", "network_id", "-c", "External gateway info"))
+    routers = json.loads(_os("router", "list", "--long", "-f", "json", "-c", "Name", "-c", "network_id", "-c", "External gateway info").stdout)
 
     for router in routers:
         router_name = router["Name"]
@@ -89,18 +89,18 @@ def _get_router_for_external_network(network_id: str) -> str:
     return None
 
 def _is_local_network_type_by_id(network_id: str) -> bool:
-    network = json.loads(_os("network", "show", network_id, "-f", "json"))
+    network = json.loads(_os("network", "show", network_id, "-f", "json").stdout)
 
     return network.get("provider:network_type") == "local"
 
 def _is_external_network_by_id(network_id: str) -> bool:
-    net = json.loads(_os("network", "show", network_id, "-f", "json"))
+    net = json.loads(_os("network", "show", network_id, "-f", "json").stdout)
     return net.get("router:external", False)
 
 def _get_external_network(preferred: str | None = None) -> str:
 
     out = _os("network", "list", "-f", "json")
-    networks = json.loads(out)
+    networks = json.loads(out.stdout)
 
     if preferred:
         for net in networks:
@@ -130,7 +130,7 @@ def _ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
     pub_key_path = key_path + ".pub"
 
     existing = _os("keypair", "list", "-f", "value", "-c", "Name")
-    if keypair_name not in existing.splitlines():
+    if keypair_name not in existing.stdout.splitlines():
         print(f"Registering keypair '{keypair_name}' in OpenStack ...\n")
         _os("keypair", "create", "--public-key", pub_key_path, keypair_name)
     else:
@@ -141,7 +141,7 @@ def _ensure_keypair(key_path: str = SSH_KEY_PATH, name: str = None) -> str:
 def _get_cirros_image_checksum(image_name="cirros") -> str | None:
     try:
         out = _os("image", "show", image_name, "-f", "value", "-c", "checksum")
-        return out.strip()
+        return out.stdout.strip()
     except Exception:
         logger.error(f"{colors.RED}Unable to find checksum for CirrOS image{colors.RESET}")
         sys.exit(1)
@@ -162,7 +162,7 @@ def _get_image_properties(image_id: str) -> dict:
 
 def _get_default_image(preferred: str) -> str:
     out = _os("image", "list", "--status", "active", "-f", "value", "-c", "ID", "-c", "Name")
-    for line in out.splitlines():
+    for line in out.stdout.splitlines():
         parts = line.split(None, 1)
         if len(parts) != 2:
             continue
@@ -176,11 +176,11 @@ def _get_default_image(preferred: str) -> str:
 
 def _get_default_flavor(preferred: str = DEFAULT_FLAVOR) -> str:
     out = _os("flavor", "list", "-f", "value", "-c", "ID", "-c", "Name")
-    for line in out.splitlines():
+    for line in out.stdout.splitlines():
         parts = line.split(None, 1)
         if len(parts) == 2 and preferred.lower() in parts[1].lower():
             return parts[0]
-    return out.splitlines()[0].split()[0] if out else "1"
+    return out.stdout.splitlines()[0].split()[0] if out else "1"
 
 def _delete_error_instance(instance_id: str):
     try:
@@ -214,7 +214,7 @@ def _get_instance_ip(instance_name: str, network_name: str) -> str:
 
 def _get_default_network(preferred: str | None = None) -> str:
     out = _os("network", "list", "-f", "value", "-c", "ID", "-c", "Name")
-    lines = [line.split(None, 1) for line in out.splitlines() if line.strip()]
+    lines = [line.split(None, 1) for line in out.stdout.splitlines() if line.strip()]
 
     if preferred:
         for net_id, net_name in lines:
@@ -238,7 +238,7 @@ def _get_server_id(name: str) -> str:
 
     out = _os("server", "list", "--name", f"^{name}$", "-f", "value", "-c", "ID", "-c", "Name")
 
-    matches = [line.split(None, 1) for line in out.splitlines() if line.strip()]
+    matches = [line.split(None, 1) for line in out.stdout.splitlines() if line.strip()]
 
     exact = [srv_id for srv_id, srv_name in matches if srv_name.strip() == name]
 
@@ -257,7 +257,7 @@ def _get_floating_ip_id(fip_address: str) -> str:
 
     out = _os("floating", "ip", "list", "--floating-ip-address", fip_address,  "-f", "value", "-c", "ID")
 
-    fip_id = out.strip().splitlines()[0] if out.strip() else ""
+    fip_id = out.stdout.strip().splitlines()[0] if out.strip() else ""
     if not fip_id:
         logger.error(f"Floating IP {fip_address} not found")
         sys.exit(1)
