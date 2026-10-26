@@ -149,7 +149,7 @@ def _get_cirros_image_checksum(image_name="cirros") -> str | None:
 def _get_image_properties(image_id: str) -> dict:
 
     out = _os("image", "show", image_id, "-f", "json")
-    data = json.loads(out)
+    data = json.loads(out.stdout)
     props = data.get("properties") or {}
 
     return {
