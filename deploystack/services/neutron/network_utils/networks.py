@@ -103,29 +103,94 @@ def add_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: 
 
 def clean_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: str, tunnel_bridge: str):
 
-    for b in bridges:
+    print("[DEBUG] === START clean_custom_bridges ===", flush=True)
+    print(f"[DEBUG] Bridges ricevuti: {bridges}", flush=True)
+    print(f"[DEBUG] public_bridge={public_bridge}, internal_flat_bridge={internal_flat_bridge}, tunnel_bridge={tunnel_bridge}", flush=True)
+
+    for i, b in enumerate(bridges):
+        print(f"\n[DEBUG] --- Bridge {i + 1}/{len(bridges)} ---", flush=True)
+
         bridge = b.get("name")
         port = b.get("port")
 
+        print(f"[DEBUG] name={bridge!r}, port={port!r}", flush=True)
+
         if bridge in (public_bridge, tunnel_bridge, "br-int", internal_flat_bridge):
+            print(f"[DEBUG] SKIP: bridge escluso ({bridge})", flush=True)
             continue
 
         if not bridge or not port:
+            print(f"[DEBUG] SKIP: bridge o port mancante (bridge={bridge!r}, port={port!r})", flush=True)
             continue
 
-        if iface_exists(bridge):
+        print(f"[DEBUG] Verifica iface_exists({bridge!r})...", flush=True)
 
-            print()
+        try:
+            exists = iface_exists(bridge)
+            print(f"[DEBUG] iface_exists({bridge!r}) -> {exists}", flush=True)
+        except Exception as e:
+            print(f"[ERROR] Eccezione in iface_exists({bridge!r}): {type(e).__name__}: {e}", flush=True)
+            raise
 
-            run_command(["ip", "addr", "flush", "dev", port],
-                        f"Flushing IPs on {port}", ignore_errors=True)
+        if not exists:
+            print(f"[DEBUG] SKIP: interfaccia {bridge} non esistente", flush=True)
+            continue
 
-            run_command(["ip", "link", "set", port, "down"],
-                        f"Bringing {port} down", ignore_errors=True)
+        print(f"[DEBUG] Flush IP su {port}...", flush=True)
+        try:
+            result = run_command(
+                ["ip", "addr", "flush", "dev", port],
+                f"Flushing IPs on {port}",
+                ignore_errors=True
+            )
+            print(f"[DEBUG] Risultato flush IP: {result!r}", flush=True)
+        except Exception as e:
+            print(f"[ERROR] Eccezione durante flush IP: {type(e).__name__}: {e}", flush=True)
+            raise
 
-            if not run_command_sync(["ovs-vsctl", "--if-exists", "del-port", bridge, port]) : return False
-            if not run_command_sync(["ovs-vsctl", "--if-exists", "del-br", bridge]) : return False
+        print(f"[DEBUG] Disattivazione interfaccia {port}...", flush=True)
+        try:
+            result = run_command(
+                ["ip", "link", "set", port, "down"],
+                f"Bringing {port} down",
+                ignore_errors=True
+            )
+            print(f"[DEBUG] Risultato link down: {result!r}", flush=True)
+        except Exception as e:
+            print(f"[ERROR] Eccezione durante link down: {type(e).__name__}: {e}", flush=True)
+            raise
 
+        cmd = ["ovs-vsctl", "--if-exists", "del-port", bridge, port]
+        print(f"[DEBUG] Esecuzione: {cmd!r}", flush=True)
+
+        try:
+            result = run_command_sync(cmd)
+            print(f"[DEBUG] Risultato del-port: {result!r}", flush=True)
+        except Exception as e:
+            print(f"[ERROR] Eccezione in del-port: {type(e).__name__}: {e}", flush=True)
+            raise
+
+        if not result:
+            print(f"[ERROR] del-port fallito: bridge={bridge}, port={port}", flush=True)
+            return False
+
+        cmd = ["ovs-vsctl", "--if-exists", "del-br", bridge]
+        print(f"[DEBUG] Esecuzione: {cmd!r}", flush=True)
+
+        try:
+            result = run_command_sync(cmd)
+            print(f"[DEBUG] Risultato del-br: {result!r}", flush=True)
+        except Exception as e:
+            print(f"[ERROR] Eccezione in del-br: {type(e).__name__}: {e}", flush=True)
+            raise
+
+        if not result:
+            print(f"[ERROR] del-br fallito: bridge={bridge}", flush=True)
+            return False
+
+        print(f"[DEBUG] Bridge {bridge} eliminato correttamente", flush=True)
+
+    print("[DEBUG] === END clean_custom_bridges: return True ===", flush=True)
     return True
 
 def create_custom_networks(
