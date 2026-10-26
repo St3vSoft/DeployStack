@@ -35,7 +35,7 @@ def _has_glance_public_image_permission(env) -> bool:
         image_name,
         "--disk-format", "raw",
         "--container-format", "bare",
-        "--visibility", "public",
+        "--public",
         "-f", "json",
         env=env,
         check=False,
