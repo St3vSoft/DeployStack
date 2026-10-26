@@ -27,7 +27,7 @@ OS_ADMIN_USERS = {
     "opensuse": "opensuse",
 }
 
-def _has_glance_public_image_permission(env) -> bool:
+def _has_glance_image_permission(visibility_type: str, env) -> bool:
     image_name = f"permission-check-{uuid.uuid4()}"
 
     result = _os(
@@ -35,7 +35,7 @@ def _has_glance_public_image_permission(env) -> bool:
         image_name,
         "--disk-format", "raw",
         "--container-format", "bare",
-        "--public",
+        f"--{visibility_type}",
         "-f", "json",
         env=env,
         check=False,
@@ -218,7 +218,7 @@ def upload_image(
 
     glance_image_name: str
 
-    if not _has_glance_public_image_permission(current_session_env):
+    if not _has_glance_image_permission(visibility, current_session_env):
         username = current_session_env.get("OS_USERNAME")
 
         print(
