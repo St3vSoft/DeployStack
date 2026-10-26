@@ -1,11 +1,14 @@
 import requests
-import os as os_module
 import tempfile
 import subprocess
 import time
 import sys
 import itertools
 import termios
+import json
+import uuid
+
+import os as os_module
 
 from ....utils.core import colors
 
@@ -25,25 +28,51 @@ OS_ADMIN_USERS = {
 }
 
 def _has_glance_public_image_permission(env) -> bool:
+    image_name = f"permission-check-{uuid.uuid4()}"
+
     result = _os(
         "image", "create",
+        image_name,
         "--disk-format", "raw",
         "--container-format", "bare",
-        "--public", "admin-test",
+        "--visibility", "public",
+        "-f", "json",
         env=env,
         check=False,
     )
 
     output = f"{result.stdout}\n{result.stderr}"
 
-    if "You are not authorized to complete publicize_image action" in output:
-        return False
-
     if result.returncode != 0:
-        logger.error("Unable to verify Glance public image permission: %s", output)
+        if "You are not authorized to complete publicize_image action" in output:
+            return False
+
+        logger.error(
+            "Unable to verify Glance public image permission: %s",
+            output,
+        )
         return False
 
-    return True
+    try:
+        image = json.loads(result.stdout)
+        image_id = image["id"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        logger.error("Unable to retrieve the temporary image ID: %s", result.stdout)
+        return False
+    finally:
+        pass
+
+    try:
+        return True
+    finally:
+        try:
+            _os(
+                "image", "delete", image_id,
+                env=env,
+                check=True,
+            )
+        except (subprocess.CalledProcessError, SystemExit):
+            logger.exception("Failed to delete temporary Glance image %s", image_id)
 
 def _generate_temp_filename(os_name: str, version: str, arch: str, url: str, temp_dir: str = None) -> str:
 
