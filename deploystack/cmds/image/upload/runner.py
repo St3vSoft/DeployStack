@@ -29,7 +29,7 @@ def _has_glance_public_image_permission(env) -> bool:
         "image", "create",
         "--disk-format", "raw",
         "--container-format", "bare",
-        "--public",
+        "--public", "admin-test"
         env=env,
         check=False,
     )
