@@ -231,6 +231,8 @@ def create_services_users(config, env):
 
 def create_services_entities(config, env):
 
+    print()
+
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER"), False)
     install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA"), False)
 
