@@ -18,7 +18,6 @@ cirros_image_url = "http://download.cirros-cloud.net/0.6.3/cirros-0.6.3-x86_64-d
 checksums_url = "http://download.cirros-cloud.net/0.6.3/SHA256SUMS"
 
 def install_pkgs():
-
     packages = ["glance-api"]
 
     if not apt_install(packages, ux_text=f"Installing Glance package..."): return False

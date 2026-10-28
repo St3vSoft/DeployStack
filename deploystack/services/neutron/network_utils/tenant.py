@@ -1,4 +1,3 @@
-import ipaddress
 import json
 
 from ....utils.core.commands import os_run, os_run_output
@@ -126,7 +125,7 @@ def _ensure_router(router, subnet_name, public_network_name, env):
     attached = {i.get("subnet_id") for i in (interfaces.get("interfaces_info") or [])}
 
     if subnet_id not in attached:
-        if not os_run(["openstack", "router", "add", "subnet", router, subnet_name], f"Adding subnet '{subnet_name}' to router '{router}'...", env=env): return False
+        if not os_run(["openstack", "router", "add", "subnet", router, subnet_name], f"Attaching subnet '{subnet_name}' to router '{router}'...", env=env): return False
 
     return True
 
@@ -173,6 +172,8 @@ def create_tenant_networks(config, create_bridges, networks_list, subnets_list, 
 
             if net.get("gateway"):
                 cmd += ["--gateway", net["gateway"]]
+            else:
+                cmd += ["--gateway", "none"]
 
             pool = net.get("allocation_pool")
             if pool:

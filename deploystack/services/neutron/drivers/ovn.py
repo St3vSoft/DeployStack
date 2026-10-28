@@ -22,7 +22,8 @@ from ....templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACE
 
 from ..network_utils.security_group import add_rules_to_default_sg
 
-from ..network_utils.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
+from ..network_utils.networks import create_custom_networks
+from ..network_utils.bridges import clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
 from ..network_utils.routers import create_custom_network_router
 
 overlay_types = {"vxlan", "geneve"}

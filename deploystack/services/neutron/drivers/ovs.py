@@ -18,7 +18,8 @@ from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_
 
 from ..network_utils.security_group import add_rules_to_default_sg
 
-from ..network_utils.networks import create_custom_networks, clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
+from ..network_utils.networks import create_custom_networks
+from ..network_utils.bridges import clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
 from ..network_utils.routers import create_custom_network_router
 
 from ..network_utils.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
@@ -492,13 +493,7 @@ def create_ovs_networks(config, env):
 
             rules = json.loads(rules_json)
 
-            if not add_rules_to_default_sg(
-                rules_dict=services_rules,
-                ip_prefix=services_rules_remote_ip_prefix,
-                sg_id=sg_id,
-                rules=rules,
-                env=env
-            ): return False
+            if not add_rules_to_default_sg(rules_dict=services_rules, ip_prefix=services_rules_remote_ip_prefix, sg_id=sg_id, rules=rules, env=env): return False
 
     return True
 

@@ -44,16 +44,10 @@ def _has_glance_image_permission(visibility_type: str, env) -> bool:
     output = f"{result.stdout}\n{result.stderr}"
 
     if result.returncode != 0:
-        if (
-            "You are not authorized to complete publicize_image action"
-            in output
-        ):
+        if ("You are not authorized to complete publicize_image action" in output):
             return False
 
-        logger.error(
-            "Unable to verify Glance image permission: %s",
-            output,
-        )
+        logger.error("Unable to verify Glance image permission: %s", output)
         return False
 
     image_id = None
@@ -64,10 +58,7 @@ def _has_glance_image_permission(visibility_type: str, env) -> bool:
         return True
 
     except (json.JSONDecodeError, KeyError, TypeError):
-        logger.exception(
-            "Unable to retrieve the temporary Glance image ID: %s",
-            result.stdout,
-        )
+        logger.exception("Unable to retrieve the temporary Glance image ID: %s", result.stdout)
         return False
 
     finally:
@@ -75,7 +66,7 @@ def _has_glance_image_permission(visibility_type: str, env) -> bool:
             try:
                 _os("image", "delete", image_id, env=env, check=True)
             except (subprocess.CalledProcessError, SystemExit):
-                logger.exception( "Failed to delete temporary Glance image %s", image_id)
+                logger.exception("Failed to delete temporary Glance image %s", image_id)
 
 def _generate_temp_filename(os_name: str, version: str, arch: str, url: str, temp_dir: str = None) -> str:
 
@@ -96,7 +87,6 @@ def _download_image(url: str, output_path: str):
     try:
         termios.tcsetattr(fd, termios.TCSADRAIN, new_term)
 
-        # Hide cursor
         sys.stdout.write("\033[?25l")
         sys.stdout.flush()
 

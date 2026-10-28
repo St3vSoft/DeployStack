@@ -65,11 +65,7 @@ def create_custom_network_router(
         internal_network_subnet = subnet_cfg.get("tenant_subnet")
 
         if not _router_exists(router_name, env):
-            if not os_run(
-                ["openstack", "router", "create", router_name],
-                f"Creating router {router_name}...",
-                env=env
-            ):
+            if not os_run(["openstack", "router", "create", router_name], f"Creating router {router_name}...", env=env):
                 return False
 
         if create_bridges:
