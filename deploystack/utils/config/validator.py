@@ -1644,9 +1644,9 @@ def validate_manila(config) -> bool:
                     size = loopback_lvm_size
 
             required_lvm_loopback_fields = [
-                "manila.backends.lvm.storage.MANILA_LVM_IMAGE_FILE_PATH",
-                "manila.backends.lvm.storage.MANILA_LVM_IMAGE_SIZE_IN_GB",
-                "manila.backends.lvm.storage.MANILA_LVM_LOOP_PATH",
+                "manila.backends.lvm.storage.loopback.MANILA_LVM_IMAGE_FILE_PATH",
+                "manila.backends.lvm.storage.loopback.MANILA_LVM_IMAGE_SIZE_IN_GB",
+                "manila.backends.lvm.storage.loopback.MANILA_LVM_LOOP_PATH",
             ]
 
             for field in required_lvm_loopback_fields:
