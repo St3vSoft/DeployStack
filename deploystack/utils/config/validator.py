@@ -1571,8 +1571,8 @@ def validate_manila(config) -> bool:
 
         lvm_physical_volume = (get(config, "manila.backends.lvm.storage.PHYSICAL_VOLUME") or "").strip().lower()
 
-        lvm_backend_size_raw = (get(config, "manila.backends.lvm.storage.MANILA_LVM_IMAGE_SIZE_IN_GB") or "")
-        lvm_backend_path = (get(config, "manila.backends.lvm.storage.MANILA_LVM_IMAGE_FILE_PATH") or "").strip().lower()
+        lvm_backend_size_raw = (get(config, "manila.backends.lvm.storage.loopback.MANILA_LVM_IMAGE_SIZE_IN_GB") or "")
+        lvm_backend_path = (get(config, "manila.backends.lvm.storage.loopback.MANILA_LVM_IMAGE_FILE_PATH") or "").strip().lower()
 
         lvm_share_driver = get(config, "manila.backends.lvm.SHARE_DRIVER") or ""
         lvm_share_export_ip = get(config, "manila.backends.lvm.SHARE_EXPORT_IP") or ""
