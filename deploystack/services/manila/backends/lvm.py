@@ -283,7 +283,7 @@ def create_shares_network(config, env):
         if not shares_router_subnet_attached:
             print()
 
-            if not os_run(["openstack", "router", "add", "subnet", "internal-router", shares_subnet_id], "Adding shares subnet to internal router...", env=env): return False
+            if not os_run(["openstack", "router", "add", "subnet", "internal-router", shares_subnet_id], "Attaching shares subnet to internal router...", env=env): return False
 
     return True
 
@@ -392,7 +392,7 @@ def run_setup_lvm_backend(config, env):
 
     if not conf_lvm(config): return False
 
-    if not is_debian() and is_ubuntu_release("26.04"):
+    if not is_debian() and is_ubuntu_release("26.04", True) or is_ubuntu_release("26.10", True):
         if not run_setup_directio_patch(): return False
 
     if not conf_lvm_manila(config): return False
