@@ -248,7 +248,7 @@ def create_services_entities(config, env):
     if ("glance", "image") not in existing_services:
         services_create_cmds.append(["openstack", "service", "create", "--name", "glance", "--description", "OpenStack Image", "image"])
 
-    if "placement" not in existing_services:
+    if ("placement", "placement") not in existing_services:
         services_create_cmds.append(["openstack", "service", "create", "--name", "placement", "--description", "Placement API", "placement"])
 
     if ("nova", "compute") not in existing_services:
@@ -270,7 +270,7 @@ def create_services_entities(config, env):
         ]
 
         for name, description, type_ in manila_services:
-            if name not in existing_services:
+            if (name, type_) not in existing_services:
                 services_create_cmds.append(["openstack", "service", "create", "--name", name, "--description", description, type_])
 
     if not run_commands(services_create_cmds, "Creating services entities...", env=env) : return False
