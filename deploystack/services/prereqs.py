@@ -146,11 +146,11 @@ def _write_loopback_config(config):
 
         for backend in enabled_backends:
             
-            vg = get(config, f"cinder.backends.{backend}.VOLUME_GROUP")
+            vg = get(config, f"cinder.backends.{backend}.storage.VOLUME_GROUP")
 
-            lvm_image_path = get(config, f"cinder.backends.{backend}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",)
+            lvm_image_path = get(config, f"cinder.backends.{backend}.storage.loopback.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",)
 
-            physical_volume = get(config, f"cinder.backends.{backend}.PHYSICAL_VOLUME")
+            physical_volume = get(config, f"cinder.backends.{backend}.storage.PHYSICAL_VOLUME")
 
             if physical_volume:
                 continue
@@ -161,7 +161,7 @@ def _write_loopback_config(config):
 
         vg = get(config, "manila.backends.lvm.storage.SHARE_VOLUME_GROUP")
 
-        lvm_image_path = get(config, "manila.backends.lvm.storage.MANILA_LVM_IMAGE_FILE_PATH")
+        lvm_image_path = get(config, "manila.backends.lvm.storage.loopback.MANILA_LVM_IMAGE_FILE_PATH")
 
         set_conf_option(deploystack_loopback_conf_file, "manila.lvm-loopback", "image", toml_string(lvm_image_path))
         set_conf_option(deploystack_loopback_conf_file, "manila.lvm-loopback", "vg", toml_string(vg))
@@ -204,14 +204,14 @@ def install_pkgs(config):
 
         for backend in enabled_backends:
             
-            cinder_pv = get(config, f"cinder.backends.{backend}.PHYSICAL_VOLUME")
-            cinder_loop_dev = get(config, f"cinder.backends.{backend}.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
+            cinder_pv = get(config, f"cinder.backends.{backend}.storage.PHYSICAL_VOLUME")
+            cinder_loop_dev = get(config, f"cinder.backends.{backend}.storage.loopback.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH")
 
             devices.append(cinder_pv or cinder_loop_dev)
 
     if install_manila and is_lvm_manila_backend_enabled:
         manila_pv = get(config, "manila.backends.lvm.storage.PHYSICAL_VOLUME")
-        manila_loop_dev = get(config, "manila.backends.lvm.storage.MANILA_LVM_LOOP_PATH")
+        manila_loop_dev = get(config, "manila.backends.lvm.storage.loopback.MANILA_LVM_LOOP_PATH")
 
         devices.append(manila_pv or manila_loop_dev)
 
