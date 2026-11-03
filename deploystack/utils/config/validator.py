@@ -1578,6 +1578,8 @@ def validate_manila(config) -> bool:
         lvm_share_export_ip = get(config, "manila.backends.lvm.SHARE_EXPORT_IP") or ""
         lvm_share_tenant_network_cidr = get(config, "manila.backends.lvm.SHARE_TENANT_NETWORK_CIDR") or ""
 
+        print(lvm_share_tenant_network_cidr)
+
         lvm_backend_fields = [
             "manila.backends.lvm.BACKEND_NAME",
             "manila.backends.lvm.SHARE_DRIVER",
