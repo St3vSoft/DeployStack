@@ -957,7 +957,7 @@ def validate_cinder(config) -> bool:
             required_fields = [
                 f"{backend_prefix}.BACKEND_NAME",
                 f"{backend_prefix}.VOLUME_TYPE_NAME",
-                f"{backend_prefix}.VOLUME_GROUP",
+                f"{backend_prefix}.storage.VOLUME_GROUP",
                 f"{backend_prefix}.VOLUME_CLEAR",
                 f"{backend_prefix}.VOLUME_CLEAR_SIZE",
                 f"{backend_prefix}.TARGET_IP_ADDRESS",
@@ -979,7 +979,7 @@ def validate_cinder(config) -> bool:
             physical_volume = (
                 get(
                     config,
-                    f"{backend_prefix}.PHYSICAL_VOLUME"
+                    f"{backend_prefix}.storage.PHYSICAL_VOLUME"
                 )
                 or ""
             ).strip()
@@ -1020,15 +1020,15 @@ def validate_cinder(config) -> bool:
             else:
 
                 image_path_field = (
-                    f"{backend_prefix}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH"
+                    f"{backend_prefix}.storage.loopback.CINDER_VOLUME_LVM_IMAGE_FILE_PATH"
                 )
 
                 image_size_field = (
-                    f"{backend_prefix}.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB"
+                    f"{backend_prefix}.storage.loopback.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB"
                 )
 
                 loop_path_field = (
-                    f"{backend_prefix}.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH"
+                    f"{backend_prefix}.storage.loopback.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH"
                 )
 
                 required_loopback_fields = [
@@ -1339,8 +1339,8 @@ def validate_cinder(config) -> bool:
                     ok = False
 
             ratios_fields = [
-                f"{backend_prefix}.NFS_USED_RATIO",
-                f"{backend_prefix}.NFS_OVERSUB_RATIO",
+                f"{backend_prefix}.ratios.NFS_USED_RATIO",
+                f"{backend_prefix}.ratios.NFS_OVERSUB_RATIO",
             ]
 
             for ratio_field in ratios_fields:
@@ -1444,7 +1444,6 @@ def validate_cinder(config) -> bool:
     if enable_cinder_backup == "yes":
         if not validate_cinder_backup(config):
             ok = False
-
     
     return ok
 

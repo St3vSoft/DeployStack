@@ -385,7 +385,7 @@ manila:
           # Size of the loopback image in GB.
           MANILA_LVM_IMAGE_SIZE_IN_GB: "10"
 
-          # Loopback device used as the LVM physical volume.
+          # Loopback device used as the LVM physical volume. (temporary for deployment)
           MANILA_LVM_LOOP_PATH: "/dev/loop0"
 
   # Manila share types to create automatically during deployment.

@@ -520,7 +520,7 @@ def generate_openstack_config(config: OpenStackConfig):
             config_dict["manila"]["backends"]["lvm"]["storage"]["SHARE_VOLUME_GROUP"] = config.manila.lvm_vg
             
             if not config.manila.lvm_physical_volume:
-                config_dict["manila"]["backends"]["lvm"]["storage"].update({
+                config_dict["manila"]["backends"]["lvm"]["storage"]["loopback"].update({
                     "MANILA_LVM_IMAGE_FILE_PATH": "/var/lib/manila/images/manila-shares.img",
                     "MANILA_LVM_IMAGE_SIZE_IN_GB": str(config.manila.lvm_image_size_in_gb),
                     "MANILA_LVM_LOOP_PATH": str(manila_loop),
