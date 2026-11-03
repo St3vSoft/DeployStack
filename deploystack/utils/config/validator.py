@@ -1638,7 +1638,7 @@ def validate_manila(config) -> bool:
         else:
             if lvm_backend_size_raw:
 
-                loopback_lvm_size = validate_positive_int(lvm_backend_size_raw, "manila.backends.lvm.storage.MANILA_LVM_IMAGE_SIZE_IN_GB")
+                loopback_lvm_size = validate_positive_int(lvm_backend_size_raw, "manila.backends.lvm.storage.loopback.MANILA_LVM_IMAGE_SIZE_IN_GB")
 
                 if loopback_lvm_size is None:
                     ok = False
@@ -1656,8 +1656,8 @@ def validate_manila(config) -> bool:
                     print(f"{colors.RED}Error: '{field}' is not set{colors.RESET}")
                     ok = False
 
-            lvm_loop_image_path = (get(config, "manila.backends.lvm.storage.MANILA_LVM_IMAGE_FILE_PATH") or "").lower()
-            lvm_loop_path = (get(config, "manila.backends.lvm.storage.MANILA_LVM_LOOP_PATH") or "").lower()
+            lvm_loop_image_path = (get(config, "manila.backends.lvm.storage.loopback.MANILA_LVM_IMAGE_FILE_PATH") or "").lower()
+            lvm_loop_path = (get(config, "manila.backends.lvm.storage.loopback.MANILA_LVM_LOOP_PATH") or "").lower()
 
             if not is_valid_path(lvm_loop_image_path, required_lvm_loopback_fields[0]):
                 ok = False
