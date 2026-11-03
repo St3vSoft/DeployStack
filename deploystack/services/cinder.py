@@ -70,12 +70,12 @@ def conf_lvm_backend(config, backend):
 
     prefix = f"cinder.backends.{backend}"
 
-    physical_volume = get(config, f"{prefix}.PHYSICAL_VOLUME")
+    physical_volume = get(config, f"{prefix}.storage.PHYSICAL_VOLUME")
 
-    image_path = get(config, f"{prefix}.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
-    loop_path = get(config, f"{prefix}.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",)
-    image_size = get(config, f"{prefix}.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",)
-    vg_name = get(config, f"{prefix}.VOLUME_GROUP")
+    image_path = get(config, f"{prefix}.storage.loopback.CINDER_VOLUME_LVM_IMAGE_FILE_PATH")
+    loop_path = get(config, f"{prefix}.storage.loopback.CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH",)
+    image_size = get(config, f"{prefix}.storage.loopback.CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB",)
+    vg_name = get(config, f"{prefix}.storage.VOLUME_GROUP")
 
     if not configure_lvm_storage(
         physical_volume=physical_volume,
@@ -176,6 +176,21 @@ def conf_nfs_backend(config, backend):
     except OSError as e:
         print(f"{colors.RED}ERROR: Unable to configure {cinder_nfs_shares}: {e}{colors.RESET}")
         return False
+
+    return True
+
+def conf_backends(config):
+
+    enabled_backends = get(config, "cinder.ENABLED_BACKENDS", []) or []
+
+    for backend in enabled_backends:
+        driver = get(config, f"cinder.backends.{backend}.DRIVER")
+
+        if driver == "lvm":
+            if not conf_lvm_backend(config, backend): return False
+
+        if driver == "nfs":
+            if not conf_nfs_backend(config, backend) : return False
 
     return True
 
@@ -451,7 +466,7 @@ def conf_cinder(config):
 
             target_scsi_ip_address = get(config, f"{prefix}.TARGET_IP_ADDRESS") or ip_address
     
-            vg_name = get(config, f"{prefix}.VOLUME_GROUP")
+            vg_name = get(config, f"{prefix}.storage.VOLUME_GROUP")
 
             if isinstance(target_scsi_ip_address, dict) or target_scsi_ip_address is None or "{network.HOST_IP}" in str(target_scsi_ip_address):
                 target_scsi_ip_address = ip_address 
@@ -476,8 +491,8 @@ def conf_cinder(config):
             sparsed_volumes = get(config, f"{prefix}.NFS_SPARSED_VOLUMES", "sparse")
             sparsed_volumes_str = str(sparsed_volumes).lower() == "sparse"
 
-            nfs_used_ratio = get(config, f"{prefix}.NFS_USED_RATIO", 0.95) 
-            nfs_oversub_ratio = get(config, f"{prefix}.NFS_OVERSUB_RATIO", 1.0) 
+            nfs_used_ratio = get(config, f"{prefix}.ratios.NFS_USED_RATIO", 0.95) 
+            nfs_oversub_ratio = get(config, f"{prefix}.ratios.NFS_OVERSUB_RATIO", 1.0) 
 
             enable_snapshots = parse_bool(get(config, f"{prefix}.ENABLE_SNAPSHOTS"), False)
 
@@ -614,19 +629,10 @@ def run_setup_cinder(config, env):
 
     install_cinder_backup = parse_bool(get(config, "cinder.ENABLE_CINDER_BACKUP", False))
 
-    enabled_backends = get(config, "cinder.ENABLED_BACKENDS", []) or []
-
     if not install_pkgs(config): return False 
 
-    for backend in enabled_backends:
-        driver = get(config, f"cinder.backends.{backend}.DRIVER")
-
-        if driver == "lvm":
-            if not conf_lvm_backend(config, backend): return False
-
-        if driver == "nfs":
-            if not conf_nfs_backend(config, backend) : return False
-
+    if not conf_backends(config) : return False
+    
     if install_cinder_backup:
         if not conf_cinder_backup(config) : return False
 

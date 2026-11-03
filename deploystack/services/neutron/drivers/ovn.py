@@ -14,7 +14,7 @@ from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, i
 from ....utils.core import colors
 from ....utils.config.helpers import parse_bool
 from ....utils.network.net_utils import get_network_info
-from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, ifaces_config_exclude_patterns, enable_kernel_module
+from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, ifaces_config_exclude_patterns, enable_kernel_module, restart_ovn_services
 
 from ..network_utils.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
 
@@ -433,31 +433,9 @@ def finalize(config):
         return False
     
     print()
-    
-    if service_exists("nova-api.service"):
-        if not run_command(["systemctl", "restart", "nova-api"], "Restarting Nova API...", False, None, 3, 5): return False
 
-    if service_exists("neutron-server.service"):
-        if not run_command(
-            ["systemctl", "restart",
-            "neutron-server",
-            "neutron-ovn-metadata-agent",
-            "nova-compute"],
-            "Restarting Neutron and Nova services...", False, None, 3, 5
-        ):
-            return False
-    elif service_exists("neutron-api.service") and is_debian():
-        if not run_command(["systemctl", "restart", "neutron-api", "neutron-rpc-server", "neutron-ovn-metadata-agent", "nova-compute"], "Restarting Neutron services...", False, None, 3, 5): return False
-    else:
-        if not run_command(
-            ["systemctl", "restart",
-            "neutron-periodic-workers", "apache2",
-            "neutron-ovn-metadata-agent",
-            "nova-compute"],
-            "Restarting Neutron and Nova services...", False, None, 3, 5
-        ):
-            return False
-        
+    if not restart_ovn_services() : return False
+   
     printed_line = False
     for svc in ["neutron-l3-agent", "neutron-dhcp-agent", "neutron-openvswitch-agent"]:
         if service_exists(svc):
@@ -466,6 +444,7 @@ def finalize(config):
                 printed_line = True
 
             run_command(["systemctl", "disable", "--now", svc], f"Disabling legacy agent {svc}", ignore_errors=True)
+
 
     run_command_sync(["udevadm", "control", "--reload-rules"])
 
@@ -627,7 +606,9 @@ def run_setup_ovn_neutron(config, env):
     if not conf_ovn_neutron(config): return False
     if not conf_ovn_db_connections(config): return False
     if not conf_ovn_controller(config): return False
+
     if not finalize(config): return False
+    
     if not create_ovn_networks(config, env): return False
 
     return True

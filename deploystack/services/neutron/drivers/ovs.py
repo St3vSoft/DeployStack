@@ -9,12 +9,12 @@ from ....utils.core.commands import run_command, os_run_output, os_run, run_comm
 from ....utils.apt.apt import apt_install
 from ....utils.config.parser import get
 from ....utils.config.setter import set_conf_option
-from ....utils.core.system_utils import nc_wait, iface_exists, service_exists, is_debian, is_module_loaded, kernel_module_exists, is_service_active
+from ....utils.core.system_utils import nc_wait, iface_exists, is_module_loaded, kernel_module_exists, is_service_active
 from ....utils.core import colors
 from ....templates import OVS_BRIDGES_INTERFACES, OVS_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 from ....utils.network.net_utils import get_network_info
 from ....utils.config.helpers import parse_bool
-from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, enable_kernel_module
+from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, enable_kernel_module, restart_ovs_services
 
 from ..network_utils.security_group import add_rules_to_default_sg
 
@@ -367,16 +367,8 @@ def finalize(config):
 
     print()
 
-    if service_exists("nova-api.service"):
-        if not run_command(["systemctl", "restart", "nova-api"], "Restarting Nova API...", False, None, 3, 5): return False
-  
-    if service_exists("neutron-server.service"):
-        if not run_command(["systemctl", "restart", "neutron-server", "neutron-openvswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
-    elif service_exists("neutron-api.service") and is_debian():
-        if not run_command(["systemctl", "restart", "neutron-api", "neutron-rpc-server", "neutron-l3-agent", "neutron-openvswitch-agent", "neutron-metadata-agent", "nova-compute"], "Restarting Neutron services...", False, None, 3, 5): return False  
-    else:
-        if not run_command(["systemctl", "restart", "neutron-periodic-workers", "neutron-rpc-server", "apache2", "neutron-openvswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
-
+    if not restart_ovs_services() : return False
+    
     if not nc_wait(ip_address, 9696) : return False
 
     return True
@@ -507,7 +499,9 @@ def run_setup_ovs_neutron(config, env):
         if not conf_ovs_bridges(config) : return False
     
     if not conf_neutron_ovs(config) : return False
+
     if not finalize(config) : return False   
+    
     if not create_ovs_networks(config, env): return False
 
     return True

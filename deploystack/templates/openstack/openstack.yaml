@@ -374,18 +374,19 @@ manila:
         # Example: "/dev/sdb".
         PHYSICAL_VOLUME: ""
 
-        # -------------------------
-        # Loopback device configuration
-        # -------------------------
+        loopback:
+          # -------------------------
+          # Loopback device configuration
+          # -------------------------
 
-        # Path to the disk image used as backing storage for the loopback device.
-        MANILA_LVM_IMAGE_FILE_PATH: "/var/lib/manila/images/manila-shares.img"
+          # Path to the disk image used as backing storage for the loopback device.
+          MANILA_LVM_IMAGE_FILE_PATH: "/var/lib/manila/images/manila-shares.img"
 
-        # Size of the loopback image in GB.
-        MANILA_LVM_IMAGE_SIZE_IN_GB: "10"
+          # Size of the loopback image in GB.
+          MANILA_LVM_IMAGE_SIZE_IN_GB: "10"
 
-        # Loopback device used as the LVM physical volume.
-        MANILA_LVM_LOOP_PATH: "/dev/loop0"
+          # Loopback device used as the LVM physical volume.
+          MANILA_LVM_LOOP_PATH: "/dev/loop0"
 
   # Manila share types to create automatically during deployment.
   share_types:
@@ -462,26 +463,28 @@ cinder:
       # Cinder volume type associated with this backend.
       VOLUME_TYPE_NAME: "iscsi"
 
-      # LVM volume group used to create and manage Cinder volumes.
-      VOLUME_GROUP: "cinder-volumes"
+      storage:
+        # --- Physical volume ---
 
-      # --- Physical volume ---
+        # Physical block device used as the LVM physical volume.
+        # Example: "/dev/sdb".
+        # If configured, the loopback device configuration is ignored.
+        PHYSICAL_VOLUME: ""
 
-      # Physical block device used as the LVM physical volume.
-      # Example: "/dev/sdb".
-      # If configured, the loopback device configuration is ignored.
-      PHYSICAL_VOLUME: ""
+        # LVM volume group used to create and manage Cinder volumes.
+        VOLUME_GROUP: "cinder-volumes"
 
-      # --- Loopback device ---
+        loopback:
+          # --- Loopback device ---
 
-      # Loopback device used as the LVM physical volume.
-      CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH: "/dev/loop0"
+          # Loopback device used as the LVM physical volume. (temporary for deployment)
+          CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH: "/dev/loop0"
 
-      # Disk image used as backing storage for the loopback LVM physical volume.
-      CINDER_VOLUME_LVM_IMAGE_FILE_PATH: "/var/lib/cinder/cinder-volumes.img"
+          # Disk image used as backing storage for the loopback LVM physical volume.
+          CINDER_VOLUME_LVM_IMAGE_FILE_PATH: "/var/lib/cinder/cinder-volumes.img"
 
-      # Size of the loopback image in GB.
-      CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB: "5"
+          # Size of the loopback image in GB.
+          CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB: "5"
 
       # IP address of the iSCSI target used to expose Cinder volumes.
       # If empty, network.HOST_IP is used.
@@ -526,14 +529,15 @@ cinder:
       # thick: allocate the complete volume size immediately.
       NFS_SPARSED_VOLUMES: "sparse"
 
-      # Maximum fraction of the reported NFS capacity that Cinder can allocate.
-      # Example: 0.95 allows allocation of up to 95% of the reported capacity.
-      NFS_USED_RATIO: 0.95
+      ratios:
+        # Maximum fraction of the reported NFS capacity that Cinder can allocate.
+        # Example: 0.95 allows allocation of up to 95% of the reported capacity.
+        NFS_USED_RATIO: 0.95
 
-      # Maximum over-subscription ratio for the NFS backend.
-      # 1.0 means no over-subscription.
-      # Example: 2.0 allows up to twice the physical capacity to be provisioned.
-      NFS_OVERSUB_RATIO: 1.0
+        # Maximum over-subscription ratio for the NFS backend.
+        # 1.0 means no over-subscription.
+        # Example: 2.0 allows up to twice the physical capacity to be provisioned.
+        NFS_OVERSUB_RATIO: 1.0
 
       # Enable or disable Cinder volume snapshot support.
       # yes | no

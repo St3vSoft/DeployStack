@@ -25,6 +25,8 @@ from .utils.shares import create_shares, create_share_types
 
 from ....utils.core.system_utils import service_exists, is_debian, is_ubuntu_release, is_package_installed
 
+from ...neutron.utils import restart_ovn_services, restart_ovs_services
+
 from ...patches.resolute.gazpacho.manila.directio import run_setup_directio_patch
 
 from .protocols.nfs import run_setup_nfs
@@ -116,22 +118,7 @@ iface br-shares inet static
 
         print()
 
-        ovs_services = ["systemctl", "restart",
-            "ovn-ovsdb-server-nb",
-            "ovn-ovsdb-server-sb",
-            "ovn-northd",
-            "ovn-controller",
-            "nova-compute"]
-        
-        if service_exists("neutron-api.service") and not service_exists("neutron-server.service"):
-            ovs_services.append("neutron-api")
-        elif service_exists("neutron-periodic-workers.service") and not service_exists("neutron-server.service"):
-            ovs_services.append("neutron-periodic-workers.service")
-            ovs_services.append("apache2.service")
-        else:
-            ovs_services.append("neutron-server")
-            
-        if not run_command(ovs_services, "Restarting OVN services...", False, None, 3, 5):  return False
+        if not restart_ovn_services() : return False
 
     elif neutron_driver == "ovs":
 
@@ -149,13 +136,8 @@ iface br-shares inet static
 
         print()  
 
-        if service_exists("neutron-server.service"):
-            if not run_command(["systemctl", "restart", "neutron-server", "neutron-openvswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
-        elif service_exists("neutron-api.service") and is_debian():
-            if not run_command(["systemctl", "restart", "neutron-api", "neutron-rpc-server", "neutron-l3-agent", "neutron-openvswitch-agent", "neutron-metadata-agent", "nova-compute"], "Restarting Neutron services...", False, None, 3, 5): return False  
-        else:
-            if not run_command(["systemctl", "restart", "neutron-periodic-workers", "apache2", "neutron-openvswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
-    
+        if not restart_ovs_services() : return False
+        
     return True
 
 def setup_iptables_rules(config):
@@ -308,9 +290,9 @@ def create_shares_network(config, env):
 def conf_lvm(config):
 
     lvm_physical_volume = get(config, "manila.backends.lvm.storage.PHYSICAL_VOLUME")
-    lvm_image_file_path = get(config, "manila.backends.lvm.storage.MANILA_LVM_IMAGE_FILE_PATH")
-    lvm_loop_dev = get(config, "manila.backends.lvm.storage.MANILA_LVM_LOOP_PATH")
-    lvm_image_size_in_gb = get(config, "manila.backends.lvm.storage.MANILA_LVM_IMAGE_SIZE_IN_GB")
+    lvm_image_file_path = get(config, "manila.backends.lvm.storage.loopback.MANILA_LVM_IMAGE_FILE_PATH")
+    lvm_loop_dev = get(config, "manila.backends.lvm.storage.loopback.MANILA_LVM_LOOP_PATH")
+    lvm_image_size_in_gb = get(config, "manila.backends.lvm.storage.loopback.MANILA_LVM_IMAGE_SIZE_IN_GB")
 
     vg_name = get(config, "manila.backends.lvm.storage.SHARE_VOLUME_GROUP")
 

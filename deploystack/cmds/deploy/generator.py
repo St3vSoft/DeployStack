@@ -241,22 +241,25 @@ def generate_openstack_config(config: OpenStackConfig):
 
             lvm_config = {
                 "DRIVER": "lvm",
-                "BACKEND_NAME": "lvm-1",
+                "BACKEND_NAME": "lvm",
                 "VOLUME_TYPE_NAME": "iscsi",
-                "VOLUME_GROUP": config.cinder.lvm_vg,
+                "storage": {
+                    "PHYSICAL_VOLUME": config.cinder.physical_volume or "",
+                    "VOLUME_GROUP": config.cinder.lvm_vg,
+                },
                 "TARGET_IP_ADDRESS": mgmt_ip,
                 "VOLUME_CLEAR": "zero",
-                "VOLUME_CLEAR_SIZE": 1
+                "VOLUME_CLEAR_SIZE": 1,
             }
 
             if not config.cinder.physical_volume or not config.cinder.physical_volume.strip():
-                lvm_config.update({
+                lvm_config["storage"]["loopback"] = {
                     "CINDER_VOLUME_LVM_PHYSICAL_PV_LOOP_PATH": str(cinder_loop),
-                    "CINDER_VOLUME_LVM_IMAGE_FILE_PATH": "/var/lib/cinder/images/cinder-volumes.img",
+                    "CINDER_VOLUME_LVM_IMAGE_FILE_PATH": "/var/lib/cinder/cinder-volumes.img",
                     "CINDER_VOLUME_LVM_IMAGE_SIZE_IN_GB": str(config.cinder.lvm_image_size_in_gb),
-                })
+                }
             else:
-                lvm_config["PHYSICAL_VOLUME"] = config.cinder.physical_volume
+                lvm_config["storage"]["PHYSICAL_VOLUME"] = config.cinder.physical_volume
 
             config_dict["cinder"]["backends"]["lvm-1"] = lvm_config
 
@@ -271,9 +274,12 @@ def generate_openstack_config(config: OpenStackConfig):
                 "NFS_SHARE": f"{mgmt_ip}:/export/cinder-volumes",
                 "MOUNT_POINT_BASE": "/var/lib/cinder/mnt",
                 "NFS_SPARSED_VOLUMES": "sparse",
+                "ENABLE_SNAPSHOTS": config.cinder.nfs_snapshots_enabled
+            }
+
+            config_dict["cinder"]["backends"]["nfs-1"]["ratios"] = {
                 "NFS_USED_RATIO": 0.95,
                 "NFS_OVERSUB_RATIO": 1.0,
-                "ENABLE_SNAPSHOTS": config.cinder.nfs_snapshots_enabled
             }
     else:
         config_dict.pop("cinder", {})
