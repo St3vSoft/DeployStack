@@ -619,7 +619,6 @@ def validate_neutron(config) -> bool:
         tenant_types = [tenant_types]
 
     tenant_types = [t.lower() for t in tenant_types]
-    valid_tenant_types = {"geneve", "vxlan"}
 
     tenant_types = get(config, "neutron.tenant_network.TYPES")
     if not tenant_types:
@@ -682,7 +681,7 @@ def validate_neutron(config) -> bool:
                 ok = False
 
         for tenant_type in tenant_types:
-            if tenant_type not in valid_tenant_types:
+            if tenant_type not in VALID_TENANT_TYPES:
                 print(
                     f"{colors.RED}Error: Invalid tenant network type "
                     f"'{tenant_type}'{colors.RESET}"
