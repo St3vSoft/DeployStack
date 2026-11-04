@@ -254,16 +254,13 @@ def conf_neutron_ovs(config):
     tunnel_types = [network_type for network_type in tenant_types if network_type in ("vxlan", "geneve")]
 
     flat_networks = [n.get("physnet") or n["name"] for n in provider_networks if n["type"] == "flat"]
-    vlan_networks = [n for n in provider_networks if n["type"] == "vlan"]
 
     use_tenant_flat_bridge = any(network_type not in overlay_types for network_type in tenant_types)
 
     flat_networks_str = ",".join(flat_networks)
-    vlan_networks_str = ",".join(f'{n["name"]}:{n["vlan_range"]}' for n in vlan_networks)
 
     flat_networks_str = ",".join(flat_networks)
 
-    vlan_networks_str = ",".join(vlan_networks)
     vlan_ranges_str = build_network_vlan_ranges(config)
 
     tunnel_bridge = None
@@ -284,7 +281,7 @@ def conf_neutron_ovs(config):
         if flat_networks_str:
             set_conf_option(conf_ml2, "ml2_type_flat", "flat_networks", flat_networks_str)
 
-        if vlan_networks_str:
+        if vlan_ranges_str:
             set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_ranges_str)
 
         set_conf_option(conf_openvswitch, "ovs", "bridge_mappings", build_bridge_mappings(config))

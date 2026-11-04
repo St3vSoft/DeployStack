@@ -324,15 +324,11 @@ def conf_ovn_neutron(config):
 
     flat_networks = [n.get("physnet") or n["name"] for n in provider_networks if n["type"] == "flat"]
 
-    vlan_networks = [n for n in provider_networks if n["type"] == "vlan"]
-
     tenant_types = get_tenant_types(config)
     tenant_network_vni_range = get(config, "neutron.tenant_network.VNI_RANGE", "1:1000")
     vlan_ranges_str = build_network_vlan_ranges(config)
 
     flat_networks_str = ",".join(flat_networks)
-    vlan_networks_str = ",".join(f'{n["name"]}:{n["vlan_range"]}' for n in vlan_networks)
-
     enable_distributed_floating_ip = get(config, "neutron.ovn.ENABLE_DISTRIBUTED_FLOATING_IP", "no") == "yes"
 
     ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE").lower()
@@ -366,7 +362,8 @@ def conf_ovn_neutron(config):
 
         if flat_networks_str:
             set_conf_option(conf_ml2, "ml2_type_flat", "flat_networks", flat_networks_str)
-        if vlan_networks_str:
+
+        if vlan_ranges_str:
             set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_ranges_str)
         
         set_conf_option(conf_ml2, "ovn", "ovn_bridge_mappings", build_bridge_mappings(config))
