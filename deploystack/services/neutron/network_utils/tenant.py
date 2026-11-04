@@ -54,32 +54,33 @@ def build_bridge_mappings(config):
 
     mappings = {}
 
-    # Provider networks
     for n in get(config, "neutron.provider_networks", []) or []:
-
         if n.get("type") == "local" or not n.get("bridge"):
             continue
 
         physnet = n.get("physnet") or n["name"]
-
         mappings[physnet] = n["bridge"]
 
-    # Tenant VLAN ranges
     for v in get_vlan_ranges(config):
-
         physnet = v.get("physnet")
         bridge = v.get("bridge")
 
         if not physnet or not bridge:
             continue
 
-        existing = mappings.get(physnet)
+        mappings[physnet] = bridge
 
-        if existing and existing != bridge:
-            raise ValueError(
-                f"Conflicting bridge mapping for physnet '{physnet}': "
-                f"'{existing}' and '{bridge}'"
-            )
+    # Tenant networks (flat / vlan)
+    for n in get_tenant_networks(config, "geneve"):
+
+        if n.get("type") not in ("flat", "vlan"):
+            continue
+
+        physnet = n.get("physnet")
+        bridge = n.get("bridge")
+
+        if not physnet or not bridge:
+            continue
 
         mappings[physnet] = bridge
 
@@ -121,6 +122,18 @@ def merge_tenant_bridges(config, bridges):
 
     merged = list(bridges or [])
     known = {b.get("name") for b in merged}
+
+    tenant_networks = get_tenant_networks(config, "geneve")
+
+    for n in tenant_networks:
+        bridge = n.get("bridge")
+
+        if bridge and bridge not in known:
+            merged.append({
+                "name": bridge,
+                "port": n.get("port")
+            })
+            known.add(bridge)
 
     for v in get_vlan_ranges(config):
         bridge = v.get("bridge")

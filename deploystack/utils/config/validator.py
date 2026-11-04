@@ -474,6 +474,8 @@ def validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridg
     cidrs_by_router = {}
     all_cidrs = []
 
+    physnet_bridges = {}
+
     for i, net in enumerate(networks):
         label = f"{base}.networks[{i}]"
         if not isinstance(net, dict):
@@ -591,6 +593,36 @@ def validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridg
 
         if cidr is not None:
             all_cidrs.append((name, cidr))
+
+    if net_type in ("flat", "vlan"):
+        physnet = net.get("physnet")
+        bridge = net.get("bridge")
+
+        if not physnet:
+            _err(f"{label}.physnet is required for {net_type} networks")
+            ok = False
+
+        if not bridge:
+            _err(f"{label}.bridge is required for {net_type} networks")
+            ok = False
+        elif bridge not in defined_bridges:
+            _err(
+                f"{label}.bridge '{bridge}' is not defined "
+                f"in neutron.bridges"
+            )
+            ok = False
+
+        if physnet and bridge:
+            previous = physnet_bridges.get(physnet)
+
+            if previous and previous != bridge:
+                _err(
+                    f"{label}: physnet '{physnet}' is already "
+                    f"mapped to bridge '{previous}'"
+                )
+                ok = False
+            else:
+                physnet_bridges[physnet] = bridge
 
     # Overlaps between different networks (warning: valid only if isolated by different routers)
     for i in range(len(all_cidrs)):
