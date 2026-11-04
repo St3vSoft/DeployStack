@@ -22,7 +22,7 @@ from ..network_utils.networks import create_custom_networks
 from ..network_utils.bridges import clean_custom_bridges, add_custom_bridges, bring_up_custom_bridges_ifaces, append_custom_bridges_ifaces_config
 from ..network_utils.routers import create_custom_network_router
 
-from ..network_utils.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
+from ..network_utils.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks, get_tenant_networks
 
 neutron_conf="/etc/neutron/neutron.conf"
 conf_ml2="/etc/neutron/plugins/ml2/ml2_conf.ini"
@@ -243,12 +243,11 @@ def conf_ovs_bridges(config):
 
 def conf_neutron_ovs(config):
 
-    if not is_service_active("openvswitch-switch.service"):
-        print()
-        if not run_command(["systemctl", "restart", "openvswitch-switch"], "Starting OpenvSwitch...") : return False
-        print()
-    else:
-        print()
+    print()
+        
+    if not run_command(["systemctl", "restart", "openvswitch-switch"], "Starting OpenvSwitch...") : return False
+
+    print()
 
     ip_address = get(config, "network.HOST_IP")
 
@@ -264,7 +263,17 @@ def conf_neutron_ovs(config):
 
     use_tenant_flat_bridge = any(network_type not in overlay_types for network_type in tenant_types)
 
-    flat_networks_str = ",".join(flat_networks)
+    flat_networks = set()
+
+    # Provider networks
+    for n in provider_networks:
+        if n.get("type") == "flat":
+            flat_networks.add(n.get("physnet") or n["name"])
+
+    # Tenant networks
+    for n in get_tenant_networks(config, "geneve"):
+        if n.get("type") == "flat":
+            flat_networks.add(n["physnet"])
 
     flat_networks_str = ",".join(flat_networks)
 

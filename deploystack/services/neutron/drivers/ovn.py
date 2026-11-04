@@ -16,7 +16,7 @@ from ....utils.config.helpers import parse_bool
 from ....utils.network.net_utils import get_network_info
 from ..utils import enable_ipv4_forwarding, write_permanent_modules_conf, encap_modules, ifaces_config_exclude_patterns, enable_kernel_module, restart_ovn_services
 
-from ..network_utils.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks
+from ..network_utils.tenant import get_tenant_types, build_type_drivers, build_network_vlan_ranges, build_bridge_mappings, create_tenant_networks, get_tenant_networks
 
 from ....templates import OVN_BRIDGES_INTERFACES, OVN_DUAL_NIC_BRIDGES_INTERFACES, OVS_PERMISSIONS_SERVICE
 
@@ -325,13 +325,24 @@ def conf_ovn_neutron(config):
     
     provider_networks = get(config, "neutron.provider_networks", [])
 
-    flat_networks = [n.get("physnet") or n["name"] for n in provider_networks if n["type"] == "flat"]
-
     tenant_types = get_tenant_types(config)
     tenant_network_vni_range = get(config, "neutron.tenant_network.VNI_RANGE", "1:1000")
     vlan_ranges_str = build_network_vlan_ranges(config)
 
-    flat_networks_str = ",".join(flat_networks)
+    flat_networks = set()
+
+    # Provider networks
+    for n in provider_networks:
+        if n.get("type") == "flat":
+            flat_networks.add(n.get("physnet") or n["name"])
+
+    # Tenant networks
+    for n in get_tenant_networks(config, "geneve"):
+        if n.get("type") == "flat":
+            flat_networks.add(n["physnet"])
+
+    flat_networks_str = ",".join(sorted(flat_networks))
+   
     enable_distributed_floating_ip = get(config, "neutron.ovn.ENABLE_DISTRIBUTED_FLOATING_IP", "no") == "yes"
 
     ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE").lower()
@@ -360,7 +371,7 @@ def conf_ovn_neutron(config):
             if tunnel_type in overlay_types:
                 set_conf_option(conf_ml2, f"ml2_type_{tunnel_type}", "vni_ranges", tenant_network_vni_range)
 
-            if "geneve" in tunnel_type:
+            if tunnel_type == "geneve":
                 set_conf_option(conf_ml2, "ml2_type_geneve", "max_header_size", "38")
 
         if flat_networks_str:
@@ -368,7 +379,7 @@ def conf_ovn_neutron(config):
 
         if vlan_ranges_str:
             set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_ranges_str)
-        
+
         set_conf_option(conf_ml2, "ovn", "ovn_bridge_mappings", build_bridge_mappings(config))
 
     set_conf_option(conf_ml2, "ovn", "ovn_nb_connection", f"tcp:{ip_address}:{ovn_nb_port}")
