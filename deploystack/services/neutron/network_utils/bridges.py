@@ -58,8 +58,10 @@ def bring_up_custom_bridges_ifaces(bridges: list):
         iface = b.get("port")
         bridge = b.get("name")
 
-        if not run_command(["ip", "link", "set", iface, "up"], f"Bringing {iface} up"):
-            return False
+        if iface_exists(iface):
+            if not run_command(["ip", "link", "set", iface, "up"], f"Bringing {iface} up"):
+                return False
+            
         if not run_command(["ip", "link", "set", bridge, "up"], f"Bringing {bridge} up"):
             return False
             
