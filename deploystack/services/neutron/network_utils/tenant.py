@@ -14,7 +14,7 @@ def get_tenant_types(config, default="geneve"):
     types = get(config, "neutron.tenant_network.TYPES", None)
 
     if not types:
-        legacy = get(config, "neutron.tenant_network.TYPES", None)
+        legacy = get(config, "neutron.tenant_network.TYPE", None)
         types = [legacy] if legacy else [default]
 
     if isinstance(types, str):
@@ -54,17 +54,39 @@ def build_bridge_mappings(config):
 
     mappings = {}
 
-    for n in get(config, "neutron.provider_networks", []):
+    # Provider networks
+    for n in get(config, "neutron.provider_networks", []) or []:
+
         if n.get("type") == "local" or not n.get("bridge"):
             continue
 
-        mappings[n.get("physnet") or n["name"]] = n["bridge"]
+        physnet = n.get("physnet") or n["name"]
 
+        mappings[physnet] = n["bridge"]
+
+    # Tenant VLAN ranges
     for v in get_vlan_ranges(config):
-        if v.get("bridge"):
-            mappings.setdefault(v["physnet"], v["bridge"])
 
-    return ",".join(f"{physnet}:{bridge}" for physnet, bridge in mappings.items())
+        physnet = v.get("physnet")
+        bridge = v.get("bridge")
+
+        if not physnet or not bridge:
+            continue
+
+        existing = mappings.get(physnet)
+
+        if existing and existing != bridge:
+            raise ValueError(
+                f"Conflicting bridge mapping for physnet '{physnet}': "
+                f"'{existing}' and '{bridge}'"
+            )
+
+        mappings[physnet] = bridge
+
+    return ",".join(
+        f"{physnet}:{bridge}"
+        for physnet, bridge in mappings.items()
+    )
 
 def build_network_vlan_ranges(config):
     entries = []
@@ -72,7 +94,10 @@ def build_network_vlan_ranges(config):
     for n in get(config, "neutron.provider_networks", []):
         if n.get("type") == "vlan":
             physnet = n.get("physnet") or n["name"]
-            entries.append(f'{physnet}:{n["vlan_range"]}' if n.get["vlan_range"] else physnet)
+            vlan_range = n.get("vlan_range")
+
+            entries.append(f"{physnet}:{vlan_range}" if vlan_range else physnet)
+
     for v in get_vlan_ranges(config):
         entries.append(f'{v["physnet"]}:{v["range"]}')
 
@@ -147,7 +172,7 @@ def create_tenant_networks(config, create_bridges, networks_list, subnets_list, 
         network_type = net.get("type", legacy_type)
 
         if not create_bridges:
-            network_type = "local"
+            network_type = net.get("type", legacy_type)
 
         print()
 

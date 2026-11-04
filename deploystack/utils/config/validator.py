@@ -137,8 +137,12 @@ def validate_public_network(config) -> bool:
 def validate_bridges(config, bridges):
     ok = True
     defined_bridges = set()
+    defined_ports = set()
 
-    public_bridge_iface = get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE_INTERFACE") or get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
+    public_bridge_iface = (
+        get(config, "neutron.ovn.OVN_PUBLIC_BRIDGE_INTERFACE")
+        or get(config, "neutron.ovs.PUBLIC_BRIDGE_INTERFACE")
+    )
 
     for i, bridge in enumerate(bridges):
         name = bridge.get("name")
@@ -149,14 +153,20 @@ def validate_bridges(config, bridges):
             ok = False
             continue
 
-        if not port:
-            print(f"{colors.RED}Error: bridge '{name}' missing 'port'{colors.RESET}")
+        if name in defined_bridges:
+            print(f"{colors.RED}Error: duplicate bridge '{name}'{colors.RESET}")
             ok = False
-            continue
 
-        if public_bridge_iface and public_bridge_iface in port:
-            print(f"{colors.RED}Error: The public provider network bridge interface '{public_bridge_iface}' cannot be respecified in the neutron.bridges section.{colors.RESET}")
-            ok = False
+        if port:
+            if public_bridge_iface and port == public_bridge_iface:
+                print(f"{colors.RED}Error: public interface '{public_bridge_iface}' cannot be respecified.{colors.RESET}")
+                ok = False
+
+            if port in defined_ports:
+                print(f"{colors.RED}Error: port '{port}' assigned more than once.{colors.RESET}")
+                ok = False
+
+            defined_ports.add(port)
 
         defined_bridges.add(name)
 

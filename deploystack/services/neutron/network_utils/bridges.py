@@ -1,7 +1,10 @@
-from ....utils.core.commands import run_command, run_command_sync
+import ipaddress
+
+from ....utils.core.commands import run_command, run_command_sync, os_run_output
 
 from ....utils.config.parser import get
 from ....utils.core.system_utils import iface_exists
+from ....utils.core import colors
 
 from ..templates import INTERFACE_BRIDGE_TEMPLATE
 
@@ -64,19 +67,34 @@ def bring_up_custom_bridges_ifaces(bridges: list):
 
 def add_custom_bridges(bridges: list, public_bridge: str, internal_flat_bridge: str, tunnel_bridge: str):
 
+    reserved_bridges = {
+        public_bridge,
+        internal_flat_bridge,
+        tunnel_bridge,
+        "br-int",
+    }
+
     for b in bridges:
         port = b.get("port")
         bridge = b.get("name")
 
-        if bridge in (public_bridge, tunnel_bridge, "br-int", internal_flat_bridge):
-            continue
-        else:
-            print()
-
-        if not bridge or not port:
+        if not bridge or bridge in reserved_bridges:
             continue
 
-        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge, "--", "--may-exist", "add-port", bridge, port], f"Adding bridge {bridge} with {port} port"): return False
+        print()
+
+        if not run_command(["ovs-vsctl", "--may-exist", "add-br", bridge], f"Adding bridge {bridge}"):
+            return False
+
+        if port:
+            current_bridge = os_run_output(["ovs-vsctl", "port-to-br", port]).strip()
+
+            if current_bridge and current_bridge != bridge:
+                print(f"{colors.RED}Port {port} already belongs to {current_bridge}{colors.RESET}")
+                return False
+
+            if not run_command(["ovs-vsctl", "--may-exist", "add-port", bridge, port], f"Adding port {port} to {bridge}"):
+                return False
 
     return True
 
