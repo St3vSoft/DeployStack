@@ -262,11 +262,7 @@ def conf_ovn_controller(config):
 
     print()
 
-    bridge_mappings = ",".join(
-        f'{n["name"]}:{n["bridge"]}'
-        for n in provider_networks
-        if n.get("type") != "local" and n.get("bridge")
-    )
+    bridge_mappings = build_bridge_mappings(config)
 
     if not run_command(
         ["ovs-vsctl", "set", "open", ".",

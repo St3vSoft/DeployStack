@@ -89,19 +89,33 @@ def build_bridge_mappings(config):
     )
 
 def build_network_vlan_ranges(config):
-    entries = []
 
-    for n in get(config, "neutron.provider_networks", []):
-        if n.get("type") == "vlan":
-            physnet = n.get("physnet") or n["name"]
-            vlan_range = n.get("vlan_range")
+    entries = {}
 
-            entries.append(f"{physnet}:{vlan_range}" if vlan_range else physnet)
+    for n in get(config, "neutron.provider_networks", []) or []:
+
+        if n.get("type") != "vlan":
+            continue
+
+        physnet = n.get("physnet") or n["name"]
+        vlan_range = n.get("vlan_range")
+
+        entries[physnet] = vlan_range
 
     for v in get_vlan_ranges(config):
-        entries.append(f'{v["physnet"]}:{v["range"]}')
 
-    return ",".join(entries)
+        physnet = v.get("physnet")
+        vlan_range = v.get("range")
+
+        if not physnet or not vlan_range:
+            continue
+        
+        entries[physnet] = vlan_range
+
+    return ",".join(
+        f"{physnet}:{vlan_range}" if vlan_range else physnet
+        for physnet, vlan_range in entries.items()
+    )
 
 def merge_tenant_bridges(config, bridges):
 
@@ -109,10 +123,14 @@ def merge_tenant_bridges(config, bridges):
     known = {b.get("name") for b in merged}
 
     for v in get_vlan_ranges(config):
-        name, port = v.get("bridge"), v.get("port")
-        if name and port not in known:
-            merged.append({"name": name, "port": port})
-            known.add(name)
+        bridge = v.get("bridge")
+
+        if bridge and bridge not in known:
+            merged.append({
+                "name": bridge,
+                "port": v.get("port")
+            })
+            known.add(bridge)
 
     return merged
 
@@ -170,9 +188,6 @@ def create_tenant_networks(config, create_bridges, networks_list, subnets_list, 
         subnet_name = f"{name}_subnet"
 
         network_type = net.get("type", legacy_type)
-
-        if not create_bridges:
-            network_type = net.get("type", legacy_type)
 
         print()
 
