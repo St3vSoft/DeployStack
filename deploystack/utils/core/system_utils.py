@@ -197,8 +197,16 @@ def is_debian():
     except FileNotFoundError:
         return False
 
-def iface_exists(iface: str) -> bool:
-    result = subprocess.run(["ip", "link", "show", iface], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def iface_exists(iface):
+    if not isinstance(iface, str) or not iface.strip():
+        return False
+
+    result = subprocess.run(
+        ["ip", "link", "show", iface],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
     return result.returncode == 0
 
 def http_wait(addr: str, path: str, timeout: int = 30) -> bool:
