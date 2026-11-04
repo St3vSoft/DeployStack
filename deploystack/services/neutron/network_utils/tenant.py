@@ -109,7 +109,7 @@ def build_network_vlan_ranges(config):
 
         if not physnet or not vlan_range:
             continue
-        
+
         entries[physnet] = vlan_range
 
     return ",".join(
@@ -143,12 +143,24 @@ def _provider_args(net):
     if net_type in OVERLAY_TYPES:
         return ["--provider-network-type", net_type]
 
-    args = ["--provider-network-type", net_type, "--provider-physical-network", net["physnet"]]
+    if net_type == "flat":
+        return [
+            "--provider-network-type", "flat",
+            "--provider-physical-network", net["physnet"]
+        ]
 
-    if net_type == "vlan" and net.get("segmentation_id") is not None:
-        args += ["--provider-segment", str(net["segmentation_id"])]
+    if net_type == "vlan":
+        args = [
+            "--provider-network-type", "vlan",
+            "--provider-physical-network", net["physnet"]
+        ]
 
-    return args
+        if net.get("segmentation_id") is not None:
+            args += ["--provider-segment", str(net["segmentation_id"])]
+
+        return args
+
+    raise ValueError(f"Unsupported network type: {net_type}")
 
 def _ensure_router(router, subnet_name, public_network_name, env):
 
