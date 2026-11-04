@@ -243,6 +243,13 @@ def conf_ovs_bridges(config):
 
 def conf_neutron_ovs(config):
 
+    if not is_service_active("openvswitch-switch.service"):
+        print()
+        if not run_command(["systemctl", "restart", "openvswitch-switch"], "Starting OpenvSwitch...") : return False
+        print()
+    else:
+        print()
+
     ip_address = get(config, "network.HOST_IP")
 
     tenant_network_vni_range = get(config, "neutron.tenant_network.VNI_RANGE", "1:1000")

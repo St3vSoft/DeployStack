@@ -206,7 +206,12 @@ def conf_ovn_bridges(config):
 
 def conf_ovn_db_connections(config):
 
-    print()
+    if not is_service_active("openvswitch-switch.service"):
+        print()
+        if not run_command(["systemctl", "restart", "openvswitch-switch"], "Starting OpenvSwitch...") : return False
+        print()
+    else:
+        print()
 
     ip_address = get(config, "network.HOST_IP")
 
@@ -236,12 +241,12 @@ def conf_ovn_db_connections(config):
 
 def conf_ovn_controller(config):
 
+    if
+
     ip_address = get(config, "network.HOST_IP")
 
     ovn_sb_port = get(config, "neutron.ovn.OVN_SB_PORT")
     ovn_encap_type = get(config, "neutron.ovn.OVN_ENCAP_TYPE")
-    
-    provider_networks = get(config, "neutron.provider_networks", [])
 
     kernel_modules = []
     line_printed = False
