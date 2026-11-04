@@ -411,8 +411,11 @@ def validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridg
                 ok = False
 
     # ---------- VLAN_RANGES ----------
+
     vlan_ranges = get(config, f"{base}.VLAN_RANGES") or []
+
     physnet_ranges = {}
+    physnet_bridges = {}
 
     if not isinstance(vlan_ranges, list):
         _err(f"'{base}.VLAN_RANGES' must be a list")
@@ -423,7 +426,7 @@ def validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridg
         _err(f"'{base}.VLAN_RANGES' must not be empty when TYPES contains 'vlan'")
         ok = False
 
-    for i, entry, in enumerate(vlan_ranges):
+    for i, entry in enumerate(vlan_ranges):
         label = f"{base}.VLAN_RANGES[{i}]"
         if not isinstance(entry, dict):
             _err(f"{label} must be a mapping with physnet/range/bridge")
@@ -449,6 +452,15 @@ def validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridg
             ok = False
         elif physnet:
             physnet_ranges.setdefault(physnet, []).append(parsed)
+
+        if physnet and bridge:
+            previous = physnet_bridges.get(physnet)
+
+        if previous and previous != bridge:
+            _err(f"{label}: physnet '{physnet}' is already mapped to bridge '{previous}'")
+            ok = False
+        else:
+            physnet_bridges[physnet] = bridge
 
     # ---------- networks ----------
 
