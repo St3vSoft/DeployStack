@@ -241,8 +241,6 @@ def conf_ovn_db_connections(config):
 
 def conf_ovn_controller(config):
 
-    if
-
     ip_address = get(config, "network.HOST_IP")
 
     ovn_sb_port = get(config, "neutron.ovn.OVN_SB_PORT")
