@@ -1,8 +1,6 @@
 # Configure the LVM Backend (Share Node)
 
 import os
-import pwd
-import grp
 import subprocess
 import tempfile
 import ipaddress
@@ -23,7 +21,7 @@ from .utils import wait_manila_share_agent, create_manila_sudoers_rule
 
 from .utils.shares import create_shares, create_share_types
 
-from ....utils.core.system_utils import service_exists, is_debian, is_ubuntu_release, is_package_installed
+from ....utils.core.system_utils import is_debian, is_ubuntu_release, is_package_installed
 
 from ...neutron.utils import restart_ovn_services, restart_ovs_services
 

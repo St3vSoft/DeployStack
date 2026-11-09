@@ -149,7 +149,6 @@ def _write_loopback_config(config):
             vg = get(config, f"cinder.backends.{backend}.storage.VOLUME_GROUP")
 
             lvm_image_path = get(config, f"cinder.backends.{backend}.storage.loopback.CINDER_VOLUME_LVM_IMAGE_FILE_PATH",)
-
             physical_volume = get(config, f"cinder.backends.{backend}.storage.PHYSICAL_VOLUME")
 
             if physical_volume:
@@ -257,7 +256,7 @@ def add_rabbitmq_openstack_user(config):
         return False
 
     try:
-        output = subprocess.check_output(["rabbitmqctl", "list_users"], text=True, stderr=subprocess.PIPE, timeout=30,)
+        output = subprocess.check_output(["rabbitmqctl", "list_users"], text=True, stderr=subprocess.PIPE, timeout=30)
     except (subprocess.CalledProcessError,
             FileNotFoundError,
             PermissionError,

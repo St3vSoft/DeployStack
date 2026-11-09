@@ -409,6 +409,7 @@ export OS_IMAGE_API_VERSION=2
             fdemo.write(demo_openrc_content.strip())
             
         os.chmod("/root/admin-openrc.sh", 0o600)
+        os.chmod("/root/demo-openrc.sh", 0o600)
         
     except Exception as e:
         print(f"{colors.RED}Failed to generate credentials scripts: {e}{colors.RESET}")
