@@ -228,6 +228,7 @@ def create_tenant_networks(config, create_bridges, networks_list, subnets_list, 
             if create_bridges:
                 cmd += _provider_args(provider_net) + [name]
             else:
+                network_type = "local"
                 cmd += [name]
 
             if not os_run(cmd, f"Creating tenant network '{name}' ({network_type})...", env=env) : return False
