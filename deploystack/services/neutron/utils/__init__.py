@@ -29,6 +29,8 @@ def restart_ovs_services():
     else:
         if not run_command(["systemctl", "restart", "neutron-periodic-workers", "neutron-rpc-server", "apache2", "neutron-openvswitch-agent", "neutron-dhcp-agent", "neutron-metadata-agent", "neutron-l3-agent", "nova-compute"], "Restarting Neutron OVS services...", False, None, 3, 5): return False
 
+    return True
+
 def restart_ovn_services():
     
     if service_exists("nova-api.service"):
