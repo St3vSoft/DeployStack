@@ -238,7 +238,7 @@ def conf_cinder_backup(config):
 
             if driver == "lvm":
                 
-                vg_name = get(config, f"cinder.backends.{backend}.VOLUME_GROUP")
+                vg_name = get(config, f"cinder.backends.{backend}.storage.VOLUME_GROUP")
 
                 backup_disk = get_physical_disk(backup_filesystem_path)
                 vg_disks = get_vg_physical_disks(vg_name)
@@ -328,7 +328,7 @@ def conf_cinder_backup(config):
                 driver = get(config, f"cinder.backends.{backend}.DRIVER")
 
                 if driver == "lvm":
-                    vg_name = get(config, f"cinder.backends.{backend}.VOLUME_GROUP")
+                    vg_name = get(config, f"cinder.backends.{backend}.storage.VOLUME_GROUP")
 
                     backup_disk = get_physical_disk(export_path)
                     vg_disks = get_vg_physical_disks(vg_name)
