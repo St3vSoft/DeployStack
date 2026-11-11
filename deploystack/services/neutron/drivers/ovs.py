@@ -277,7 +277,7 @@ def conf_neutron_ovs(config):
 
     vlan_ranges_str = build_network_vlan_ranges(config)
 
-    tunnel_bridge = None
+    tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE")
 
     create_ovs_bridges = get(config, "neutron.ovs.CREATE_BRIDGES", "no") == "yes" 
 
@@ -299,9 +299,6 @@ def conf_neutron_ovs(config):
             set_conf_option(conf_ml2, "ml2_type_vlan", "network_vlan_ranges", vlan_ranges_str)
 
         set_conf_option(conf_openvswitch, "ovs", "bridge_mappings", build_bridge_mappings(config))
-
-        if not use_tenant_flat_bridge:
-            tunnel_bridge = get(config, "neutron.ovs.TUNNEL_BRIDGE")
 
         for tunnel_type in tunnel_types:
             if tunnel_type in ("vxlan", "geneve"):
