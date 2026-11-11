@@ -218,9 +218,7 @@ def conf_ovs_bridges(config):
     if custom_bridges:
         print()
 
-        if not add_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=tenant_bridge, tunnel_bridge=tunnel_bridge,) : return False
-
-        print()
+        if not add_custom_bridges(bridges=bridges, public_bridge=public_bridge, internal_flat_bridge=tenant_bridge, tunnel_bridge=tunnel_bridge) : return False
 
         if not bring_up_custom_bridges_ifaces(bridges=bridges) : return False
 
@@ -244,8 +242,6 @@ def conf_neutron_ovs(config):
     print()
         
     if not run_command(["systemctl", "restart", "openvswitch-switch"], "Starting OpenvSwitch...") : return False
-
-    print()
 
     ip_address = get(config, "network.HOST_IP")
 
