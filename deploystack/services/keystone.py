@@ -3,7 +3,7 @@
 import os
 import json
 
-from ..utils.core.commands import run_command, run_command_output, run_commands
+from ..utils.core.commands import run_command, run_command_output, run_commands, run_command_sync
 from ..utils.core.system_utils import service_exists, is_debian, nc_wait
 from ..utils.apt.apt import apt_install
 from ..utils.config.parser import get
@@ -45,6 +45,20 @@ def _get_services(env=None):
             return False
 
     return json.loads(raw or "[]")
+
+def _ensure_user_password(env, name, password):
+
+    if not name or not password: return False
+
+    try:
+        run_command_sync(["openstack", "user", "create", "--domain", "default", "--password", password, name, "--or-show"], env=env)
+
+        run_command_sync(["openstack", "user", "set", "--password", password, name])
+
+        return True
+
+    except Exception as exc:
+        return False
 
 def install_pkgs():
 
@@ -176,56 +190,46 @@ def create_services_users(config, env):
     print()
 
     service_password = get(config, "passwords.SERVICE_PASSWORD")
+    if not service_password:
+        return False
 
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER"), False)
     install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA"), False)
 
-    assignments = _get_role_assignments(env)
-
-    services_user_create_cmds = [
-        ["openstack", "user", "create", "--domain", "default", "--password", service_password, "glance", "--or-show"],
-        ["openstack", "user", "create", "--domain", "default", "--password", service_password, "placement", "--or-show"],
-        ["openstack", "user", "create", "--domain", "default", "--password", service_password, "nova", "--or-show"],
-        ["openstack", "user", "create", "--domain", "default", "--password", service_password, "neutron", "--or-show"],
-    ]
-
-    services_role_add_cmds = []
-
-    existing_assignments = {( a["User"], a["Project"], a["Role"]) for a in assignments}
-
-    if ("glance", "service", "admin") not in existing_assignments:
-        services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "glance", "admin"])
-
-    if ("placement", "service", "admin") not in existing_assignments:
-        services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "placement", "admin"])
-
-    if ("nova", "service", "admin") not in existing_assignments:
-        services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "nova", "admin"])
-
-    if ("nova", "service", "service") not in existing_assignments:
-        services_role_add_cmds.append(["openstack", "role", "add", "--user", "nova", "--project", "service", "service"])
-
-    if ("neutron", "service", "admin") not in existing_assignments:
-        services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "neutron", "admin"])
-
-    if install_manila:
-        services_user_create_cmds.append(["openstack", "user", "create", "--domain", "default", "--password", service_password, "manila", "--or-show"])
-
-        if ("manila", "service", "admin") not in existing_assignments:
-            services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "manila", "admin"])
-
+    services_users = ["glance", "placement", "nova", "neutron"]
     if install_cinder:
-        services_user_create_cmds.append(["openstack", "user", "create", "--domain", "default", "--password", service_password, "cinder", "--or-show"])
+        services_users.append("cinder")
+    if install_manila:
+        services_users.append("manila")
 
-        if ("cinder", "service", "admin") not in existing_assignments:
-            services_role_add_cmds.append(["openstack", "role", "add", "--project", "service", "--user", "cinder", "admin"])
+    assignments = _get_role_assignments(env)
+    existing = {(a["User"], a["Project"], a["Role"]) for a in assignments}
 
-        if ("cinder", "service", "service") not in existing_assignments:
-            services_role_add_cmds.append(["openstack", "role", "add", "--user", "cinder", "--project", "service", "service"])
+    user_cmds = [["openstack", "user", "create", "--domain", "default", "--password", service_password, user, "--or-show"] for user in services_users]
 
-    if not run_commands(services_user_create_cmds, "Creating services users...", env=env) : return False
+    role_cmds = []
 
-    if not run_commands(services_role_add_cmds, "Assigning services user roles...", env=env) : return False
+    for user in services_users:
+        roles = ["admin"]
+        if user in ("nova", "cinder"):
+            roles.append("service")
+
+        for role in roles:
+            if (user, "service", role) not in existing:
+                role_cmds.append([
+                    "openstack", "role", "add",
+                    "--project", "service", "--user", user, role
+                ])
+
+    if not run_commands(user_cmds, "Creating services users...", env=env):
+        return False
+
+    for user in services_users:
+        if not _ensure_user_password(env, user, service_password):
+            return False
+
+    if not run_commands(role_cmds, "Assigning services user roles...", env=env):
+        return False
 
     return True
 
@@ -236,46 +240,40 @@ def create_services_entities(config, env):
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER"), False)
     install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA"), False)
 
-    services_create_cmds = []
-
     services = _get_services(env)
-    assignments = _get_role_assignments(env)
-    
-    if services is False or assignments is False: return False
+    if services is False:
+        return False
 
-    existing_services = {( s.get("Name") or s.get("name"), s.get("Type") or s.get("type"),) for s in services}
+    existing = {(s.get("Name") or s.get("name"), s.get("Type") or s.get("type")) for s in services}
 
-    if ("glance", "image") not in existing_services:
-        services_create_cmds.append(["openstack", "service", "create", "--name", "glance", "--description", "OpenStack Image", "image"])
-
-    if ("placement", "placement") not in existing_services:
-        services_create_cmds.append(["openstack", "service", "create", "--name", "placement", "--description", "Placement API", "placement"])
-
-    if ("nova", "compute") not in existing_services:
-        services_create_cmds.append(["openstack", "service", "create", "--name", "nova", "--description", "OpenStack Compute", "compute"])
-
-    if ("neutron", "network") not in existing_services:
-        services_create_cmds.append(["openstack", "service", "create", "--name", "neutron", "--description", "OpenStack Networking", "network"])
+    entities = [
+        ("glance", "OpenStack Image", "image"),
+        ("placement", "Placement API", "placement"),
+        ("nova", "OpenStack Compute", "compute"),
+        ("neutron", "OpenStack Networking", "network"),
+    ]
 
     if install_cinder:
-        if ("cinderv3", "volumev3") not in existing_services:
-            services_create_cmds.append(["openstack", "service", "create", "--name", "cinderv3", "--description", "OpenStack Block Storage", "volumev3"])
+        entities.append(("cinderv3", "OpenStack Block Storage", "volumev3"))
 
     if install_manila:
-        manila_services = [
-            ("manilav2", "OpenStack Shared File Systems V2", "sharev2")
-        ] if ensure_os_release(config, ["gazpacho", "hibiscus"]) else [
-            ("manila", "OpenStack Shared File Systems", "share"),
-            ("manilav2", "OpenStack Shared File Systems V2", "sharev2"),
-        ]
+        entities.extend(
+            [("manilav2", "OpenStack Shared File Systems V2", "sharev2")]
+            if ensure_os_release(config, ["gazpacho", "hibiscus"])
+            else [
+                ("manila", "OpenStack Shared File Systems", "share"),
+                ("manilav2", "OpenStack Shared File Systems V2", "sharev2"),
+            ]
+        )
 
-        for name, description, type_ in manila_services:
-            if (name, type_) not in existing_services:
-                services_create_cmds.append(["openstack", "service", "create", "--name", name, "--description", description, type_])
+    commands = [
+        ["openstack", "service", "create",
+         "--name", name, "--description", description, type_]
+        for name, description, type_ in entities
+        if (name, type_) not in existing
+    ]
 
-    if not run_commands(services_create_cmds, "Creating services entities...", env=env) : return False
-
-    return True
+    return run_commands(commands, "Creating services entities...", env=env)
 
 def create_services_endpoints(config, env):
 
@@ -283,90 +281,50 @@ def create_services_endpoints(config, env):
 
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER"), False)
     install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA"), False)
-    
-    os_region_name = get(config, "openstack.REGION_NAME")
 
-    glance_url = f"http://{get_base_host(config)}:9292"
-
-    placement_url = f"http://{get_base_host(config)}:8778"
-    nova_url = f"http://{get_base_host(config)}:8774/v2.1"
-    neutron_url = f"http://{get_base_host(config)}:9696"
+    region = get(config, "openstack.REGION_NAME")
+    host = get_base_host(config)
 
     endpoints = _get_endpoints(env=env)
+    if endpoints is False:
+        return False
 
-    if endpoints is False: return False
+    existing = {
+        (e["Service Type"], e["Interface"], e["Region"], e["URL"])
+        for e in endpoints
+    }
 
-    endpoints_create_cmds = []
+    services = [
+        ("image", f"http://{host}:9292"),
+        ("placement", f"http://{host}:8778"),
+        ("compute", f"http://{host}:8774/v2.1"),
+        ("network", f"http://{host}:9696"),
+    ]
 
-    existing_endpoints = {(a["Service Type"], a["Interface"], a["Region"], a["URL"]) for a in endpoints}
-
-    if ("image", "public", os_region_name, glance_url) not in existing_endpoints:
-        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "image", "public", glance_url])
-
-    if ("image", "internal", os_region_name, glance_url) not in existing_endpoints:
-        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "image", "internal", glance_url])
-
-    if ("image", "admin", os_region_name, glance_url) not in existing_endpoints:
-        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "image", "admin", glance_url])
-
-    if ("placement", "public", os_region_name, placement_url) not in existing_endpoints:
-        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "placement", "public", placement_url])
-
-    if ("placement", "internal", os_region_name, placement_url) not in existing_endpoints:
-        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "placement", "internal", placement_url])
-
-    if ("placement", "admin", os_region_name, placement_url) not in existing_endpoints:
-        endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "placement", "admin", placement_url])
-    
-    if ("compute", "public", os_region_name, nova_url) not in existing_endpoints:
-         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "public", nova_url])
-
-    if ("compute", "internal", os_region_name, nova_url) not in existing_endpoints:
-         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "internal", nova_url])
-
-    if ("compute", "admin", os_region_name, nova_url) not in existing_endpoints:
-         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "compute", "admin", nova_url])
-
-    if ("network", "public", os_region_name, neutron_url) not in existing_endpoints:
-         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "network", "public", neutron_url])
-    
-    if ("network", "internal", os_region_name, neutron_url) not in existing_endpoints:
-         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "network", "internal", neutron_url])
-
-    if ("network", "admin", os_region_name, neutron_url) not in existing_endpoints:
-         endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "network", "admin", neutron_url])
+    if install_cinder:
+        services.append(("volumev3", f"http://{host}:8776/v3/%(project_id)s"))
 
     if install_manila:
         if ensure_os_release(config, ["gazpacho", "hibiscus"]):
-            endpoints = [("sharev2", f"http://{get_base_host(config)}:8786/v2")]
+            services.append(("sharev2", f"http://{host}:8786/v2"))
         else:
-            endpoints = [
-                ("share", f"http://{get_base_host(config)}:8786/v1/%(tenant_id)s"),
-                ("sharev2", f"http://{get_base_host(config)}:8786/v2"),
-            ]
+            services.extend([
+                ("share", f"http://{host}:8786/v1/%(tenant_id)s"),
+                ("sharev2", f"http://{host}:8786/v2"),
+            ])
 
-        for service, url in endpoints:
-            for interface in ("public", "internal", "admin"):
-                endpoint = (service, interface, os_region_name, url)
+    commands = [
+        [
+            "openstack", "endpoint", "create",
+            "--region", region,
+            service, interface, url
+        ]
+        for service, url in services
+        for interface in ("public", "internal", "admin")
+        if (service, interface, region, url) not in existing
+    ]
 
-                if endpoint not in existing_endpoints:
-                    endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, service, interface, url,])
-
-    if install_cinder:
-        cinder_url = f"http://{get_base_host(config)}:8776/v3/%(project_id)s"
-
-        if ("volumev3", "public", os_region_name, cinder_url) not in existing_endpoints:
-            endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "volumev3", "public", cinder_url])
-    
-        if ("volumev3", "internal", os_region_name, cinder_url) not in existing_endpoints:
-            endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "volumev3", "internal", cinder_url])
-
-        if ("volumev3", "admin", os_region_name, cinder_url) not in existing_endpoints:
-            endpoints_create_cmds.append(["openstack", "endpoint", "create", "--region", os_region_name, "volumev3", "admin", cinder_url])
-
-    if not run_commands(endpoints_create_cmds, "Creating services endpoints...", env=env) : return False
-
-    return True
+    return run_commands(commands, "Creating services endpoints...", env=env)
 
 def generate_environment_cli_scripts(config):
      

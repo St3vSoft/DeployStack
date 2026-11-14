@@ -27,6 +27,32 @@ from ...services.utils import get_base_host
 
 from ...utils.config.helpers import parse_bool
 
+def _deployment_failed(step=None):
+    message = "OpenStack Deployment Failed"
+
+    if step:
+        message += f" during: {step}"
+
+    print(f"\n{colors.RED}*** {message}! ***{colors.RESET}\n\n")
+
+    print(
+        f"The deployment could not be completed due to an unexpected error.\n"
+        f"Possible causes include:\n"
+        f"  - Incorrect configuration or missing dependencies.\n"
+        f"  - Network, database or authentication issues.\n"
+        f"  - OpenStack service installation or configuration failures.\n"
+        f"  - Insufficient system resources or permissions.\n"
+    )
+
+    print(
+        f"{colors.BRIGHT_BLUE}Recommended actions:{colors.RESET}\n"
+        f"  - Review the error messages displayed above.\n"
+        f"  - Check the affected service logs and configuration.\n"
+        f"  - Resolve the issue before retrying the deployment.\n"
+    )
+
+    return False
+
 def deploy(config_file, config_generated: bool = False):
 
     config = parse_config(config_file)
@@ -70,71 +96,42 @@ def deploy(config_file, config_generated: bool = False):
         return False 
     
     install_manila = parse_bool(get(config, "optional_services.INSTALL_MANILA", False))
-
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
     install_horizon = parse_bool(get(config, "optional_services.INSTALL_HORIZON", False))
-    
+
     os.makedirs("/var/lib/deploystack/", exist_ok=True)
 
     print("OpenStack Deployment Started\n")
-    
-    print("Setting up prerequirements\n")
-    if not run_setup_prereqs(config): 
-        sys.exit(1)
-        return False
 
-    print("Setting up MariaDB\n")
-    if not run_setup_mariadb(config): 
-        sys.exit(1)
-        return False
+    setup_steps = [
+        ("Setting up prerequirements", run_setup_prereqs, (config,)),
+        ("Setting up MariaDB", run_setup_mariadb, (config,)),
+        ("Setting up Keystone", run_setup_keystone, (config, env)),
+        ("Setting up Glance", run_setup_glance, (config, env)),
+    ]
 
-    print("Setting up Keystone\n")
-    if not run_setup_keystone(config, env):
-        sys.exit(1)
-        return False
-
-    print("Setting up Glance\n")
-    if not run_setup_glance(config, env):
-        sys.exit(1)
-        return False
-    
     if install_cinder:
-        print("Setting up Cinder\n")
-        if not run_setup_cinder(config, env):
-            sys.exit(1)
-            return False
-        
-    print("Setting up Placement\n")
-    if not run_setup_placement(config):
-        sys.exit(1)
-        return False
-    
-    print("Setting up Nova\n")
-    if not run_setup_nova(config, env):
-        sys.exit(1)
-        return False
-    
-    print("Setting up a Compute Node\n")
-    if not run_setup_nova_compute(config, env): 
-        sys.exit(1)
-        return False
+        setup_steps.append(("Setting up Cinder", run_setup_cinder, (config, env)))
 
-    print("Setting up Neutron\n")
-    if not run_setup_neutron(config, env): 
-        sys.exit(1)
-        return False
-    
+    setup_steps.extend([
+        ("Setting up Placement", run_setup_placement, (config,)),
+        ("Setting up Nova", run_setup_nova, (config, env)),
+        ("Setting up a Compute Node", run_setup_nova_compute, (config, env)),
+        ("Setting up Neutron", run_setup_neutron, (config, env)),
+    ])
+
     if install_manila:
-        print("Setting up Manila\n")
-        if not run_setup_manila(config, env):
-            sys.exit(1)
-            return False
-    
+        setup_steps.append(("Setting up Manila", run_setup_manila, (config, env)))
+
     if install_horizon:
-        print("Setting up Horizon\n")
-        if not run_setup_horizon(config): 
-            sys.exit(1) 
-            return False
+        setup_steps.append(("Setting up Horizon", run_setup_horizon, (config,)))
+
+    for description, setup_func, args in setup_steps:
+        print(f"{description}\n")
+
+        if not setup_func(*args):
+            _deployment_failed(description)
+            sys.exit(1)
     
     print(f"\n*** {colors.GREEN}OpenStack Deployment Completed Successfully!{colors.RESET} ******")
 

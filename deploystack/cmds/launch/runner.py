@@ -4,7 +4,6 @@ import sys
 import time
 import uuid
 import shutil
-import base64
 import json
 import ipaddress
 
