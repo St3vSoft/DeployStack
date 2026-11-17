@@ -590,7 +590,6 @@ def validate_tenant_networks(config, neutron_driver, tenant_types, defined_bridg
                          f"({other_cidr}) on the same router '{router}'")
                     ok = False
                 cidrs_by_router.setdefault(router, []).append((name, cidr))
-
         if cidr is not None:
             all_cidrs.append((name, cidr))
 
@@ -1929,6 +1928,9 @@ def validate_manila(config) -> bool:
         if None in (flavor_id, flavor_ram, flavor_vcpus, flavor_disk):
             ok = False
 
+        if 1 <= flavor_id <= 5:
+            _err(f"Flavor ID in 'manila.backends.generic.SERVICE_INSTANCE_FLAVOR.ID' {str(flavor_id)} is reserved for Nova's default flavors; please choose a different ID greater than 5.")
+
     if not isinstance(share_types, list):
         print(f"{colors.RED}Error: manila.share_types must be a list{colors.RESET}")
         ok = False
@@ -2081,10 +2083,7 @@ def validate_manila(config) -> bool:
                 export_ip = None
 
             try:
-                tenant_network = ip_network(
-                    lvm_share_tenant_network_cidr,
-                    strict=True
-                )
+                tenant_network = ip_network(lvm_share_tenant_network_cidr, strict=True)
             except ValueError:
                 tenant_network = None
 
