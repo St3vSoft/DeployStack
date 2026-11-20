@@ -52,8 +52,7 @@ def _ensure_user_password(env, name, password):
 
     try:
         run_command_sync(["openstack", "user", "create", "--domain", "default", "--password", password, name, "--or-show"], env=env)
-
-        run_command_sync(["openstack", "user", "set", "--password", password, name])
+        run_command_sync(["openstack", "user", "set", "--password", password, name], env=env)
 
         return True
 
