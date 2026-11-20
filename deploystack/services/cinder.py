@@ -29,9 +29,10 @@ def install_pkgs(config):
 
     enabled_backends = get(config, "cinder.ENABLED_BACKENDS", []) or []
 
-    packages = [ "cinder-scheduler", "cinder-api", "cinder-volume"]
+    packages = ["cinder-scheduler", "cinder-api", "cinder-volume"]
 
-    has_lvm_backend = False
+    has_lvm_backend = any(get(config, f"cinder.backends.{backend}.DRIVER") == "lvm" for backend in enabled_backends)
+
     has_nfs_backend = False
     needs_nfs_server = False
 
@@ -39,10 +40,7 @@ def install_pkgs(config):
 
         driver = get(config, f"cinder.backends.{backend}.DRIVER")
 
-        if driver == "lvm":
-            has_lvm_backend = True
-
-        elif driver == "nfs":
+        if driver == "nfs":
             has_nfs_backend = True
 
             use_external_share = parse_bool(get(config, f"cinder.backends.{backend}.USE_EXTERNAL_SHARE"), False)
@@ -62,7 +60,8 @@ def install_pkgs(config):
     if install_cinder_backup:
         packages.append("cinder-backup")
 
-    if not apt_install(packages, ux_text="Installing Cinder packages..."): return False
+    if not apt_install(packages, ux_text="Installing Cinder packages..."):
+        return False
 
     return True
 
