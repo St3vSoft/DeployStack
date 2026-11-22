@@ -609,7 +609,7 @@ def launch(
                 logger.error(f"{colors.RED}ERROR: The specified root volume size ({volume_size_in_gb} GB) is smaller than the flavor's root disk size ({flavor_disk_size} GB).{colors.RESET}")
                 sys.exit(1)
 
-        volume_size = flavor_disk_size or volume_size_in_gb
+        volume_size = volume_size_in_gb or flavor_disk_size
 
     if not keypair:
         key_path = key_path or os.path.join(SSH_KEY_PATH, f"id_{name}")
