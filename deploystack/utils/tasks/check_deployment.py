@@ -361,6 +361,8 @@ if __name__ == "__main__":
 
 def check_cinder_available() -> bool:
 
+    load_openrc(internal_admin_openrc_file)
+
     if not all(is_package_installed(pkg) for pkg in cinder_pkgs): return False
 
     if not check_endpoint("volumev3"): return False
