@@ -6,7 +6,7 @@ from .runner import launch as launch_instance
 
 from ...utils.core import colors
 
-def init_parser(parser): 
+def init_parser(parser, check_cinder=True): 
 
     general_options = parser.add_argument_group("General Options")
 
@@ -53,7 +53,7 @@ def init_parser(parser):
         help="Maximum time to wait for the operation to complete, in seconds (default: 100)."
     )
 
-    if is_cinder_available():
+    if check_cinder and is_cinder_available():
         volume_options = parser.add_argument_group("Volume Options")
 
         volume_options.add_argument("--boot-from-volume", action="store_true", help="Boot the instance from a volume created from the specified image")
