@@ -58,6 +58,7 @@ def init_parser(parser):
 
         volume_options.add_argument("--boot-from-volume", action="store_true", help="Boot the image from a volume")
         volume_options.add_argument("--volume-size-in-gb", type=int, help="Size of the root volume in GB")
+        volume_options.add_argument("--keep-on-termination", action="store_true", help="Keeps the volume after the instance is deleted")
     
 def launch(parser, args) -> None:
 
@@ -65,10 +66,17 @@ def launch(parser, args) -> None:
         parser.print_help()
         print(f"\nTip: Run '{colors.BRIGHT_BLUE}deploystack launch --help{colors.RESET}' for detailed usage of each argument.")
         sys.exit(1)
-    elif args.volume_size_in_gb and not args.boot_from_volume:
-        parser.error("The --volume-size-in-gb flag requires the --boot-from-volume flag.")
 
+    if args.volume_size_in_gb is not None:
+        if not args.boot_from_volume:
+            parser.error("--volume-size-in-gb requires --boot-from-volume.")
+        if args.volume_size_in_gb <= 0:
+            parser.error("--volume-size-in-gb must be greater than 0.")
+
+    if args.keep_on_termination and not args.boot_from_volume:
+        parser.error("--keep-on-termination requires --boot-from-volume.")
+        
     if not is_openstack_ready():
         sys.exit(1)
 
-    launch_instance(name=args.name, image=args.image, flavor=args.flavor, network=args.network, keypair=args.keypair, password=args.password, timeout=args.timeout)
+    launch_instance(name=args.name, image=args.image, flavor=args.flavor, network=args.network, keypair=args.keypair, password=args.password, timeout=args.timeout, boot_from_volume=args.args.boot_from_volume, volume_size_in_gb=args.volume_size_in_gb, keep_volume_on_termination=args.keep_on_termination)

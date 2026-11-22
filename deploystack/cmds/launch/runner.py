@@ -145,6 +145,15 @@ def _get_cirros_image_checksum(image_name="cirros") -> str | None:
         logger.error(f"{colors.RED}Unable to find checksum for CirrOS image{colors.RESET}")
         sys.exit(1)
 
+def _get_flavor_root_disk_size(flavor_name_or_id: str) -> int:
+
+    try:
+        out = _os("flavor", "show", flavor_name_or_id, "-f", "value", "-c", "disk")
+        return int(out.stdout.strip())
+    except Exception:
+        logger.error(f"{colors.RED}Unable to find root disk size of '{flavor_name_or_id}' flavor{colors.RESET}")
+        sys.exit(1)
+
 def _get_image_properties(image_id: str) -> dict:
 
     out = _os("image", "show", image_id, "-f", "json")
@@ -314,7 +323,7 @@ def _generate_user_config(ostype: str, default_user: str, password: str, public_
     return file_path
 
 def _create_server(name: str, image_id: str, flavor_id: str,
-                  network_id: str, keypair_name: str) -> str:
+                  network_id: str, keypair_name: str, boot_from_volume: bool, volume_size_in_gb: int, keep_volume: bool) -> str:
     """Create server and return its ID."""
 
     server_id: str = None
@@ -323,15 +332,24 @@ def _create_server(name: str, image_id: str, flavor_id: str,
 
     try:
 
-        result = _run([
+        create_server_cmd = [
             "openstack", "server", "create",
             "--image",    image_id,
             "--flavor",   flavor_id,
             "--network",  network_id,
             "--key-name", keypair_name,
-            "-f", "value", "-c", "id",
-            name
-        ])
+        ]
+
+        if boot_from_volume:
+            if volume_size_in_gb is not None:
+                create_server_cmd.extend(["--boot-from-volume", str(volume_size_in_gb)])
+
+                if not keep_volume:
+                    create_server_cmd.append("--delete-on-termination")
+
+        create_server_cmd.extend(["-f", "value", "-c", "id", name])
+
+        result = _run(create_server_cmd)
 
         server_id = result.stdout.strip()
         if not server_id:
@@ -368,6 +386,9 @@ def _create_server_with_password(
     os_type: str,
     username: str,
     password: str,
+    boot_from_volume: bool,
+    volume_size_in_gb: int, 
+    keep_volume: bool,
     public_key: str = None,
 ) -> str:
     """Create server with cloud-init user config and return its ID."""
@@ -379,17 +400,25 @@ def _create_server_with_password(
     print(f"Launching instance '{name}' ...\n")
 
     try:
-        result = _run([
+        create_server_cmd = [
             "openstack", "server", "create",
             "--image",        image_id,
             "--flavor",       flavor_id,
             "--network",      network_id,
             "--key-name",     keypair_name,
             "--config-drive", "true",
-            "--user-data",    config_drive_file_path,
-            "-f", "value", "-c", "id",
-            name
-        ])
+            "--user-data",    config_drive_file_path]
+
+        if boot_from_volume:
+            if volume_size_in_gb is not None:
+                create_server_cmd.extend(["--boot-from-volume", str(volume_size_in_gb)])
+
+                if not keep_volume:
+                    create_server_cmd.append("--delete-on-termination")
+        
+        create_server_cmd.extend(["-f", "value", "-c", "id", name])
+
+        result = _run(create_server_cmd)
 
         server_id = result.stdout.strip()
         if not server_id:
@@ -523,7 +552,10 @@ def launch(
     key_path: str       = SSH_KEY_PATH,
     external_net: str   = EXTERNAL_NET,
     password: str       = "",
-    timeout: int        = 100
+    timeout: int        = 100,
+    boot_from_volume: bool = False,
+    volume_size_in_gb: int = 0,
+    keep_volume_on_termination: bool = False,
 ) -> None:
 
     os.makedirs(SSH_KEY_PATH, exist_ok=True)
@@ -560,6 +592,8 @@ def launch(
     fip: str = None
     instance_ip_address: str = None
 
+    volume_size = None
+
     if " " in password:
         logger.error(f"{colors.RED}Cloud-init password invalid: contains spaces{colors.RESET}")
         sys.exit(1)
@@ -592,15 +626,22 @@ def launch(
         f"No config drive will be created for this VM.{colors.RESET}\n"
     )
 
+    if boot_from_volume:
+        flavor_disk_size = _get_flavor_root_disk_size(flavor_id)
+
+        if volume_size < flavor_disk_size:
+            logger.error(
+                f"The specified root volume size ({volume_size} GB) is smaller "
+                f"than the flavor's root disk size ({flavor_disk_size} GB)."
+            )
+            sys.exit(1)
+
+        volume_size = volume_size_in_gb or flavor_disk_size
+
     if password_enabled and password:
-        server_id = _create_server_with_password(
-            name, image_id, flavor_id, network_id,
-            keypair, os_type, os_admin_user, password, public_key
-        )
+        server_id = _create_server_with_password(name, image_id, flavor_id, network_id, keypair, os_type, os_admin_user, password, public_key, boot_from_volume=boot_from_volume, volume_size_in_gb=volume_size, keep_volume=keep_volume_on_termination)
     else:
-        server_id = _create_server(
-            name, image_id, flavor_id, network_id, keypair
-        )
+        server_id = _create_server(name, image_id, flavor_id, network_id, keypair, boot_from_volume=boot_from_volume, volume_size_in_gb=volume_size, keep_volume=keep_volume_on_termination)
 
     _wait_for_active(server_id, timeout)
 
