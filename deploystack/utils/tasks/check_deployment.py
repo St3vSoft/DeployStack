@@ -10,7 +10,7 @@ from ..config.parser import get_conf_option
 
 from ..core.commands import run_command_output
 
-from ..core.system_utils import service_exists, is_debian
+from ..core.system_utils import service_exists, is_debian, build_openstack_env_from_file
 
 from ...services.utils.openstack_repos import validate_os_release_available
 
@@ -155,8 +155,11 @@ def is_package_installed(pkg_name: str) -> bool:
         return False
     
 def check_endpoint(service_name: str) -> bool:
+
+    env = build_openstack_env_from_file(internal_admin_openrc_file)
+
     try:
-        output = run_command_output(["openstack", "endpoint", "list", "--service", service_name, "-f", "json", "-c", "Enabled"])
+        output = run_command_output(["openstack", "endpoint", "list", "--service", service_name, "-f", "json", "-c", "Enabled"], env=env)
 
         result = bool(json.loads(output))
         logger.debug(f"Endpoint '{service_name}': {'present' if result else 'absent'}")
@@ -360,8 +363,6 @@ if __name__ == "__main__":
     exit(0 if endpoint_result.ok else 1)
 
 def check_cinder_available() -> bool:
-
-    load_openrc(internal_admin_openrc_file)
 
     if not all(is_package_installed(pkg) for pkg in cinder_pkgs): return False
 
