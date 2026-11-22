@@ -57,8 +57,8 @@ def init_parser(parser):
         volume_options = parser.add_argument_group("Volume Options")
 
         volume_options.add_argument("--boot-from-volume", action="store_true", help="Boot the image from a volume")
-        volume_options.add_argument("--volume-size-in-gb", type=int, help="Size of the root volume in GB")
         volume_options.add_argument("--keep-on-termination", action="store_true", help="Keeps the volume after the instance is deleted")
+        volume_options.add_argument("--volume-size-in-gb", type=int, help="Size of the root volume in GB")
     
 def launch(parser, args) -> None:
 
@@ -79,4 +79,4 @@ def launch(parser, args) -> None:
     if not is_openstack_ready():
         sys.exit(1)
 
-    launch_instance(name=args.name, image=args.image, flavor=args.flavor, network=args.network, keypair=args.keypair, password=args.password, timeout=args.timeout, boot_from_volume=args.args.boot_from_volume, volume_size_in_gb=args.volume_size_in_gb, keep_volume_on_termination=args.keep_on_termination)
+    launch_instance(name=args.name, image=args.image, flavor=args.flavor, network=args.network, keypair=args.keypair, password=args.password, timeout=args.timeout, boot_from_volume=args.boot_from_volume, volume_size_in_gb=args.volume_size_in_gb, keep_volume_on_termination=args.keep_on_termination)
