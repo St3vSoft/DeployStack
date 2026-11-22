@@ -56,8 +56,8 @@ def init_parser(parser):
     if is_cinder_available():
         volume_options = parser.add_argument_group("Volume Options")
 
-        volume_options.add_argument("--boot-from-volume", action="store_true", help="Boot the image from a volume")
-        volume_options.add_argument("--keep-on-termination", action="store_true", help="Keeps the volume after the instance is deleted")
+        volume_options.add_argument("--boot-from-volume", action="store_true", help="Boot the instance from a volume created from the specified image")
+        volume_options.add_argument("--keep-on-termination", action="store_true", help="Keep the volume after the instance is deleted")
         volume_options.add_argument("--volume-size-in-gb", type=int, help="Size of the root volume in GB")
     
 def launch(parser, args) -> None:
