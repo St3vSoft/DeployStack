@@ -14,7 +14,7 @@ from ....utils.config.setter import set_conf_option
 
 from ....utils.config.helpers import parse_bool
 
-from ....utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service
+from ....utils.lvm.loopback import write_loopback_lvm_service, setup_loopback_service
 from ....utils.lvm import configure_lvm_storage
 
 from .utils import wait_manila_share_agent, create_manila_sudoers_rule
@@ -307,7 +307,7 @@ def conf_lvm(config):
     using_loopback = not lvm_physical_volume
 
     if using_loopback:
-        if not write_loopback_lvm_env("manila", backend="lvm-loopback", description="Manila Loopback LVM", before_services="manila-share.service"): return False   
+        if not write_loopback_lvm_service("manila", backend="lvm-loopback", description="Manila Loopback LVM", before_services="manila-share.service"): return False   
         if not setup_loopback_service("manila", backend="lvm-loopback"): return False   
 
     return True

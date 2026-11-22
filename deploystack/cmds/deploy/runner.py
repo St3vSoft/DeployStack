@@ -33,10 +33,10 @@ def _deployment_failed(step=None):
     if step:
         message += f" during: {step}"
 
-    print(f"\n{colors.RED}*** {message}! ***{colors.RESET}\n\n")
+    print(f"\n{colors.RED}*** {message}! ***{colors.RESET}\n")
 
     print(
-        f"The deployment could not be completed due to an unexpected error.\n"
+        f"The deployment could not be completed due to an unexpected error.\n\n"
         f"Possible causes include:\n"
         f"  - Incorrect configuration or missing dependencies.\n"
         f"  - Network, database or authentication issues.\n"
@@ -99,6 +99,7 @@ def deploy(config_file, config_generated: bool = False):
     install_cinder = parse_bool(get(config, "optional_services.INSTALL_CINDER", False))
     install_horizon = parse_bool(get(config, "optional_services.INSTALL_HORIZON", False))
 
+    os.makedirs("/var/lib/deploystack/", exist_ok=True)
 
     print("OpenStack Deployment Started\n")
 

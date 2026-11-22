@@ -13,7 +13,7 @@ from ..utils.config.parser import get
 from ..utils.config.setter import set_conf_option
 from ..utils.core import colors
 from ..utils.core.system_utils import service_exists, is_debian, is_package_installed, get_physical_disk, get_vg_physical_disks, nc_wait
-from ..utils.lvm.loopback import write_loopback_lvm_env, setup_loopback_service
+from ..utils.lvm.loopback import write_loopback_lvm_service, setup_loopback_service
 
 from ..utils.lvm import configure_lvm_storage
 
@@ -95,7 +95,7 @@ def conf_lvm_backend(config, backend):
             f.write("include /var/lib/cinder/volumes/*")
     
     if using_loopback:
-        if not write_loopback_lvm_env("cinder", backend=backend, description=f"Cinder {backend} Loopback LVM", before_services="cinder-volume.service tgt.service"): return False   
+        if not write_loopback_lvm_service("cinder", backend=backend, description=f"Cinder {backend} Loopback LVM", before_services="cinder-volume.service tgt.service"): return False   
         if not setup_loopback_service("cinder", backend): return False   
 
     return True
@@ -207,9 +207,10 @@ def conf_cinder_backup(config):
     enabled_cinder_backends = get(config, "cinder.ENABLED_BACKENDS", []) or []
 
     if backup_compression_algorithm == "zstd":
-        print()
 
         if not is_package_installed("python3-zstd"):
+            print()
+            
             if not apt_install(["python3-zstd"], "Installing Python3 zstd Package...") : return False
 
     if backup_driver == "posix":

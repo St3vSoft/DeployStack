@@ -48,7 +48,7 @@ def create_lvm_loopback_virtual_disk(image_path, image_size, lvm_dev, service_us
 
     return True
 
-def write_loopback_lvm_env(service, backend, description, before_services):
+def write_loopback_lvm_service(service, backend, description, before_services):
 
     SERVICE_PATH = f"/etc/systemd/system/{service}-{backend}-loopback.service"
 
