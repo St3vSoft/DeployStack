@@ -629,9 +629,9 @@ def launch(
     if boot_from_volume:
         flavor_disk_size = _get_flavor_root_disk_size(flavor_id)
 
-        if volume_size < flavor_disk_size:
+        if volume_size_in_gb < flavor_disk_size:
             logger.error(
-                f"The specified root volume size ({volume_size} GB) is smaller "
+                f"The specified root volume size ({volume_size_in_gb} GB) is smaller "
                 f"than the flavor's root disk size ({flavor_disk_size} GB)."
             )
             sys.exit(1)
