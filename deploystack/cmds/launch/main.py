@@ -9,7 +9,7 @@ from ...utils.core import colors
 def init_parser(parser): 
 
     general_options = parser.add_argument_group("General Options")
-    volume_options = parser.add_argument_group("Volume Options (requires Cinder)")
+    volume_options = parser.add_argument_group("Volume Options")
 
     general_options.add_argument(
         "--name",
