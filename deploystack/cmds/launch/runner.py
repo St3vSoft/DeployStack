@@ -592,7 +592,7 @@ def launch(
     fip: str = None
     instance_ip_address: str = None
 
-    volume_size = None
+    volume_size: int = None
 
     if " " in password:
         logger.error(f"{colors.RED}Cloud-init password invalid: contains spaces{colors.RESET}")

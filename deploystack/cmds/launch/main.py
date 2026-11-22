@@ -67,16 +67,31 @@ def launch(parser, args) -> None:
         print(f"\nTip: Run '{colors.BRIGHT_BLUE}deploystack launch --help{colors.RESET}' for detailed usage of each argument.")
         sys.exit(1)
 
-    if args.volume_size_in_gb is not None:
-        if not args.boot_from_volume:
+    boot_from_volume = getattr(args, "boot_from_volume", False)
+    keep_on_termination = getattr(args, "keep_on_termination", False)
+    volume_size_in_gb = getattr(args, "volume_size_in_gb", None)
+
+    if volume_size_in_gb is not None:
+        if not boot_from_volume:
             parser.error("--volume-size-in-gb requires --boot-from-volume.")
-        if args.volume_size_in_gb <= 0:
+        if volume_size_in_gb <= 0:
             parser.error("--volume-size-in-gb must be greater than 0.")
 
-    if args.keep_on_termination and not args.boot_from_volume:
+    if keep_on_termination and not boot_from_volume:
         parser.error("--keep-on-termination requires --boot-from-volume.")
-        
+            
     if not is_openstack_ready():
         sys.exit(1)
 
-    launch_instance(name=args.name, image=args.image, flavor=args.flavor, network=args.network, keypair=args.keypair, password=args.password, timeout=args.timeout, boot_from_volume=args.boot_from_volume, volume_size_in_gb=args.volume_size_in_gb, keep_volume_on_termination=args.keep_on_termination)
+    launch_instance(
+        name=args.name,
+        image=args.image,
+        flavor=args.flavor,
+        network=args.network,
+        keypair=args.keypair,
+        password=args.password,
+        timeout=args.timeout,
+        boot_from_volume=boot_from_volume,
+        volume_size_in_gb=volume_size_in_gb,
+        keep_volume_on_termination=keep_on_termination
+    )
