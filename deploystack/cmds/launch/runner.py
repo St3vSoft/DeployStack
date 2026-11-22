@@ -601,6 +601,15 @@ def launch(
         logger.error(f"{colors.RED}Cloud-init password invalid: illegal characters{colors.RESET}")
         sys.exit(1)
 
+    if boot_from_volume:
+        flavor_disk_size = _get_flavor_root_disk_size(flavor_id)
+
+        if volume_size_in_gb < flavor_disk_size:
+            logger.error(f"{colors.RED}ERROR: The specified root volume size ({volume_size_in_gb} GB) is smaller than the flavor's root disk size ({flavor_disk_size} GB).{colors.RESET}")
+            sys.exit(1)
+
+        volume_size = volume_size_in_gb or flavor_disk_size
+
     if not keypair:
         key_path = key_path or os.path.join(SSH_KEY_PATH, f"id_{name}")
         keypair = _ensure_keypair(key_path, name)
@@ -626,17 +635,6 @@ def launch(
         f"No config drive will be created for this VM.{colors.RESET}\n"
     )
 
-    if boot_from_volume:
-        flavor_disk_size = _get_flavor_root_disk_size(flavor_id)
-
-        if volume_size_in_gb < flavor_disk_size:
-            logger.error(
-                f"The specified root volume size ({volume_size_in_gb} GB) is smaller "
-                f"than the flavor's root disk size ({flavor_disk_size} GB)."
-            )
-            sys.exit(1)
-
-        volume_size = volume_size_in_gb or flavor_disk_size
 
     if password_enabled and password:
         server_id = _create_server_with_password(name, image_id, flavor_id, network_id, keypair, os_type, os_admin_user, password, public_key, boot_from_volume=boot_from_volume, volume_size_in_gb=volume_size, keep_volume=keep_volume_on_termination)
