@@ -9,7 +9,7 @@ from ...utils.core import colors
 def init_parser(parser): 
 
     general_options = parser.add_argument_group("General Options")
-    volume_options = parser.add_argument_group("Volume Options")
+    volume_options = parser.add_argument_group("Volume Options (requires Cinder)")
 
     general_options.add_argument(
         "--name",
@@ -80,6 +80,11 @@ def launch(parser, args) -> None:
 
     if keep_on_termination and not boot_from_volume:
         parser.error("--keep-on-termination requires --boot-from-volume.")
+
+
+    print(str(boot_from_volume))
+    print(str(keep_on_termination))
+    print(str(volume_size_in_gb))
             
     if not is_openstack_ready():
         sys.exit(1)
