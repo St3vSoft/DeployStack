@@ -604,11 +604,12 @@ def launch(
     if boot_from_volume:
         flavor_disk_size = _get_flavor_root_disk_size(flavor_id)
 
-        if volume_size_in_gb < flavor_disk_size:
-            logger.error(f"{colors.RED}ERROR: The specified root volume size ({volume_size_in_gb} GB) is smaller than the flavor's root disk size ({flavor_disk_size} GB).{colors.RESET}")
-            sys.exit(1)
+        if volume_size_in_gb is not None:
+            if volume_size_in_gb < flavor_disk_size:
+                logger.error(f"{colors.RED}ERROR: The specified root volume size ({volume_size_in_gb} GB) is smaller than the flavor's root disk size ({flavor_disk_size} GB).{colors.RESET}")
+                sys.exit(1)
 
-        volume_size = volume_size_in_gb or flavor_disk_size
+        volume_size = flavor_disk_size or volume_size_in_gb
 
     if not keypair:
         key_path = key_path or os.path.join(SSH_KEY_PATH, f"id_{name}")
