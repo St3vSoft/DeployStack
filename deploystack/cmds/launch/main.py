@@ -6,9 +6,10 @@ from .runner import launch as launch_instance
 
 from ...utils.core import colors
 
-def init_parser(parser, check_cinder=True): 
+def init_parser(parser): 
 
     general_options = parser.add_argument_group("General Options")
+    volume_options = parser.add_argument_group("Volume Options")
 
     general_options.add_argument(
         "--name",
@@ -53,12 +54,9 @@ def init_parser(parser, check_cinder=True):
         help="Maximum time to wait for the operation to complete, in seconds (default: 100)."
     )
 
-    if check_cinder and is_cinder_available():
-        volume_options = parser.add_argument_group("Volume Options")
-
-        volume_options.add_argument("--boot-from-volume", action="store_true", help="Boot the instance from a volume created from the specified image")
-        volume_options.add_argument("--keep-on-termination", action="store_true", help="Keep the volume after the instance is deleted")
-        volume_options.add_argument("--volume-size-in-gb", type=int, help="Size of the root volume in GB")
+    volume_options.add_argument("--boot-from-volume", action="store_true", help="Boot the instance from a volume created from the specified image")
+    volume_options.add_argument("--keep-on-termination", action="store_true", help="Keep the volume after the instance is deleted")
+    volume_options.add_argument("--volume-size-in-gb", type=int, help="Size of the root volume in GB")
     
 def launch(parser, args) -> None:
 
@@ -70,6 +68,9 @@ def launch(parser, args) -> None:
     boot_from_volume = getattr(args, "boot_from_volume", False)
     keep_on_termination = getattr(args, "keep_on_termination", False)
     volume_size_in_gb = getattr(args, "volume_size_in_gb", None)
+
+    if boot_from_volume and not is_cinder_available():
+        parser.error("Boot from volume requires Cinder to be available.")
 
     if volume_size_in_gb is not None:
         if not boot_from_volume:

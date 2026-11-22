@@ -636,7 +636,6 @@ def launch(
         f"No config drive will be created for this VM.{colors.RESET}\n"
     )
 
-
     if password_enabled and password:
         server_id = _create_server_with_password(name, image_id, flavor_id, network_id, keypair, os_type, os_admin_user, password, public_key, boot_from_volume=boot_from_volume, volume_size_in_gb=volume_size, keep_volume=keep_volume_on_termination)
     else:

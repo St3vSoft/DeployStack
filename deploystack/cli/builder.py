@@ -34,7 +34,7 @@ def build_launch_parser(main_subparsers: argparse._SubParsersAction) -> MainArgu
 
     launch_parser = main_subparsers.add_parser("launch", help="Launch an OpenStack instance")
 
-    build_launch_subparser(launch_parser, check_cinder=False)
+    build_launch_subparser(launch_parser)
 
     return launch_parser
 
