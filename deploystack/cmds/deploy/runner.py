@@ -102,7 +102,7 @@ def deploy(config_file, config_generated: bool = False):
     os.makedirs("/var/lib/deploystack/", exist_ok=True)
 
     import traceback
-    traceback.print_exc()
+    traceback.print_stack()
 
     print("OpenStack Deployment Started\n")
 
