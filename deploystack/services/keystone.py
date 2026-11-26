@@ -56,7 +56,7 @@ def _ensure_user_password(env, name, password):
 
         return True
 
-    except Exception as exc:
+    except Exception:
         return False
 
 def install_pkgs():
