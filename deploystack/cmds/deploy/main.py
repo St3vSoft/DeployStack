@@ -72,7 +72,7 @@ def deploy(parser, args) -> None:
 
         validate_deploy_args(parser, args)
 
-        config_file_path = generate_config_file()
+        config_file_path = generate_config_file(os.getcwd())
 
         cinder_flag = args.install_cinder
         horizon_flag = args.install_horizon

@@ -579,13 +579,6 @@ def launch(
     provider_network_id = None
     external_router_name = None
 
-    admin_internal_env = build_openstack_env_from_file(internal_admin_openrc_file)
-
-    if _is_external_network_by_id(network_id):
-        external_router_name = _get_router_for_external_network(external_net_id)
-    else:
-        external_router_name, provider_network_id = _get_router_and_provider_network(network, admin_internal_env)
-
     password_enabled = True
     show_access = True
 
@@ -593,6 +586,13 @@ def launch(
     instance_ip_address: str = None
 
     volume_size: int = None
+
+    admin_internal_env = build_openstack_env_from_file(internal_admin_openrc_file)
+
+    if _is_external_network_by_id(network_id):
+        external_router_name = _get_router_for_external_network(external_net_id)
+    else:
+        external_router_name, provider_network_id = _get_router_and_provider_network(network, admin_internal_env)
 
     if " " in password:
         logger.error(f"{colors.RED}Cloud-init password invalid: contains spaces{colors.RESET}")
@@ -637,9 +637,11 @@ def launch(
     )
 
     if password_enabled and password:
-        server_id = _create_server_with_password(name, image_id, flavor_id, network_id, keypair, os_type, os_admin_user, password, public_key, boot_from_volume=boot_from_volume, volume_size_in_gb=volume_size, keep_volume=keep_volume_on_termination)
+        server_id = _create_server_with_password(name, image_id, flavor_id, network_id, keypair, os_type, os_admin_user, 
+                                                 password, public_key, boot_from_volume=boot_from_volume, volume_size_in_gb=volume_size, keep_volume=keep_volume_on_termination)
     else:
-        server_id = _create_server(name, image_id, flavor_id, network_id, keypair, boot_from_volume=boot_from_volume, volume_size_in_gb=volume_size, keep_volume=keep_volume_on_termination)
+        server_id = _create_server(name, image_id, flavor_id, network_id, 
+                                   keypair, boot_from_volume=boot_from_volume, volume_size_in_gb=volume_size, keep_volume=keep_volume_on_termination)
 
     _wait_for_active(server_id, timeout)
 

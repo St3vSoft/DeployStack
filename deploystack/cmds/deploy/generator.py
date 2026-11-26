@@ -24,10 +24,14 @@ def _remove_empty(d):
         return [_remove_empty(i) for i in d if i != "" and i is not None]
     return d
 
-def generate_config_file() -> str:
+def generate_config_file(target_directory: str) -> str:
 
     global config_file_path
-    config_file_path = f"/root/openstack-config-{uuid.uuid4().hex}.yaml"
+
+    file_name: str = f"openstack-config-{uuid.uuid4().hex}.yaml"
+
+    config_file_path = os.path.join(target_directory, file_name)
+    
     script_dir = os.path.dirname(os.path.realpath(__file__))
     src_file = os.path.join(script_dir, OPENSTACK_CONFIG_TEMPLATE)
     shutil.copy(src_file, config_file_path)
