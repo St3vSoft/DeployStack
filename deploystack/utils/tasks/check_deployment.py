@@ -404,9 +404,6 @@ def is_cinder_available() -> bool:
 
 def is_openstack_ready() -> bool:
 
-    if not os.path.exists(MARKER_FILE):
-        return False
-
     debug = is_debug_enabled()
 
     try:
@@ -436,7 +433,7 @@ def is_openstack_ready() -> bool:
 
     base_check = check_deployment(include_endpoints=False)
     if not debug:
-        if not base_check.ok:
+        if not base_check.ok or not os.path.exists(MARKER_FILE):
             print(f"{colors.RED}OpenStack is not deployed yet.{colors.RESET}\n")
             print(f"{colors.YELLOW}  • Run 'deploy --allinone' for a full automated deployment{colors.RESET}")
             print(f"{colors.YELLOW}  • Or run 'deploy --config-file <config_file>' with a custom config{colors.RESET}\n")

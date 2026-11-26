@@ -65,6 +65,9 @@ def launch(parser, args) -> None:
         print(f"\nTip: Run '{colors.BRIGHT_BLUE}deploystack launch --help{colors.RESET}' for detailed usage of each argument.")
         sys.exit(1)
 
+    if not is_openstack_ready():
+        sys.exit(1)
+
     boot_from_volume = getattr(args, "boot_from_volume", False)
     keep_on_termination = getattr(args, "keep_on_termination", False)
     volume_size_in_gb = getattr(args, "volume_size_in_gb", None)
@@ -80,9 +83,6 @@ def launch(parser, args) -> None:
 
     if keep_on_termination and not boot_from_volume:
         parser.error("--keep-on-termination requires --boot-from-volume.")
-
-    if not is_openstack_ready():
-        sys.exit(1)
 
     launch_instance(
         name=args.name,
